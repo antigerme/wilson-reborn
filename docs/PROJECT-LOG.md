@@ -6,6 +6,33 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-14 — Fase 1d: escalonador ADS multi-thread (crate `wilson-engine`)
+
+**Branch `claude/engine-ads-scheduler`** (a partir da `main` pós-merge do PR #5).
+
+Porte do `adsPlay`/`adsPlayChunk`/`adsLoad` (`ads.c`) — junta várias animações TTM
+numa cena completa. Refatoração para um núcleo compartilhado:
+- `ttm_exec`: `TtmSlot` (instruções+tags+sprites), `TtmThread` (estado+camada) e
+  `run_frame()` — execução de uma thread por frame. `TtmVm` (Fase 1c) reescrito sobre
+  ele (sem mudar a API/testes); fundo (`LOAD_SCREEN`) é global, sprites por slot.
+- `ads_vm`: `AdsVm::next_frame()` faz **uma iteração** do escalonador cooperativo de
+  timestep variável: roda threads com timer 0, compõe camadas, calcula `mini`,
+  decrementa timers, e no pós-processamento aplica goto, decrementa `sceneTimer`
+  (ADD_SCENE negativo = duração), re-arma `sceneIterations` (positivo = nº de vezes)
+  ou encerra + dispara gatilhos `IF_LASTPLAYED`. `adsPlayChunk` com blocos
+  RANDOM (peso) / OR / IF_NOT_RUNNING / PLAY_SCENE / END / GOSUB_TAG. RNG xorshift
+  determinístico (testes reprodutíveis).
+
+**45 testes** (34 dgds + 11 engine), incl. cena ADS fim-a-fim (ADD_SCENE→TTM→frame
+composto→término) e bloco RANDOM escolhendo exatamente uma cena.
+Validado local: fmt, clippy `-D warnings`, build release, 45/45 testes.
+
+**Próximo:** Fase 1e — diretor (`story.c`: ciclo de 11 dias, seleção de cenas,
+feriados/maré/noite), walk/pathfinding entre spots e desenho da ilha; depois, backend
+de render real.
+
+---
+
 ## 2026-06-14 — Fase 1c: interpretador TTM headless + `Surface` (novo crate `wilson-engine`)
 
 **Branch `claude/engine-ttm-vm`** (a partir da `main` pós-merge do PR #4).
