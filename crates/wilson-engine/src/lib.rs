@@ -10,6 +10,7 @@
 
 pub mod ads_vm;
 pub mod error;
+pub mod path;
 pub mod rng;
 pub mod story;
 pub mod surface;
@@ -18,6 +19,7 @@ pub mod ttm_vm;
 
 pub use ads_vm::{AdsFrame, AdsVm, MAX_TTM_SLOTS, MAX_TTM_THREADS};
 pub use error::{EngineError, Result};
+pub use path::{calc_path, calc_paths, NUM_OF_NODES};
 pub use rng::Rng;
 pub use story::{Director, Holiday, IslandState, ScenePlay, StoryRun, StoryScene, STORY_SCENES};
 pub use surface::{Rect, Surface, TRANSPARENT};

@@ -6,6 +6,24 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-14 — Fase 1f: pathfinding entre spots (crate `wilson-engine`)
+
+**Branch `claude/engine-pathfinding`** (a partir da `main` pós-merge do PR #7).
+
+Porte de `calcpath.c` + `calcpath_data.h` (módulo `path`): a **matriz de adjacência de
+2ª ordem** `WALK_MATRIX[prev][cur][next]` (a rota permitida depende de onde Johnny
+veio; o 1º salto usa a linha "de qualquer spot") e a enumeração DFS de caminhos
+simples. `calc_paths(from,to)` lista todas as rotas; `calc_path(from,to,rng)` sorteia
+uma. **57 testes** (34 dgds + 23 engine): um teste cobre **todos os 36 pares** de spots
+(rota existe + começa/termina certo + simples + cada salto respeita a matriz),
+validando a transcrição da tabela. Validado local: fmt, clippy `-D warnings`, build
+release, 57/57.
+
+**Próximo:** Fase 1g — walk animation (frames de `walk_data.h` + máquina de estados de
+`walk.c`); depois render da ilha; depois backend de render real.
+
+---
+
 ## 2026-06-14 — Fase 1e: diretor de história (crate `wilson-engine`)
 
 **Branch `claude/engine-story-director`** (a partir da `main` pós-merge do PR #6).

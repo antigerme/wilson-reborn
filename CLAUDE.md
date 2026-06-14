@@ -47,6 +47,7 @@ Ver [`docs/knowledge-base/08-decisoes-e-status.md`](docs/knowledge-base/08-decis
 (seção "Status"). Resumo: **Fases 0–1e ✅**. `wilson-dgds` decodifica
 `RESOURCE.MAP/.001`, RLE/LZW, chunks, paleta, `.BMP/.SCR/.TTM/.ADS`, `Archive` e o
 bytecode TTM/ADS → instruções. **`wilson-engine`** tem: TTM (`ttm_exec`/`TtmVm`),
-escalonador **ADS** (`AdsVm`), e o **diretor** (`story`: 63 cenas, ciclo 11 dias,
-feriados/maré/noite/jangada). 54 testes, CI verde. **Próximo: Fase 1f** (walk/pathfinding),
+escalonador **ADS** (`AdsVm`), o **diretor** (`story`: 63 cenas, ciclo 11 dias,
+feriados/maré/noite/jangada) e o **pathfinding** (`path`: matriz de adjacência + rotas).
+57 testes, CI verde. **Próximo: Fase 1g** (walk animation: frames de `walk_data.h`),
 depois render da ilha e o backend de render real.
