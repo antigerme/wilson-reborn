@@ -52,7 +52,8 @@ configuração (criado no 1º uso; veja o caminho com `wilson /c`):
 | `--daynight <modo>` | `original`\|`real24h` | ciclo dia/noite: 8h como em 1992, ou 24h pelo relógio (`daynight=original`) |
 
 **Verbos de screensaver do Windows:** `/s` (mostrar), `/p` (preview — ainda não embutido),
-`/c` (configuração — imprime as opções e o caminho do arquivo).
+`/c` (configuração — imprime as opções, o caminho do arquivo e as **estatísticas**:
+sessões, tempo total e maior dia alcançado).
 
 ## Instalação / empacotamento
 
