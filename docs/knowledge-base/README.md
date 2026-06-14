@@ -25,6 +25,8 @@ open-source** (em `repos/`).
 | 05 | [Arquitetura do Engine](05-arquitetura-do-engine.md) | Loop principal, tick de 20 ms, diretor de história, walk/pathfinding, render em camadas, ilha, som |
 | 06 | [Projetos de Referência](06-projetos-de-referencia.md) | Comparativo dos 5 repos, o que reusar, licenças |
 | 07 | [**Plano do Port Moderno**](07-plano-do-port-moderno.md) | Stack recomendada, independência de resolução, empacotamento, **roadmap de melhorias**, plano faseado, decisões em aberto |
+| 08 | [Decisões e Status](08-decisoes-e-status.md) | Estado consolidado: decisões firmes (ADR), processos e o roadmap por fases |
+| 09 | [**Auditoria de Paridade e Easter Eggs**](09-paridade-e-easter-eggs.md) | Confronto bíblia × implementação: `--data` = paridade total; pack recriado = lógica completa, visual pendente |
 
 **Notas técnicas brutas** (dumps detalhados por repositório, com tabelas completas de
 opcodes e referências file:line): [`raw/`](raw/).

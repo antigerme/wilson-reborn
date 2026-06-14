@@ -51,7 +51,7 @@ Crates planejados:
 | **2c** | **Validação contra dados REAIS (teste gated) + escala 4:3 (letterbox)** | ✅ concluída — **engine renderiza o Johnny original** |
 | 2d | Polir: som, persistência do dia, arte recriada, polimento funcional | ✅ concluída — som · persistência · arte recriada · config/opções |
 | 3 | Empacotamento (Win/Linux/web/WASM) + assets → **paridade jogável** | 🟡 **em curso** — ✅ **release CI** (`release.yml`: `wilson.scr` Windows + binário Linux em tag/dispatch); falta web/WASM |
-| 4 | Melhorias (HD, dia/noite 24h, config UI, estatísticas, etc.) | 🟡 **em curso** — ✅ config/opções · ✅ **dia-noite 24h** · ✅ **estatísticas** (`stats.rs`: sessões/tempo/maior dia, em `/c`); próximo: auditoria easter-eggs/paridade (HD interno adiado: engine é 640×480, escala já cobre telas grandes) |
+| 4 | Melhorias (HD, dia/noite 24h, config UI, estatísticas, etc.) | 🟡 **em curso** — ✅ config/opções · ✅ **dia-noite 24h** · ✅ **estatísticas** · ✅ **auditoria de paridade** ([09](09-paridade-e-easter-eggs.md): `--data` = paridade total; pack recriado = lógica ✅/visual pendente); próximo: animações recriadas por categoria (HD interno adiado) |
 
 ## Validação de dados reais ✅
 Validado contra o `RESOURCE.001` **autêntico** (md5 `374e6d05…`): 180 recursos
