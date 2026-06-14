@@ -6,6 +6,31 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-14 — Melhoria: estatísticas de uso (sessões, tempo, maior dia)
+
+**Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #19).
+
+Mais uma melhoria da lista (Fase 4). Contadores vitalícios persistidos ao lado da config
+e do estado do dia.
+
+- **`crates/wilson/src/stats.rs`** (novo): `Stats { sessions, total_secs, max_day }` em
+  `stats.txt` (mesmo diretório de estado; best-effort, sem pânico). `note_day` guarda o
+  maior dia (1–11); `summary()`/`format_duration()` formatam para exibição.
+- **`main.rs`**: conta a sessão no início do modo "mostrar" (não em `/c`), acumula o
+  tempo (recalculado de `session_start`, flush a cada 30 s e em `LoopExiting`) e registra
+  o maior dia. O verbo `/c` agora também imprime o resumo das estatísticas.
+- Nota: HD por render interno em alta foi adiado de propósito — o engine é 640×480 por
+  design (coordenadas originais) e a saída nítida em telas grandes já vem da tela cheia +
+  escala `integer`; um render interno em alta seria um rewrite grande e arriscado p/ a
+  paridade.
+
+**107 testes** (37 wilson [+5 stats] + 35 dgds + 35 engine). Validado: fmt, clippy `-D
+warnings` (com **e** sem `audio`), `build --release`; `wilson /c` mostra as estatísticas.
+
+**Próximo:** auditoria de easter-eggs/paridade e demais melhorias.
+
+---
+
 ## 2026-06-14 — Empacotamento `.scr` + CI de release (Windows/Linux)
 
 **Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #18).

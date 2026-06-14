@@ -17,6 +17,7 @@ mod clock;
 mod config;
 mod scale;
 mod state;
+mod stats;
 
 use std::num::NonZeroU32;
 use std::rc::Rc;
@@ -87,6 +88,15 @@ fn main() {
     // run. `None` until the first frame establishes today's day.
     let mut last_saved: Option<(u8, i32)> = None;
 
+    // Lifetime statistics: count this session and accumulate runtime.
+    let mut stats = stats::Stats::load();
+    stats.sessions += 1;
+    stats.note_day(show.day_state().0);
+    stats.save();
+    let base_secs = stats.total_secs;
+    let session_start = Instant::now();
+    let mut last_flush = Instant::now();
+
     let event_loop = EventLoop::new().expect("failed to create event loop");
     let mut builder = WindowBuilder::new().with_title("Wilson Reborn — Johnny Castaway");
     builder = if cfg.windowed {
@@ -130,6 +140,13 @@ fn main() {
                             .save();
                             last_saved = Some((day, yday));
                         }
+                        // Update lifetime stats, flushing to disk occasionally.
+                        stats.note_day(day);
+                        if last_flush.elapsed() >= Duration::from_secs(30) {
+                            stats.total_secs = base_secs + session_start.elapsed().as_secs();
+                            stats.save();
+                            last_flush = Instant::now();
+                        }
                         let rgba = frame.surface.to_rgba(&palette);
                         let mut buffer = surface.buffer_mut().expect("surface buffer");
                         scale::scale_rgba_to_argb(
@@ -149,6 +166,10 @@ fn main() {
                 _ => {}
             },
             Event::AboutToWait => window.request_redraw(),
+            Event::LoopExiting => {
+                stats.total_secs = base_secs + session_start.elapsed().as_secs();
+                stats.save();
+            }
             _ => {}
         })
         .expect("event loop error");
@@ -186,6 +207,7 @@ fn print_config_info(cfg: &config::Config) {
     println!("  speed:    {}%", cfg.speed);
     println!("  scale:    {}", cfg.scale.as_str());
     println!("  daynight: {}", cfg.daynight.as_str());
+    println!("  stats:    {}", stats::Stats::load().summary());
     println!(
         "Edit the file above, or pass --windowed/--mute/--speed <pct>/--scale <mode>/\
          --daynight <original|real24h>."
