@@ -1,0 +1,19 @@
+# Rust
+/target
+**/*.rs.bk
+Cargo.lock.orig
+
+# Original (copyrighted) game data — never commit
+*.MAP
+*.001
+*.SCR
+RESOURCE.*
+SCRANTIC.*
+data/
+assets-original/
+
+# Editors / OS
+.DS_Store
+*.swp
+.idea/
+.vscode/
