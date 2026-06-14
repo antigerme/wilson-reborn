@@ -47,13 +47,27 @@ Crates planejados:
 | **1g** | **Walk animation (frames de `walk_data.h` + máquina de estados `Walker`)** | ✅ concluída (PR #9) |
 | **1h** | **Render da ilha (fundo, jangada, nuvens, ondas, props de feriado)** | ✅ concluída (PR #10) — **Fase 1 (engine headless) completa** |
 | **2a** | **Integração (`Show`): diretor + ilha + walk + ADS → fluxo de frames** | ✅ concluída (PR #11) |
-| **2b** | **App `wilson`: janela ao vivo (winit + softbuffer) + asset pack recriado + loader `RESOURCE.*`** | ✅ concluída |
-| 2c | Polir: arte recriada melhor, som, persistência do dia, config/empacotamento `.scr` | 🟡 **próximo** |
+| **2b** | **App `wilson`: janela ao vivo (winit + softbuffer) + asset pack recriado + loader `RESOURCE.*`** | ✅ concluída (PR #12) |
+| **2c** | **Validação contra dados REAIS (teste gated) + escala 4:3 (letterbox)** | ✅ concluída — **engine renderiza o Johnny original** |
+| 2d | Polir: som, persistência do dia, arte recriada melhor, empacotamento `.scr` | 🟡 **próximo** |
 | 3 | Empacotamento (Win/Linux/web/WASM) + assets → **paridade jogável** | ⬜ |
 | 4 | Melhorias (HD, dia/noite 24h, config UI, estatísticas, etc.) | ⬜ |
 
-## Validação de dados reais (pendente)
-Os testes usam fixtures sintéticas (o CI não pode ter os dados copyright). **A validação
-byte-exata do LZW/parsers contra um `RESOURCE.001` real** deve ser feita localmente por
-quem tiver o arquivo (planejado: teste de integração opcional via variável de ambiente
+## Validação de dados reais ✅
+Validado contra o `RESOURCE.001` **autêntico** (md5 `374e6d05…`): 180 recursos
+(pal=1, bmp=117, scr=10, ttm=41, ads=10), **LZW + ~37 mil instruções TTM/ADS
+decodificadas sem erro**, e centenas de frames renderizados (o Johnny original aparece
+corretamente). Capturado por um **teste de integração gated** (pulado no CI, sem dados
+copyright):
+```sh
+WILSON_DATA_DIR=/caminho/para/dist cargo test -p wilson-dgds --test real_data -- --nocapture
+```
+> Os dados originais e arquivos copyright (`RESOURCE.*`, `dist.zip`, `.msi`) **não** são
+> redistribuídos pelo engine; o app traz um asset pack recriado e aceita `--data` para os
+> dados do usuário.
+
+### Histórico (antes da validação)
+Os testes usavam apenas fixtures sintéticas; a validação byte-exata do LZW/parsers contra
+um `RESOURCE.001` real estava planejada como teste de integração opcional via variável de
+ambiente
 apontando para os dados originais).

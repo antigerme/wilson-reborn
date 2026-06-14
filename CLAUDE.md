@@ -30,7 +30,10 @@ cargo build --workspace
 cargo test --workspace          # testes
 cargo run -p wilson             # roda o app (assets recriados embutidos)
 cargo run -p wilson -- --data <dir>   # roda com os RESOURCE.* originais do usuário
+WILSON_DATA_DIR=<dir> cargo test -p wilson-dgds --test real_data -- --nocapture  # valida dados reais
 ```
+> Assets originais para teste: `repos/dist.zip` (senha: `felicio`) e `repos/jc_reborn.msi`
+> (extrair com `7z x`). Extraia para fora do repo (ex.: `/tmp`) — são **copyright**.
 > Os dados originais (`RESOURCE.*`) são **copyright** e **não** ficam no repo. Os testes
 > usam fixtures sintéticas — rodam sem os dados originais (essencial para o CI).
 > O app `wilson` traz um **asset pack recriado** (copyright-free) e roda standalone.
@@ -55,5 +58,7 @@ feriados/maré/noite/jangada), o **pathfinding** (`path`), a **walk animation**
 (`walk`/`walk_data`), o **render da ilha** (`island`) e a **integração `Show`**
 (diretor+ilha+walk+ADS → fluxo de frames). O app **`wilson`** (winit + softbuffer)
 mostra o Johnny **na tela** com um **asset pack recriado** embutido (ou `--data` p/ os
-originais). **Engine completo + janela ao vivo**, 74 testes, CI verde.
-**Próximo: Fase 2c** — arte recriada melhor, som, persistência do dia, empacotamento `.scr`.
+originais). **Validado contra os dados REAIS** (`RESOURCE.001` autêntico → o Johnny
+original renderiza; teste gated `wilson-dgds/tests/real_data.rs`). Escala 4:3 com
+letterbox. **Engine completo + janela + validação real**, 75 testes, CI verde.
+**Próximo: Fase 2d** — som, persistência do dia, arte recriada melhor, empacotamento `.scr`.

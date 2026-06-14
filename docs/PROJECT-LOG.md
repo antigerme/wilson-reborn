@@ -6,6 +6,31 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-14 — Fase 2c: validação com dados REAIS + escala 4:3
+
+**Branch `claude/real-data`** (a partir da `main`, que o usuário atualizou com os assets
+originais: `dist.zip` [senha: felicio] e `repos/jc_reborn.msi`).
+
+Extraí os dados autênticos (md5 do `RESOURCE.001` confere) e **validei o engine de ponta
+a ponta contra eles** — a lacuna que faltava:
+- `Archive::parse` no `RESOURCE.001` real: 180 recursos (pal=1, bmp=117, scr=10, ttm=41,
+  ads=10; `FILES.VIN` ignorado). **LZW + ~37 mil instruções TTM/ADS decodificadas sem
+  erro.** Centenas de frames renderizados; **o Johnny original aparece corretamente**
+  (screenshots enviados ao usuário).
+- Capturado por um **teste de integração gated** `crates/wilson-dgds/tests/real_data.rs`
+  (pulado se `WILSON_DATA_DIR` não estiver setado → CI passa sem dados copyright).
+- **Polimento:** escala com **proporção 4:3 + letterbox** (`scale_rgba_to_argb_fit`) no
+  app, em vez de esticar a imagem.
+
+**75 testes** (8 wilson + 35 dgds [34 lib + 1 integração] + 32 engine). Validado local:
+fmt, clippy `-D warnings`, build release, todos verdes; e o teste gated passa com os
+dados reais.
+
+**Próximo (2d):** som (`.wav`), persistência do dia da história, arte recriada melhor,
+empacotamento `.scr`.
+
+---
+
 ## 2026-06-14 — Fase 2b: app de janela `wilson` (o Johnny na tela!)
 
 **Branch `claude/app-window`** (a partir da `main` pós-merge do PR #11).
