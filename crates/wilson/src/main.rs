@@ -11,6 +11,7 @@
 //! - Windows screensaver verbs `/s` (show), `/p` (preview), `/c` (config) are accepted.
 
 mod assets;
+mod audio;
 mod clock;
 mod scale;
 
@@ -65,6 +66,10 @@ fn main() {
         .unwrap_or(0x9E37_79B9_7F4A_7C15);
     let mut show = Show::new(&archive, &palette, 640, 480, director, clock, seed);
 
+    // Sound effects are loaded from the data dir (originals carry `soundN.wav`); the
+    // player degrades to silence without the `audio` feature, a device, or the files.
+    let audio = audio::Audio::new(data_dir.as_deref().map(std::path::Path::new));
+
     let event_loop = EventLoop::new().expect("failed to create event loop");
     let window = Rc::new(
         WindowBuilder::new()
@@ -93,6 +98,9 @@ fn main() {
                     {
                         surface.resize(w, h).expect("resize surface");
                         let frame = show.next_frame(&archive);
+                        for &id in &frame.sounds {
+                            audio.play(id);
+                        }
                         let rgba = frame.surface.to_rgba(&palette);
                         let mut buffer = surface.buffer_mut().expect("surface buffer");
                         scale::scale_rgba_to_argb_fit(

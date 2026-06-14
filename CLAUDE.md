@@ -60,5 +60,8 @@ feriados/maré/noite/jangada), o **pathfinding** (`path`), a **walk animation**
 mostra o Johnny **na tela** com um **asset pack recriado** embutido (ou `--data` p/ os
 originais). **Validado contra os dados REAIS** (`RESOURCE.001` autêntico → o Johnny
 original renderiza; teste gated `wilson-dgds/tests/real_data.rs`). Escala 4:3 com
-letterbox. **Engine completo + janela + validação real**, 75 testes, CI verde.
-**Próximo: Fase 2d** — som, persistência do dia, arte recriada melhor, empacotamento `.scr`.
+letterbox. **Som** (`audio.rs`): toca `soundN.wav` via `rodio` (feature opcional
+`audio`, ligada por padrão; degrada para silêncio sem dispositivo/arquivos), os efeitos
+vêm com `--data`. **Engine completo + janela + validação real + som**, 77 testes, CI verde.
+**Próximo: Fase 2d (2/4)** — persistência do dia (arco de 11 dias entre sessões), depois
+arte recriada melhor e empacotamento `.scr`.

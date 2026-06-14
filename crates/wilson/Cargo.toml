@@ -8,8 +8,13 @@ repository.workspace = true
 authors.workspace = true
 default-run = "wilson"
 
+[features]
+default = ["audio"]
+audio = ["dep:rodio"]
+
 [dependencies]
 wilson-dgds = { path = "../wilson-dgds" }
 wilson-engine = { path = "../wilson-engine" }
 winit = { version = "0.29", features = ["rwh_06"] }
 softbuffer = "0.4"
+rodio = { version = "0.17", default-features = false, features = ["wav"], optional = true }
