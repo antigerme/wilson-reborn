@@ -44,7 +44,8 @@ cargo test --workspace          # testes
 
 ## Status atual
 Ver [`docs/knowledge-base/08-decisoes-e-status.md`](docs/knowledge-base/08-decisoes-e-status.md)
-(seção "Status"). Resumo: **Fases 0, 1a e 1b ✅** — o crate `wilson-dgds`
-decodifica `RESOURCE.MAP/.001`, RLE/LZW, chunks, paleta, `.BMP/.SCR/.TTM/.ADS`, o
-`Archive`, e o **bytecode TTM/ADS → instruções** (disassembler). 34 testes, CI verde.
-**Próximo: Fase 1c** (interpretadores TTM/ADS executáveis — provável crate `wilson-engine`).
+(seção "Status"). Resumo: **Fases 0–1c ✅**. `wilson-dgds` decodifica
+`RESOURCE.MAP/.001`, RLE/LZW, chunks, paleta, `.BMP/.SCR/.TTM/.ADS`, `Archive` e o
+bytecode TTM/ADS → instruções. **`wilson-engine`** (novo) executa **uma thread TTM**
+headless sobre uma `Surface` indexada. 43 testes, CI verde.
+**Próximo: Fase 1d** (escalonador ADS: multi-thread TTM + composição de camadas).
