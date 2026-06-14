@@ -808,10 +808,53 @@ pub struct StoryRun {
     pub scenes: Vec<ScenePlay>,
 }
 
-/// Whether the given hour is "night" (the original uses an 8-hour cycle).
+/// How the day/night cycle is driven.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum DayNight {
+    /// The original's accelerated 8-hour cycle (night at `hour % 8 ∈ {0, 7}`). Keeps
+    /// the 1992 behaviour and shows night scenes regardless of the wall-clock hour.
+    #[default]
+    Original,
+    /// A real 24-hour cycle: night between 20:00 and 06:00 (matches the wall clock).
+    Real24h,
+}
+
+impl DayNight {
+    /// Parse a mode name (`original`/`real24h`), case-insensitive.
+    pub fn parse(s: &str) -> Option<DayNight> {
+        match s.to_ascii_lowercase().as_str() {
+            "original" | "8h" => Some(DayNight::Original),
+            "real24h" | "24h" | "real" => Some(DayNight::Real24h),
+            _ => None,
+        }
+    }
+
+    /// The canonical name (round-trips with [`DayNight::parse`]).
+    pub fn as_str(self) -> &'static str {
+        match self {
+            DayNight::Original => "original",
+            DayNight::Real24h => "real24h",
+        }
+    }
+}
+
+/// Whether the given hour is "night" under the original's 8-hour cycle.
 pub fn is_night(hour: u8) -> bool {
     let h = hour % 8;
     h == 0 || h == 7
+}
+
+/// Whether the given hour is "night" under a real 24-hour cycle (20:00–06:00).
+pub fn is_night_24h(hour: u8) -> bool {
+    !(6..20).contains(&hour)
+}
+
+/// Whether `hour` is night under day/night `mode`.
+pub fn is_night_mode(hour: u8, mode: DayNight) -> bool {
+    match mode {
+        DayNight::Original => is_night(hour),
+        DayNight::Real24h => is_night_24h(hour),
+    }
 }
 
 /// The raft build stage for a story day (`story.c`).
@@ -911,15 +954,25 @@ pub struct Director {
     pub current_day: u8,
     /// Persisted day-of-year used to detect calendar changes.
     pub stored_yday: i32,
+    /// How the day/night cycle is driven (defaults to the original 8-hour cycle).
+    pub daynight: DayNight,
 }
 
 impl Director {
-    /// Create a director at `current_day` with a stored day-of-year.
+    /// Create a director at `current_day` with a stored day-of-year (original
+    /// 8-hour day/night cycle; use [`Director::with_daynight`] to change it).
     pub fn new(current_day: u8, stored_yday: i32) -> Self {
         Director {
             current_day,
             stored_yday,
+            daynight: DayNight::default(),
         }
+    }
+
+    /// Set the day/night cycle mode (builder style).
+    pub fn with_daynight(mut self, mode: DayNight) -> Self {
+        self.daynight = mode;
+        self
     }
 
     /// Advance the story day if the calendar day changed; clamp to 1–11.
@@ -949,7 +1002,7 @@ impl Director {
         rng: &mut Rng,
     ) -> StoryRun {
         self.advance_day(today_yday);
-        let night = is_night(hour);
+        let night = is_night_mode(hour, self.daynight);
         let holiday = holiday_for_date(month, day);
 
         let final_scene = *pick_scene(self.current_day, FINAL, 0, rng)
@@ -1064,6 +1117,37 @@ mod tests {
         assert_eq!(holiday_for_date(12, 31), Holiday::NewYear);
         assert_eq!(holiday_for_date(1, 1), Holiday::NewYear);
         assert_eq!(holiday_for_date(6, 14), Holiday::None);
+    }
+
+    #[test]
+    fn night_24h_cycle() {
+        // Night between 20:00 and 06:00.
+        for h in [20u8, 22, 23, 0, 3, 5] {
+            assert!(is_night_24h(h), "expected night at {h}");
+        }
+        for h in [6u8, 9, 12, 18, 19] {
+            assert!(!is_night_24h(h), "expected day at {h}");
+        }
+        // The mode dispatcher picks the right function.
+        assert_eq!(is_night_mode(12, DayNight::Original), is_night(12));
+        assert_eq!(is_night_mode(12, DayNight::Real24h), is_night_24h(12));
+        assert!(is_night_mode(22, DayNight::Real24h)); // night at 22:00 (wall clock)
+        assert!(!is_night_mode(22, DayNight::Original)); // 22 % 8 = 6 → day
+    }
+
+    #[test]
+    fn director_daynight_drives_plan_run() {
+        // At 12:00 the original cycle is day (12 % 8 = 4); the 24h cycle is also day.
+        // At 22:00 the original is day (22 % 8 = 6) but the 24h cycle is night.
+        let run = |mode: DayNight, hour: u8| {
+            Director::new(5, 0)
+                .with_daynight(mode)
+                .plan_run(0, hour, 6, 14, &mut Rng::new(1))
+                .island
+                .night
+        };
+        assert!(!run(DayNight::Original, 22));
+        assert!(run(DayNight::Real24h, 22));
     }
 
     #[test]

@@ -27,7 +27,9 @@ pub use island::Island;
 pub use path::{calc_path, calc_paths, NUM_OF_NODES};
 pub use rng::Rng;
 pub use show::{Clock, Frame, Show};
-pub use story::{Director, Holiday, IslandState, ScenePlay, StoryRun, StoryScene, STORY_SCENES};
+pub use story::{
+    DayNight, Director, Holiday, IslandState, ScenePlay, StoryRun, StoryScene, STORY_SCENES,
+};
 pub use surface::{Rect, Surface, TRANSPARENT};
 pub use ttm_exec::{TtmSlot, TtmThread, MAX_BMP_SLOTS};
 pub use ttm_vm::{TtmStep, TtmVm};

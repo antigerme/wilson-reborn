@@ -8,6 +8,8 @@
 
 use std::path::PathBuf;
 
+use wilson_engine::DayNight;
+
 use crate::scale::ScaleMode;
 
 /// Minimum/maximum playback speed (percent of the original timing).
@@ -25,6 +27,8 @@ pub struct Config {
     pub speed: u32,
     /// How the frame is scaled into the window.
     pub scale: ScaleMode,
+    /// How the day/night cycle is driven (original 8-hour vs real 24-hour).
+    pub daynight: DayNight,
 }
 
 impl Default for Config {
@@ -34,6 +38,7 @@ impl Default for Config {
             mute: false,
             speed: 100,
             scale: ScaleMode::Fit,
+            daynight: DayNight::Original,
         }
     }
 }
@@ -91,6 +96,11 @@ impl Config {
                         c.scale = m;
                     }
                 }
+                "daynight" => {
+                    if let Some(m) = DayNight::parse(value) {
+                        c.daynight = m;
+                    }
+                }
                 _ => {}
             }
         }
@@ -107,11 +117,14 @@ impl Config {
              # speed: playback speed percent ({SPEED_MIN}–{SPEED_MAX}; 100 = original).\n\
              speed={}\n\
              # scale: how the picture fills the window — fit | stretch | integer.\n\
-             scale={}\n",
+             scale={}\n\
+             # daynight: day/night cycle — original (8h, as in 1992) | real24h (wall clock).\n\
+             daynight={}\n",
             self.windowed,
             self.mute,
             self.speed,
             self.scale.as_str(),
+            self.daynight.as_str(),
         )
     }
 
@@ -132,6 +145,12 @@ impl Config {
                 "--scale" => {
                     if let Some(m) = args.get(i + 1).and_then(|v| ScaleMode::parse(v)) {
                         self.scale = m;
+                        i += 1;
+                    }
+                }
+                "--daynight" => {
+                    if let Some(m) = args.get(i + 1).and_then(|v| DayNight::parse(v)) {
+                        self.daynight = m;
                         i += 1;
                     }
                 }
@@ -181,16 +200,20 @@ mod tests {
             mute: true,
             speed: 250,
             scale: ScaleMode::Integer,
+            daynight: DayNight::Real24h,
         };
         assert_eq!(Config::parse(&c.serialize()), c);
     }
 
     #[test]
     fn parse_is_lenient() {
-        let c = Config::parse("# comment\n\nwindowed=yes\nmute=off\nbogus=1\nscale=stretch\n");
+        let c = Config::parse(
+            "# comment\n\nwindowed=yes\nmute=off\nbogus=1\nscale=stretch\ndaynight=24h\n",
+        );
         assert!(c.windowed);
         assert!(!c.mute);
         assert_eq!(c.scale, ScaleMode::Stretch);
+        assert_eq!(c.daynight, DayNight::Real24h);
         assert_eq!(c.speed, 100); // untouched → default
     }
 
@@ -211,6 +234,8 @@ mod tests {
             "200",
             "--scale",
             "integer",
+            "--daynight",
+            "real24h",
         ]
         .iter()
         .map(|s| s.to_string())
@@ -220,6 +245,7 @@ mod tests {
         assert!(c.mute);
         assert_eq!(c.speed, 200);
         assert_eq!(c.scale, ScaleMode::Integer);
+        assert_eq!(c.daynight, DayNight::Real24h);
     }
 
     #[test]

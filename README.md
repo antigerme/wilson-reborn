@@ -49,6 +49,7 @@ configuração (criado no 1º uso; veja o caminho com `wilson /c`):
 | `--mute` | — | desliga os efeitos sonoros (`mute=true`) |
 | `--speed <pct>` | `25`–`400` | velocidade da animação, % do original (`speed=100`) |
 | `--scale <modo>` | `fit`\|`stretch`\|`integer` | como a imagem preenche a janela (`scale=fit`) |
+| `--daynight <modo>` | `original`\|`real24h` | ciclo dia/noite: 8h como em 1992, ou 24h pelo relógio (`daynight=original`) |
 
 **Verbos de screensaver do Windows:** `/s` (mostrar), `/p` (preview — ainda não embutido),
 `/c` (configuração — imprime as opções e o caminho do arquivo).

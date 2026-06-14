@@ -65,11 +65,13 @@ fn main() {
     };
 
     let clock = clock::now();
-    // Resume the 11-day story arc from the last session, if we saved one.
+    // Resume the 11-day story arc from the last session, if we saved one, and apply the
+    // configured day/night cycle.
     let director = match state::DayState::load() {
         Some(s) => Director::new(s.current_day, s.stored_yday),
         None => Director::new(1, clock.yday),
-    };
+    }
+    .with_daynight(cfg.daynight);
     let seed = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_nanos() as u64)
@@ -183,7 +185,11 @@ fn print_config_info(cfg: &config::Config) {
     println!("  mute:     {}", cfg.mute);
     println!("  speed:    {}%", cfg.speed);
     println!("  scale:    {}", cfg.scale.as_str());
-    println!("Edit the file above, or pass --windowed/--mute/--speed <pct>/--scale <mode>.");
+    println!("  daynight: {}", cfg.daynight.as_str());
+    println!(
+        "Edit the file above, or pass --windowed/--mute/--speed <pct>/--scale <mode>/\
+         --daynight <original|real24h>."
+    );
 }
 
 #[cfg(test)]

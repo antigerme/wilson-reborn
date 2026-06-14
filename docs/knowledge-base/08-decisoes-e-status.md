@@ -51,7 +51,7 @@ Crates planejados:
 | **2c** | **Validação contra dados REAIS (teste gated) + escala 4:3 (letterbox)** | ✅ concluída — **engine renderiza o Johnny original** |
 | 2d | Polir: som, persistência do dia, arte recriada melhor, empacotamento `.scr` | 🟡 **em curso** — ✅ **som** · ✅ **persistência do dia** · ✅ **arte recriada melhor** · ✅ **polimento funcional** (config `config.rs`: tela cheia, escala fit/stretch/integer, mute, velocidade); próximo: dia-noite 24h, empacotamento `.scr` |
 | 3 | Empacotamento (Win/Linux/web/WASM) + assets → **paridade jogável** | ⬜ |
-| 4 | Melhorias (HD, dia/noite 24h, config UI, estatísticas, etc.) | 🟡 **em curso** — o usuário pediu **todas as melhorias** (em incrementos); config/opções ✅ |
+| 4 | Melhorias (HD, dia/noite 24h, config UI, estatísticas, etc.) | 🟡 **em curso** — o usuário pediu **todas as melhorias** (em incrementos): ✅ config/opções · ✅ **ciclo dia-noite 24h** (opção `daynight`, preservando o de 8h); próximo: empacotamento `.scr`, HD, estatísticas |
 
 ## Validação de dados reais ✅
 Validado contra o `RESOURCE.001` **autêntico** (md5 `374e6d05…`): 180 recursos
