@@ -138,6 +138,12 @@ impl AdsVm {
         self.dy = dy;
     }
 
+    /// Replace the shared background that thread layers composite over (e.g. the
+    /// island scenery). Island activity scenes draw over this rather than black.
+    pub fn set_background(&mut self, background: Surface) {
+        self.background = background;
+    }
+
     /// Run one scheduler iteration; returns the composited frame, or `None` when the
     /// scene has ended (no more threads).
     pub fn next_frame(&mut self, archive: &Archive) -> Result<Option<AdsFrame>> {

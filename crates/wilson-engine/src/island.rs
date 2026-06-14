@@ -153,6 +153,32 @@ impl Island {
         self.holiday.as_ref()
     }
 
+    /// The island position offset applied to scenery (and to be applied to Johnny).
+    pub fn offset(&self) -> (i32, i32) {
+        (self.dx, self.dy)
+    }
+
+    /// Redraw the palm trunk and leaves over `target` (used when Johnny walks behind
+    /// the tree, so he is occluded by it).
+    pub fn redraw_tree(&self, target: &mut Surface) {
+        draw(
+            target,
+            &self.backgrnd,
+            13,
+            442 + self.dx,
+            148 + self.dy,
+            false,
+        );
+        draw(
+            target,
+            &self.backgrnd,
+            12,
+            365 + self.dx,
+            122 + self.dy,
+            false,
+        );
+    }
+
     /// Step the looping shore-wave animation (draws the next wave frame).
     pub fn animate_waves(&mut self) {
         if self.low_tide {
