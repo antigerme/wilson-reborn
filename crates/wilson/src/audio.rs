@@ -15,17 +15,18 @@ pub struct Audio {
 }
 
 impl Audio {
-    /// Create the player, loading `soundN.wav` from `dir` if provided.
-    pub fn new(dir: Option<&Path>) -> Self {
+    /// Create the player, loading `soundN.wav` from `dir` if provided. When `muted`,
+    /// no audio device is opened and playback is a no-op.
+    pub fn new(dir: Option<&Path>, muted: bool) -> Self {
         #[cfg(feature = "audio")]
         {
             Audio {
-                backend: Backend::new(dir),
+                backend: if muted { None } else { Backend::new(dir) },
             }
         }
         #[cfg(not(feature = "audio"))]
         {
-            let _ = dir;
+            let _ = (dir, muted);
             Audio {}
         }
     }
@@ -107,8 +108,14 @@ mod tests {
     #[test]
     fn silent_without_device_or_files() {
         // No data dir (and usually no device in CI): must not panic and play is a no-op.
-        let audio = Audio::new(None);
+        let audio = Audio::new(None, false);
         audio.play(0);
         audio.play(24);
+    }
+
+    #[test]
+    fn muted_is_a_silent_no_op() {
+        let audio = Audio::new(None, true);
+        audio.play(0);
     }
 }

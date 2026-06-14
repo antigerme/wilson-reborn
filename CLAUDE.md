@@ -68,5 +68,9 @@ usuário; zero deps; best-effort). **Arte recriada melhor** (`assets.rs`): pack
 copyright-free desenhado em código (céu+horizonte+oceano, ilha plana dourada com anel de
 espuma, palmeira, nuvens, jangada que cresce, props de feriado, Johnny náufrago) —
 validado visualmente contra os dados reais; o **prop de feriado** agora é composto no
-cenário (`island.rs`). **Engine completo + janela + validação real + som + persistência +
-arte recriada**, 85 testes, CI verde. **Próximo: Fase 2d (4/4)** — empacotamento `.scr`.
+cenário (`island.rs`). **Polimento funcional** (`config.rs`): opções via `config.txt` +
+flags de CLI — **tela cheia por padrão** (`--windowed`), escala fit/stretch/integer
+(`scale.rs`), `--mute`, `--speed 25–400`; verbo `/c` imprime a config. **Engine completo
++ janela + validação real + som + persistência + arte recriada + config**, 100 testes,
+CI verde. **Próximo:** dia-noite 24h (opcional), empacotamento `.scr`, e demais melhorias
+(o usuário pediu **todas**, em incrementos).
