@@ -12,6 +12,7 @@ use std::collections::HashMap;
 use wilson_dgds::{decode_ads, Ads, AdsInstruction, Archive, Palette};
 
 use crate::error::{EngineError, Result};
+use crate::rng::Rng;
 use crate::surface::Surface;
 use crate::ttm_exec::{detect_transparent, run_frame, FrameOutcome, TtmSlot, TtmThread};
 
@@ -45,31 +46,6 @@ struct RandOp {
     tag: u16,
     num_plays: u16,
     weight: u16,
-}
-
-/// A tiny deterministic xorshift RNG (so scene selection is reproducible in tests).
-#[derive(Debug, Clone)]
-struct Rng(u64);
-
-impl Rng {
-    fn new(seed: u64) -> Self {
-        Rng(seed | 1)
-    }
-    fn next_u32(&mut self) -> u32 {
-        let mut x = self.0;
-        x ^= x << 13;
-        x ^= x >> 7;
-        x ^= x << 17;
-        self.0 = x;
-        (x >> 32) as u32
-    }
-    fn below(&mut self, n: u32) -> u32 {
-        if n == 0 {
-            0
-        } else {
-            self.next_u32() % n
-        }
-    }
 }
 
 /// The ADS scene runtime.

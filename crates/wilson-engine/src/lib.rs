@@ -10,12 +10,16 @@
 
 pub mod ads_vm;
 pub mod error;
+pub mod rng;
+pub mod story;
 pub mod surface;
 pub mod ttm_exec;
 pub mod ttm_vm;
 
 pub use ads_vm::{AdsFrame, AdsVm, MAX_TTM_SLOTS, MAX_TTM_THREADS};
 pub use error::{EngineError, Result};
+pub use rng::Rng;
+pub use story::{Director, Holiday, IslandState, ScenePlay, StoryRun, StoryScene, STORY_SCENES};
 pub use surface::{Rect, Surface, TRANSPARENT};
 pub use ttm_exec::{TtmSlot, TtmThread, MAX_BMP_SLOTS};
 pub use ttm_vm::{TtmStep, TtmVm};

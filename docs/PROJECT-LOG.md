@@ -6,6 +6,31 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-14 — Fase 1e: diretor de história (crate `wilson-engine`)
+
+**Branch `claude/engine-story-director`** (a partir da `main` pós-merge do PR #6).
+
+Porte de `story.c` + `story_data.h` como **lógica pura testável** (data/hora/RNG
+injetados):
+- `rng` (extraído do `ads_vm`): `Rng` xorshift compartilhado.
+- `story`: tabela das **63 cenas** (`STORY_SCENES`) com flags/spots/headings/dia;
+  `pick_scene` (seleção ponderada por flags+dia), `holiday_for_date` (Halloween/
+  S.Patrício/Natal/Ano Novo via MMDD), `is_night` (ciclo 8h), `raft_for_day`,
+  `island_from_scene` (maré/posição aleatória/jangada/feriado). `Director` com
+  `advance_day` (ciclo 1–11, avança por mudança de data real) e `plan_run` que
+  produz um `StoryRun` (cena final + cadeia de 6–19 cenas ambiente com walk entre
+  spots + estado da ilha), espelhando `storyPlay`.
+
+Saída é um **plano** (`StoryRun`/`ScenePlay`) que uma camada futura alimenta ao
+`AdsVm` (+ walk + render). **54 testes** (34 dgds + 20 engine), incl. os 11 beats de
+dia conferidos contra a história, feriados, noite/jangada, clamp/wrap do dia e
+invariantes do plano. Validado local: fmt, clippy `-D warnings`, build release, 54/54.
+
+**Próximo:** Fase 1f — walk/pathfinding entre os 6 spots (porte de `walk.c`/`calcpath.c`
++ tabelas `walk_data.h`/`calcpath_data.h`); depois render da ilha; depois backend real.
+
+---
+
 ## 2026-06-14 — Fase 1d: escalonador ADS multi-thread (crate `wilson-engine`)
 
 **Branch `claude/engine-ads-scheduler`** (a partir da `main` pós-merge do PR #5).
