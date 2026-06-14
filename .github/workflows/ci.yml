@@ -25,6 +25,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install Linux audio dependencies
+        # ALSA dev headers for the optional `audio` feature (rodio/cpal) on Linux.
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev pkg-config
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -56,7 +61,8 @@ jobs:
       - name: Install system dependencies
         # gcc/git for the toolchain; the rest are link-time deps the GUI app may
         # need on Linux (winit/softbuffer dlopen most of these, but be safe).
-        run: dnf -y install gcc git wayland-devel libxkbcommon-devel libX11-devel
+        # alsa-lib-devel + pkgconf for the optional `audio` feature (rodio/cpal).
+        run: dnf -y install gcc git wayland-devel libxkbcommon-devel libX11-devel alsa-lib-devel pkgconf-pkg-config
 
       - uses: actions/checkout@v4
 

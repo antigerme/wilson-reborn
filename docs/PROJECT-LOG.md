@@ -6,6 +6,33 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-14 — Fase 2d (1/4): som (`.wav`) via `rodio`
+
+**Branch `claude/audio`** (a partir da `main` pós-merge do PR #13).
+
+Primeiro passo da Fase 2d (ordem combinada: **som** → persistência do dia → arte
+recriada → empacotamento `.scr`). O engine já emitia os ids de efeito por frame
+(`Frame.sounds: Vec<u16>`); agora o app os **toca**.
+
+- Novo módulo **`crates/wilson/src/audio.rs`** — um `Audio` que carrega `soundN.wav`
+  (0–24) do diretório de dados (`--data`) e toca via `rodio` (`OutputStream`/`Sink`/
+  `Decoder`, em background com `detach`). Os `.wav` são os efeitos originais
+  (extraídos do `jc_reborn.msi`); **não** são redistribuídos.
+- **Atrás de uma feature opcional `audio`** (ligada por padrão; `rodio` com
+  `default-features=false, features=["wav"]`). **Degrada para silêncio** sem a feature,
+  sem dispositivo de áudio, ou sem os arquivos — **nunca entra em pânico** (essencial p/
+  o CI headless). `main.rs`: `for &id in &frame.sounds { audio.play(id); }`.
+- **CI:** deps de áudio (ALSA) adicionadas no Linux — passo `apt-get libasound2-dev
+  pkg-config` (Ubuntu) e `alsa-lib-devel pkgconf-pkg-config` no container Fedora.
+
+**77 testes** (10 wilson [+2: filename, silêncio sem dispositivo] + 35 dgds + 32
+engine). Validado local: fmt, clippy `-D warnings` (com **e** sem a feature `audio`),
+`build --release`, todos verdes. **Rodar com som:** `cargo run -p wilson -- --data <dir>`.
+
+**Próximo (2d, 2/4):** persistência do dia da história (arco de 11 dias entre sessões).
+
+---
+
 ## 2026-06-14 — Fase 2c: validação com dados REAIS + escala 4:3
 
 **Branch `claude/real-data`** (a partir da `main`, que o usuário atualizou com os assets
