@@ -76,7 +76,10 @@ dia-noite**: `DayNight {Original 8h, Real24h}` no `story.rs` (opção `daynight`
 original), aplicado via `Director::with_daynight`. **Empacotamento**: `release.yml` gera
 `wilson.scr` (Windows) + binário Linux em tag `v*`/dispatch (artefatos + GitHub Release);
 instalação em `docs/INSTALL.md`. **Estatísticas** (`stats.rs`): sessões, tempo total e
-maior dia, persistidas em `stats.txt` e exibidas no `/c`. **107 testes**, CI verde.
-**Próximo:** auditoria de easter-eggs/paridade e demais melhorias (o usuário pediu
-**todas**, em incrementos). HD por render interno adiado de propósito (engine 640×480;
-escala já cobre telas grandes).
+maior dia, persistidas em `stats.txt` e exibidas no `/c`. **Auditoria de paridade**
+(knowledge-base [09](docs/knowledge-base/09-paridade-e-easter-eggs.md)): com `--data` o
+engine roda os scripts originais ⇒ **paridade total de conteúdo**; o pack recriado tem
+lógica completa mas visual placeholder (recriar as 63 animações é trabalho futuro).
+**107 testes**, CI verde. **Próximo:** animações recriadas por categoria e demais
+melhorias (o usuário pediu **todas**, em incrementos). HD por render interno adiado
+(engine 640×480; escala já cobre telas grandes).

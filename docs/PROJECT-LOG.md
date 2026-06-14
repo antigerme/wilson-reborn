@@ -6,6 +6,31 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-14 — Auditoria de paridade e easter eggs (knowledge-base 09)
+
+**Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #20).
+
+Auditoria pedida pelo usuário ("não perder nenhum recurso"): confronto da bíblia de
+conteúdo (§02) com o que já está implementado.
+
+- **`docs/knowledge-base/09-paridade-e-easter-eggs.md`** (novo): conclusão e tabelas de
+  status. **Achado principal:** com `--data` o engine **interpreta os scripts originais**,
+  então **todos os 63 cenas/gags/easter-eggs/visitantes/beats aparecem** (paridade total
+  de conteúdo, validada). O **pack recriado** tem a **lógica completa** (diretor sorteia
+  tudo: 11 dias, beats, 4 feriados, maré/noite/jangada) mas o **visual ainda é
+  placeholder** (Johnny parado/andando) — recriar as 63 animações é trabalho de conteúdo
+  futuro, priorizado no doc.
+- Confirmada a paridade de **lógica** (com testes existentes): 63 cenas, arco de 11 dias,
+  beats de enredo, 4 feriados (faixas exatas), jangada (5 estágios), maré/noite.
+- Linkado no índice da KB (`README.md`).
+
+Incremento de **documentação** (sem código): os 107 testes seguem verdes.
+
+**Próximo:** começar a fechar a paridade *visual* do pack recriado (animações por
+categoria) e demais melhorias.
+
+---
+
 ## 2026-06-14 — Melhoria: estatísticas de uso (sessões, tempo, maior dia)
 
 **Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #19).
