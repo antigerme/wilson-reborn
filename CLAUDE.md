@@ -48,7 +48,8 @@ Ver [`docs/knowledge-base/08-decisoes-e-status.md`](docs/knowledge-base/08-decis
 `RESOURCE.MAP/.001`, RLE/LZW, chunks, paleta, `.BMP/.SCR/.TTM/.ADS`, `Archive` e o
 bytecode TTM/ADS → instruções. **`wilson-engine`** tem: TTM (`ttm_exec`/`TtmVm`),
 escalonador **ADS** (`AdsVm`), o **diretor** (`story`: 63 cenas, ciclo 11 dias,
-feriados/maré/noite/jangada), o **pathfinding** (`path`) e a **walk animation**
-(`walk`/`walk_data`: `Walker` + 489 frames gerados de `walk_data.h`).
-61 testes, CI verde. **Próximo: Fase 1h** (render da ilha: `island.c`), depois o
-backend de render real (Fase 2) — quando o Johnny aparece na tela.
+feriados/maré/noite/jangada), o **pathfinding** (`path`), a **walk animation**
+(`walk`/`walk_data`) e o **render da ilha** (`island`). **Fase 1 (engine headless)
+completa**, 64 testes, CI verde. **Próximo: Fase 2** — camada de integração
+(diretor+walk+ADS+ilha → `Surface` por frame) + backend de render real (pixels/wgpu) +
+janela/screensaver (o Johnny na tela).

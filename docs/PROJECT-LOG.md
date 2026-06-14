@@ -6,6 +6,30 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-14 — Fase 1h: render da ilha + Fase 1 completa (crate `wilson-engine`)
+
+**Branch `claude/engine-island-render`** (a partir da `main` pós-merge do PR #9).
+
+Porte de `island.c` (módulo `island`): `Island::build` pinta o cenário estático numa
+`Surface` de fundo — tela `OCEAN0{0,1,2}`/`NIGHT`, jangada (`MRAFT`, posição muda com
+maré), nuvens (`BACKGRND` 15–17, nº/vento aleatórios, espelhadas), ilha/tronco/folhas/
+sombra (sprites 0/13/12/14), e na maré baixa praia+rocha (1/2). `animate_waves` faz a
+animação cíclica das ondas (alta: 3 posições; baixa: 4) com os contadores do original.
+Props de feriado (`HOLIDAY`) ficam numa camada própria. Tudo headless/testável.
+
+**64 testes** (34 dgds + 30 engine): fundo+ilha+jangada nas posições certas, maré baixa
++ animação sem panic, e camada de feriado (árvore de Natal).
+Validado local: fmt, clippy `-D warnings`, build release, 64/64.
+
+### ✅ Fase 1 (engine) completa
+Toda a lógica do engine está implementada e testada **headless**: dados →
+descompressão → recursos → instruções → TTM → escalonador ADS → diretor (11 dias/
+feriados) → pathfinding → walk → render da ilha. **Próximo (Fase 2):** uma camada de
+integração que junta diretor+walk+ADS+ilha numa `Surface` por frame, e um **backend de
+render real** (pixels/wgpu) + janela/screensaver — quando o Johnny aparece na tela.
+
+---
+
 ## 2026-06-14 — Fase 1g: walk animation (crate `wilson-engine`)
 
 **Branch `claude/engine-walk-animation`** (a partir da `main` pós-merge do PR #8).

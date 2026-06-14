@@ -10,6 +10,7 @@
 
 pub mod ads_vm;
 pub mod error;
+pub mod island;
 pub mod path;
 pub mod rng;
 pub mod story;
@@ -21,6 +22,7 @@ pub mod walk_data;
 
 pub use ads_vm::{AdsFrame, AdsVm, MAX_TTM_SLOTS, MAX_TTM_THREADS};
 pub use error::{EngineError, Result};
+pub use island::Island;
 pub use path::{calc_path, calc_paths, NUM_OF_NODES};
 pub use rng::Rng;
 pub use story::{Director, Holiday, IslandState, ScenePlay, StoryRun, StoryScene, STORY_SCENES};
