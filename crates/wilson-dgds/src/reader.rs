@@ -104,4 +104,24 @@ impl<'a> Reader<'a> {
         let end = bytes.iter().position(|&c| c == 0).unwrap_or(n);
         Ok(String::from_utf8_lossy(&bytes[..end]).into_owned())
     }
+
+    /// Read a NUL-terminated string of at most `max_len` bytes, consuming the NUL.
+    ///
+    /// Mirrors the reference engine's `getString`: bytes are read one at a time
+    /// until a NUL is consumed or `max_len` bytes have been read. Unlike
+    /// [`Reader::fixed_str`], this advances only past the string (and its NUL), not
+    /// a fixed-width field — RES/TAG tables pack these entries tightly.
+    pub fn cstr(&mut self, max_len: usize) -> Result<String> {
+        let mut bytes = Vec::new();
+        let mut n = 0;
+        while n < max_len {
+            let b = self.u8()?;
+            n += 1;
+            if b == 0 {
+                break;
+            }
+            bytes.push(b);
+        }
+        Ok(String::from_utf8_lossy(&bytes).into_owned())
+    }
 }
