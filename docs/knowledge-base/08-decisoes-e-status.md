@@ -27,8 +27,10 @@ Crates planejados:
 - `wilson-dgds` — formatos + descompressão + recursos. **(camada de recursos completa)**
 - `wilson-engine` — VMs TTM/ADS + diretor/story + walk + ilha + **integração (`Show`)**.
   **✅ engine headless completo** (de `RESOURCE.*` a um fluxo de frames compostos).
-- `wilson-render` — trait de backend (pixels/wgpu/canvas). *(planejado)*
-- `wilson` — binário/app + modos screensaver. *(planejado)*
+- `wilson` — app/janela (winit + **softbuffer**, CPU) + asset pack recriado + loader
+  dos `RESOURCE.*`. **✅ janela ao vivo rodando.** (Optou-se por `softbuffer` em vez de
+  `pixels/wgpu`: mais leve, sem stack de GPU, CI mais rápido — encaixa no engine, que já
+  produz um buffer de CPU.)
 
 ## Status (roadmap)
 
@@ -44,8 +46,9 @@ Crates planejados:
 | **1f** | **Pathfinding entre os spots (matriz de adjacência 2ª ordem + rotas)** | ✅ concluída (PR #8) |
 | **1g** | **Walk animation (frames de `walk_data.h` + máquina de estados `Walker`)** | ✅ concluída (PR #9) |
 | **1h** | **Render da ilha (fundo, jangada, nuvens, ondas, props de feriado)** | ✅ concluída (PR #10) — **Fase 1 (engine headless) completa** |
-| **2a** | **Integração (`Show`): diretor + ilha + walk + ADS → fluxo de frames** | ✅ concluída |
-| 2b | Backend de render real (pixels/wgpu) + janela/screensaver `.scr` | 🟡 **próximo** |
+| **2a** | **Integração (`Show`): diretor + ilha + walk + ADS → fluxo de frames** | ✅ concluída (PR #11) |
+| **2b** | **App `wilson`: janela ao vivo (winit + softbuffer) + asset pack recriado + loader `RESOURCE.*`** | ✅ concluída |
+| 2c | Polir: arte recriada melhor, som, persistência do dia, config/empacotamento `.scr` | 🟡 **próximo** |
 | 3 | Empacotamento (Win/Linux/web/WASM) + assets → **paridade jogável** | ⬜ |
 | 4 | Melhorias (HD, dia/noite 24h, config UI, estatísticas, etc.) | ⬜ |
 

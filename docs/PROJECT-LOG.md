@@ -6,6 +6,35 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-14 — Fase 2b: app de janela `wilson` (o Johnny na tela!)
+
+**Branch `claude/app-window`** (a partir da `main` pós-merge do PR #11).
+
+Novo crate **`wilson`** (binário): janela ao vivo com **winit 0.29 + softbuffer 0.4**
+(buffer de CPU; optou-se por `softbuffer` em vez de `pixels/wgpu` — mais leve, sem
+stack de GPU, CI mais rápido). Roda o `Show`, faz `Frame.surface.to_rgba(paleta)` e
+escala (nearest) para a janela; qualquer tecla/clique encerra (comportamento de
+screensaver). Verbos de screensaver do Windows (`/s`,`/p`,`/c`) aceitos.
+
+Decisão do usuário (assets): **pacote recriado** — então o app traz um **asset pack
+procedural embutido** (copyright-free: oceano + ilha de areia com palmeira + figura que
+caminha), semente do pacote redistribuível. `--data <dir>` carrega os `RESOURCE.*`
+originais (loader `assets::load_real`). Relógio civil sem deps (`clock`, alg. de
+Hinnant). Escala testável (`scale`).
+
+CI: deps de GUI adicionadas ao job Fedora (`wayland-devel libxkbcommon-devel
+libX11-devel`) por segurança (winit/softbuffer usam dlopen, mas garante o link).
+
+**74 testes** (8 wilson + 34 dgds + 32 engine), incl. o asset pack recriado
+renderizando algo além do oceano. Validado local: fmt, clippy `-D warnings`, build
+release, 74/74. Janela não roda no CI (sem display) — só compila; testada por inspeção
++ build. **Rodar:** `cargo run -p wilson` (demo) ou `cargo run -p wilson -- --data <dir>`.
+
+**Próximo (2c):** arte recriada melhor, som (`.wav`), persistência do dia, e
+empacotamento `.scr`/instaladores.
+
+---
+
 ## 2026-06-14 — Fase 2a: integração `Show` (crate `wilson-engine`)
 
 **Branch `claude/engine-integration`** (a partir da `main` pós-merge do PR #10).
