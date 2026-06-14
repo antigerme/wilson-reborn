@@ -6,6 +6,30 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-14 — Fase 1g: walk animation (crate `wilson-engine`)
+
+**Branch `claude/engine-walk-animation`** (a partir da `main` pós-merge do PR #8).
+
+Porte de `walk.c` + `walk_data.h`:
+- `walk_data` (**gerado por script** `/tmp/gen_walk.py` a partir do C — 489 frames
+  `[flip, x+1, y, sprite]` + tabelas de bookmarks/turns/headings). Os dados vêm do
+  executável `SCRANTIC.SCR`, não do `RESOURCE.001`.
+- `walk`: `Walker` (máquina de estados `walkInit`/`walkAnimate`) que usa `calc_path`
+  + a tabela e produz um `WalkFrame` por chamada (virar → andar → chegar) até a
+  chegada (delay 80). Expõe `flip/x/y/sprite/delay/behind_tree` (este último para o
+  render redesenhar tronco/folhas ao cruzar D↔E). Rendering fica a cargo do chamador.
+
+**61 testes** (34 dgds + 27 engine): caminhada entre todos os pares de spots
+(termina, chega no spot certo, última pose com delay 80), giro no mesmo spot,
+`behind_tree` na rota direta D↔E, e a regra de `turn_increment`.
+Validado local: fmt, clippy `-D warnings`, build release, 61/61.
+
+**Próximo:** Fase 1h — render da ilha (porte de `island.c`: fundo `OCEAN/NIGHT`,
+jangada `MRAFT`, nuvens/ondas `BACKGRND`, props de feriado `HOLIDAY`). Depois o
+backend de render real (Fase 2).
+
+---
+
 ## 2026-06-14 — Fase 1f: pathfinding entre spots (crate `wilson-engine`)
 
 **Branch `claude/engine-pathfinding`** (a partir da `main` pós-merge do PR #7).
