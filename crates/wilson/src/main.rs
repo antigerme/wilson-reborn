@@ -2,17 +2,19 @@
 //! Wilson Reborn — the Johnny Castaway screensaver, as a live window.
 //!
 //! Runs the [`wilson_engine`] runtime and presents each composited frame with
-//! `softbuffer` in a `winit` window (nearest-neighbour upscaled). Any key or mouse
-//! input quits, like a real screensaver.
+//! `softbuffer` in a `winit` window. Any key or mouse input quits, like a real
+//! screensaver. Runs fullscreen by default (use `--windowed` for development).
 //!
 //! Usage:
-//! - `wilson` — run with the built-in recreated demo assets.
+//! - `wilson` — fullscreen, with the built-in recreated assets.
 //! - `wilson --data <dir>` — run with the user's original `RESOURCE.*` files.
+//! - `wilson --windowed --mute --speed <pct> --scale fit|stretch|integer` — options.
 //! - Windows screensaver verbs `/s` (show), `/p` (preview), `/c` (config) are accepted.
 
 mod assets;
 mod audio;
 mod clock;
+mod config;
 mod scale;
 mod state;
 
@@ -23,24 +25,27 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use wilson_engine::{Director, Show};
 use winit::event::{ElementState, Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
-use winit::window::WindowBuilder;
+use winit::window::{Fullscreen, WindowBuilder};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
 
-    // Windows screensaver verbs: /c = configure (none yet), /p = preview (skip).
-    if args
-        .iter()
-        .any(|a| a.to_ascii_lowercase().starts_with("/c"))
-    {
-        eprintln!("Wilson Reborn: configuration dialog is not implemented yet.");
-        return;
+    // Load options (file → defaults), seed a default file on first run, then let CLI
+    // flags override for this run only.
+    let mut cfg = config::Config::load();
+    if config::config_file().is_some_and(|p| !p.exists()) {
+        cfg.save();
     }
-    if args
-        .iter()
-        .any(|a| a.to_ascii_lowercase().starts_with("/p"))
-    {
-        return;
+    cfg.apply_args(&args);
+
+    // Windows screensaver verbs.
+    match screensaver_verb(&args) {
+        Some('c') => {
+            print_config_info(&cfg);
+            return;
+        }
+        Some('p') => return, // preview window embedding is not supported yet
+        _ => {}              // 's' or none → show
     }
 
     let data_dir = args
@@ -72,21 +77,22 @@ fn main() {
     let mut show = Show::new(&archive, &palette, 640, 480, director, clock, seed);
 
     // Sound effects are loaded from the data dir (originals carry `soundN.wav`); the
-    // player degrades to silence without the `audio` feature, a device, or the files.
-    let audio = audio::Audio::new(data_dir.as_deref().map(std::path::Path::new));
+    // player degrades to silence without the `audio` feature, a device, the files, or
+    // when muted.
+    let audio = audio::Audio::new(data_dir.as_deref().map(std::path::Path::new), cfg.mute);
 
     // Persist the story day whenever it advances, so the arc carries over to the next
     // run. `None` until the first frame establishes today's day.
     let mut last_saved: Option<(u8, i32)> = None;
 
     let event_loop = EventLoop::new().expect("failed to create event loop");
-    let window = Rc::new(
-        WindowBuilder::new()
-            .with_title("Wilson Reborn — Johnny Castaway")
-            .with_inner_size(winit::dpi::LogicalSize::new(640.0, 480.0))
-            .build(&event_loop)
-            .expect("failed to create window"),
-    );
+    let mut builder = WindowBuilder::new().with_title("Wilson Reborn — Johnny Castaway");
+    builder = if cfg.windowed {
+        builder.with_inner_size(winit::dpi::LogicalSize::new(640.0, 480.0))
+    } else {
+        builder.with_fullscreen(Some(Fullscreen::Borderless(None)))
+    };
+    let window = Rc::new(builder.build(&event_loop).expect("failed to create window"));
     let context = softbuffer::Context::new(window.clone()).expect("softbuffer context");
     let mut surface =
         softbuffer::Surface::new(&context, window.clone()).expect("softbuffer surface");
@@ -124,16 +130,17 @@ fn main() {
                         }
                         let rgba = frame.surface.to_rgba(&palette);
                         let mut buffer = surface.buffer_mut().expect("surface buffer");
-                        scale::scale_rgba_to_argb_fit(
+                        scale::scale_rgba_to_argb(
                             &rgba,
                             640,
                             480,
                             &mut buffer,
                             size.width as usize,
                             size.height as usize,
+                            cfg.scale,
                         );
                         buffer.present().expect("present");
-                        let delay = Duration::from_millis(u64::from(frame.delay_ticks) * 20);
+                        let delay = Duration::from_millis(cfg.frame_delay_ms(frame.delay_ticks));
                         elwt.set_control_flow(ControlFlow::WaitUntil(Instant::now() + delay));
                     }
                 }
@@ -143,4 +150,68 @@ fn main() {
             _ => {}
         })
         .expect("event loop error");
+}
+
+/// Detect a Windows screensaver verb in `args`: `/c` (configure), `/p` (preview) or
+/// `/s` (show). Verbs may use `/` or `-`, be upper/lower case, and carry an HWND
+/// suffix (`/p:1234`). Returns the verb letter, or `None` if absent.
+fn screensaver_verb(args: &[String]) -> Option<char> {
+    for a in args.iter().skip(1) {
+        let low = a.to_ascii_lowercase();
+        let body = low.strip_prefix('/').or_else(|| low.strip_prefix('-'));
+        if let Some(body) = body {
+            let mut chars = body.chars();
+            if let Some(c @ ('c' | 'p' | 's')) = chars.next() {
+                let rest = chars.as_str();
+                if rest.is_empty() || rest.starts_with(':') {
+                    return Some(c);
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Print the active configuration and where it lives (the textual `/c` dialog).
+fn print_config_info(cfg: &config::Config) {
+    let path = config::config_file()
+        .map(|p| p.display().to_string())
+        .unwrap_or_else(|| "(unknown location)".to_string());
+    println!("Wilson Reborn — configuration");
+    println!("  file:     {path}");
+    println!("  windowed: {}", cfg.windowed);
+    println!("  mute:     {}", cfg.mute);
+    println!("  speed:    {}%", cfg.speed);
+    println!("  scale:    {}", cfg.scale.as_str());
+    println!("Edit the file above, or pass --windowed/--mute/--speed <pct>/--scale <mode>.");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn args(list: &[&str]) -> Vec<String> {
+        std::iter::once("wilson")
+            .chain(list.iter().copied())
+            .map(String::from)
+            .collect()
+    }
+
+    #[test]
+    fn verbs_are_detected() {
+        assert_eq!(screensaver_verb(&args(&["/c"])), Some('c'));
+        assert_eq!(screensaver_verb(&args(&["/P:1234"])), Some('p'));
+        assert_eq!(screensaver_verb(&args(&["-s"])), Some('s'));
+        assert_eq!(screensaver_verb(&args(&["/S:0"])), Some('s'));
+    }
+
+    #[test]
+    fn non_verbs_are_ignored() {
+        assert_eq!(screensaver_verb(&args(&["--data", "/some/dir"])), None);
+        assert_eq!(
+            screensaver_verb(&args(&["--windowed", "--scale", "fit"])),
+            None
+        );
+        assert_eq!(screensaver_verb(&args(&[])), None);
+    }
 }

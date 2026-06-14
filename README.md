@@ -31,10 +31,27 @@ Cinco reimplementações independentes do motor original, usadas como referênci
 ## Como rodar
 
 ```bash
-cargo run -p wilson                    # janela com o asset pack recriado embutido
+cargo run -p wilson                    # tela cheia, com o asset pack recriado embutido
+cargo run -p wilson -- --windowed      # em janela 640×480 (útil no desenvolvimento)
 cargo run -p wilson -- --data <dir>    # usando seus RESOURCE.MAP/RESOURCE.001 originais
 ```
-Qualquer tecla/clique encerra (como um screensaver). Requer Rust estável.
+Roda em **tela cheia** por padrão (comportamento de screensaver); qualquer tecla/clique
+encerra. Requer Rust estável.
+
+### Opções
+
+Passe por linha de comando (vencem o arquivo, só nesta execução) ou edite o arquivo de
+configuração (criado no 1º uso; veja o caminho com `wilson /c`):
+
+| Opção | Valores | Efeito |
+|---|---|---|
+| `--windowed` | — | roda em janela em vez de tela cheia (`windowed=true`) |
+| `--mute` | — | desliga os efeitos sonoros (`mute=true`) |
+| `--speed <pct>` | `25`–`400` | velocidade da animação, % do original (`speed=100`) |
+| `--scale <modo>` | `fit`\|`stretch`\|`integer` | como a imagem preenche a janela (`scale=fit`) |
+
+**Verbos de screensaver do Windows:** `/s` (mostrar), `/p` (preview — ainda não embutido),
+`/c` (configuração — imprime as opções e o caminho do arquivo).
 
 ## Status
 

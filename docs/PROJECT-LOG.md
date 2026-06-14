@@ -6,6 +6,35 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-14 — Fase 2d: polimento funcional — config + opções (tela cheia, escala, som, velocidade)
+
+**Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #16).
+
+O usuário pediu para **implementar todas as melhorias** (em incrementos 100%). Começo
+pelo polimento funcional, que dá a base para os próximos toggles.
+
+- **`crates/wilson/src/config.rs`** (novo): `Config` (windowed, mute, speed%, scale)
+  lido de `config.txt` no diretório de estado do usuário (ao lado do `state.txt`;
+  `state_dir` agora é `pub(crate)`), com defaults sensatos + flags de CLI que vencem o
+  arquivo (sem persistir). Best-effort, nunca entra em pânico.
+- **`scale.rs`**: três modos — **fit** (letterbox, padrão), **stretch** (preenche) e
+  **integer** (múltiplo inteiro, pixels nítidos; cai p/ fit se a janela for menor);
+  `ScaleMode` + dispatcher + refactor (`blit_scaled`).
+- **App agora roda em TELA CHEIA por padrão** (comportamento de screensaver; `--windowed`
+  p/ dev). `--mute` (não abre dispositivo de áudio), `--speed 25–400`, `--scale`.
+  Verbo `/c` imprime as opções + caminho do arquivo; `/p` sai limpo; parser de verbos
+  (`/c`,`-s`,`/p:HWND`) testável.
+- **README** atualizado com a tabela de opções e os verbos de screensaver.
+
+**100 testes** (32 wilson [+config/scale/verbos] + 35 dgds + 33 engine). Validado: fmt,
+clippy `-D warnings` (com **e** sem a feature `audio`), `build --release`; `wilson /c`
+imprime a config corretamente.
+
+**Próximo:** ciclo dia-noite real de 24h (opcional, mantendo o de 8h do original);
+depois empacotamento `.scr`/instaladores e mais melhorias.
+
+---
+
 ## 2026-06-14 — Fase 2d (3/4): arte recriada melhor + props de feriado visíveis
 
 **Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #15).

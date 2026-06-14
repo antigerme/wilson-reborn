@@ -75,8 +75,8 @@ impl DayState {
 /// The per-user state directory (zero-dep platform resolution).
 ///
 /// Windows: `%APPDATA%\WilsonReborn`. Otherwise XDG: `$XDG_STATE_HOME/wilson-reborn`
-/// or `$HOME/.local/state/wilson-reborn`.
-fn state_dir() -> Option<PathBuf> {
+/// or `$HOME/.local/state/wilson-reborn`. Shared with [`crate::config`].
+pub(crate) fn state_dir() -> Option<PathBuf> {
     if cfg!(windows) {
         std::env::var_os("APPDATA").map(|p| PathBuf::from(p).join("WilsonReborn"))
     } else if let Some(xdg) = std::env::var_os("XDG_STATE_HOME") {
