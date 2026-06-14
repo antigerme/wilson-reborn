@@ -49,7 +49,7 @@ Ver [`docs/knowledge-base/08-decisoes-e-status.md`](docs/knowledge-base/08-decis
 bytecode TTM/ADS → instruções. **`wilson-engine`** tem: TTM (`ttm_exec`/`TtmVm`),
 escalonador **ADS** (`AdsVm`), o **diretor** (`story`: 63 cenas, ciclo 11 dias,
 feriados/maré/noite/jangada), o **pathfinding** (`path`), a **walk animation**
-(`walk`/`walk_data`) e o **render da ilha** (`island`). **Fase 1 (engine headless)
-completa**, 64 testes, CI verde. **Próximo: Fase 2** — camada de integração
-(diretor+walk+ADS+ilha → `Surface` por frame) + backend de render real (pixels/wgpu) +
-janela/screensaver (o Johnny na tela).
+(`walk`/`walk_data`), o **render da ilha** (`island`) e a **integração `Show`**
+(diretor+ilha+walk+ADS → fluxo de frames). **Engine headless completo**, 66 testes,
+CI verde. **Próximo: Fase 2b** — backend de render real (pixels/wgpu) +
+janela/screensaver (`Frame.surface.to_rgba` → tela), usando os `RESOURCE.*` do usuário.

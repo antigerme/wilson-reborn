@@ -6,6 +6,28 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-14 — Fase 2a: integração `Show` (crate `wilson-engine`)
+
+**Branch `claude/engine-integration`** (a partir da `main` pós-merge do PR #10).
+
+Amarra tudo num **gerador de frames** (`show`), espelhando o loop de `storyPlay`:
+- `Show::next_frame()` planeja um run (Diretor → `StoryRun`), constrói a `Island`, e
+  para cada cena: faz o Johnny **caminhar** (`Walker`, compondo o sprite sobre o fundo
+  da ilha, com oclusão atrás da palmeira) e então toca a cena **ADS** (`AdsVm`) sobre
+  o fundo da ilha; ao esgotar as cenas, planeja o próximo run. Relógio (`Clock`)
+  injetado (testável). Recursos ausentes **pulam** a cena (degrada sem travar).
+- Suporte: `AdsVm::set_background` (compor sobre a ilha) e `Island::offset`/`redraw_tree`.
+
+**66 testes** (34 dgds + 32 engine): 400 frames cobrindo walks + cenas + troca de run,
+e o caso de ADS ausente (frames em branco, sem travar).
+Validado local: fmt, clippy `-D warnings`, build release, 66/66.
+
+**Próximo:** Fase 2b — backend de render real (pixels/wgpu): `Frame.surface.to_rgba`
+numa janela, modos de screensaver (`.scr` Win, fullscreen Linux), com os `RESOURCE.*`
+do usuário. Aí o Johnny aparece na tela.
+
+---
+
 ## 2026-06-14 — Fase 1h: render da ilha + Fase 1 completa (crate `wilson-engine`)
 
 **Branch `claude/engine-island-render`** (a partir da `main` pós-merge do PR #9).

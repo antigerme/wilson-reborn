@@ -25,7 +25,8 @@ plataformas (`.scr` Win / Linux / standalone / web).
 
 Crates planejados:
 - `wilson-dgds` — formatos + descompressão + recursos. **(camada de recursos completa)**
-- `wilson-engine` — VMs TTM/ADS + diretor/story + walk + ilha. **✅ completo (headless): TTM, ADS, diretor, pathfinding, walk animation e render da ilha.**
+- `wilson-engine` — VMs TTM/ADS + diretor/story + walk + ilha + **integração (`Show`)**.
+  **✅ engine headless completo** (de `RESOURCE.*` a um fluxo de frames compostos).
 - `wilson-render` — trait de backend (pixels/wgpu/canvas). *(planejado)*
 - `wilson` — binário/app + modos screensaver. *(planejado)*
 
@@ -42,9 +43,10 @@ Crates planejados:
 | **1e** | **Diretor (story 11 dias, seleção, estado da ilha: maré/noite/jangada/feriado)** | ✅ concluída (PR #7) |
 | **1f** | **Pathfinding entre os spots (matriz de adjacência 2ª ordem + rotas)** | ✅ concluída (PR #8) |
 | **1g** | **Walk animation (frames de `walk_data.h` + máquina de estados `Walker`)** | ✅ concluída (PR #9) |
-| **1h** | **Render da ilha (fundo, jangada, nuvens, ondas, props de feriado)** | ✅ concluída — **Fase 1 (engine headless) completa** |
-| **2** | **Integração + backend de render real (pixels/wgpu) + janela/screensaver** | 🟡 **próximo** |
-| 3 | Empacotamento (`.scr` Win, Linux, web/WASM) → **paridade jogável** | ⬜ |
+| **1h** | **Render da ilha (fundo, jangada, nuvens, ondas, props de feriado)** | ✅ concluída (PR #10) — **Fase 1 (engine headless) completa** |
+| **2a** | **Integração (`Show`): diretor + ilha + walk + ADS → fluxo de frames** | ✅ concluída |
+| 2b | Backend de render real (pixels/wgpu) + janela/screensaver `.scr` | 🟡 **próximo** |
+| 3 | Empacotamento (Win/Linux/web/WASM) + assets → **paridade jogável** | ⬜ |
 | 4 | Melhorias (HD, dia/noite 24h, config UI, estatísticas, etc.) | ⬜ |
 
 ## Validação de dados reais (pendente)
