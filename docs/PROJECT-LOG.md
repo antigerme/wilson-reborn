@@ -6,6 +6,33 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-14 — Fase 2d (2/4): persistência do dia (arco de 11 dias entre sessões)
+
+**Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #14).
+
+Segundo passo da Fase 2d. Antes, o `Director` sempre começava no **dia 1** a cada
+lançamento; agora o **arco de 11 dias continua de onde parou** entre sessões.
+
+- **Engine:** novo acessor **`Show::day_state() -> (u8, i32)`** (current_day,
+  stored_yday) para o host ler e persistir. (O `Director` já tinha a lógica de
+  `advance_day`: incrementa quando o dia do calendário muda, com clamp 1–11.)
+- **App:** novo módulo **`crates/wilson/src/state.rs`** (`DayState`) — carrega/grava
+  `current_day`+`stored_yday` num arquivo de texto no diretório de estado do usuário
+  (Windows `%APPDATA%\WilsonReborn`; senão XDG `$XDG_STATE_HOME` ou
+  `~/.local/state/wilson-reborn`). **Zero deps** (resolve o diretório via env vars).
+  **Best-effort:** arquivo ausente/ilegível ⇒ começa no dia 1, nunca entra em pânico.
+- **`main.rs`:** no startup, `DayState::load()` → `Director::new(dia, yday)` (ou dia 1);
+  a cada frame, `show.set_clock(clock::now())` (vira o dia à meia-noite mesmo numa
+  sessão longa) e **salva quando o dia muda** (guardado por `last_saved`, ~1 escrita/sessão).
+
+**83 testes** (15 wilson [+5: round-trip parse/serialize, save/load, rejeições] + 35
+dgds + 33 engine [+1: dia avança e é observável via `day_state`]). Validado local: fmt,
+clippy `-D warnings` (com **e** sem a feature `audio`), `build --release`, todos verdes.
+
+**Próximo (2d, 3/4):** arte recriada melhor (asset pack copyright-free).
+
+---
+
 ## 2026-06-14 — Fase 2d (1/4): som (`.wav`) via `rodio`
 
 **Branch `claude/audio`** (a partir da `main` pós-merge do PR #13).

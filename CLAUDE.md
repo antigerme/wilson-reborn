@@ -62,6 +62,8 @@ originais). **Validado contra os dados REAIS** (`RESOURCE.001` autêntico → o 
 original renderiza; teste gated `wilson-dgds/tests/real_data.rs`). Escala 4:3 com
 letterbox. **Som** (`audio.rs`): toca `soundN.wav` via `rodio` (feature opcional
 `audio`, ligada por padrão; degrada para silêncio sem dispositivo/arquivos), os efeitos
-vêm com `--data`. **Engine completo + janela + validação real + som**, 77 testes, CI verde.
-**Próximo: Fase 2d (2/4)** — persistência do dia (arco de 11 dias entre sessões), depois
-arte recriada melhor e empacotamento `.scr`.
+vêm com `--data`. **Persistência do dia** (`state.rs` + `Show::day_state`): o arco de 11
+dias continua entre sessões (grava `current_day`/`stored_yday` no diretório de estado do
+usuário; zero deps; best-effort). **Engine completo + janela + validação real + som +
+persistência**, 83 testes, CI verde. **Próximo: Fase 2d (3/4)** — arte recriada melhor,
+depois empacotamento `.scr`.

@@ -116,6 +116,12 @@ impl Show {
         self.clock = clock;
     }
 
+    /// The director's persisted day state — `(current_day, stored_yday)` — so a host
+    /// can save it and resume the 11-day arc across sessions.
+    pub fn day_state(&self) -> (u8, i32) {
+        (self.director.current_day, self.director.stored_yday)
+    }
+
     /// Produce the next composited frame (the runtime never ends).
     pub fn next_frame(&mut self, archive: &Archive) -> Frame {
         for _ in 0..20_000 {
@@ -430,6 +436,41 @@ mod tests {
             assert_eq!(f.surface.height, 480);
             assert!(f.delay_ticks > 0);
         }
+    }
+
+    #[test]
+    fn day_advances_and_is_observable_for_persistence() {
+        // The host reads `day_state()` to persist the 11-day arc. At construction the
+        // day matches the director; when the calendar day changes, the next run picks
+        // it up and `day_state()` reflects the advance.
+        let arch = full_archive();
+        let pal = Palette {
+            colors: [[1u8; 3]; 256],
+        };
+        let director = Director::new(5, 200);
+        let clock = Clock {
+            yday: 200,
+            hour: 12,
+            month: 6,
+            day: 14,
+        };
+        let mut show = Show::new(&arch, &pal, 640, 480, director, clock, 42);
+        assert_eq!(show.day_state(), (5, 200));
+
+        // Simulate the next calendar day; drive frames until a new run picks it up.
+        show.set_clock(Clock {
+            yday: 201,
+            hour: 12,
+            month: 6,
+            day: 15,
+        });
+        for _ in 0..2000 {
+            show.next_frame(&arch);
+            if show.day_state() == (6, 201) {
+                break;
+            }
+        }
+        assert_eq!(show.day_state(), (6, 201));
     }
 
     #[test]
