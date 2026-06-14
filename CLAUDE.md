@@ -44,8 +44,9 @@ cargo test --workspace          # testes
 
 ## Status atual
 Ver [`docs/knowledge-base/08-decisoes-e-status.md`](docs/knowledge-base/08-decisoes-e-status.md)
-(seção "Status"). Resumo: **Fases 0–1c ✅**. `wilson-dgds` decodifica
+(seção "Status"). Resumo: **Fases 0–1d ✅**. `wilson-dgds` decodifica
 `RESOURCE.MAP/.001`, RLE/LZW, chunks, paleta, `.BMP/.SCR/.TTM/.ADS`, `Archive` e o
-bytecode TTM/ADS → instruções. **`wilson-engine`** (novo) executa **uma thread TTM**
-headless sobre uma `Surface` indexada. 43 testes, CI verde.
-**Próximo: Fase 1d** (escalonador ADS: multi-thread TTM + composição de camadas).
+bytecode TTM/ADS → instruções. **`wilson-engine`** executa TTM (`ttm_exec`/`TtmVm`) e o
+**escalonador ADS multi-thread** (`AdsVm`: até 10 threads + composição + RANDOM/gatilhos).
+45 testes, CI verde. **Próximo: Fase 1e** (diretor 11 dias + walk + ilha/feriados),
+depois backend de render real.
