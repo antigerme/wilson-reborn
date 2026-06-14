@@ -54,6 +54,12 @@ configuração (criado no 1º uso; veja o caminho com `wilson /c`):
 **Verbos de screensaver do Windows:** `/s` (mostrar), `/p` (preview — ainda não embutido),
 `/c` (configuração — imprime as opções e o caminho do arquivo).
 
+## Instalação / empacotamento
+
+Binários prontos (Windows `wilson.scr` e Linux) são publicados a cada tag de versão pelo
+workflow de release. Veja **[`docs/INSTALL.md`](docs/INSTALL.md)** para instalar o
+screensaver no Windows, rodar no Linux e publicar releases.
+
 ## Status
 
 ✅ **Engine completo em Rust + janela ao vivo** (o Johnny já roda na tela). Crates:

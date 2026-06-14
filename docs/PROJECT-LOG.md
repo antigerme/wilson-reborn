@@ -6,6 +6,32 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-14 — Empacotamento `.scr` + CI de release (Windows/Linux)
+
+**Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #18).
+
+Fecha a Fase 2d (4/4) e abre a Fase 3 (empacotamento). O app já é **standalone** (asset
+pack embutido) e já trata os verbos `/s /p /c`, então faltava só **produzir os binários
+distribuíveis**.
+
+- **`.github/workflows/release.yml`** (novo): em **tag `v*`** (e via `workflow_dispatch`),
+  builda em `windows-latest` e `ubuntu-latest` e publica artefatos:
+  - Windows: `wilson.scr` (o exe renomeado — é o que o Windows espera) + `wilson.exe`.
+  - Linux: `wilson-linux-x86_64.tar.gz`.
+  - Em tag, anexa tudo a uma **GitHub Release** (`softprops/action-gh-release`);
+    `workflow_dispatch` deixa os artefatos baixáveis para teste. ALSA instalado no Linux.
+- **`docs/INSTALL.md`** (novo) + seção no README: como instalar o `.scr` no Windows
+  (botão direito → Instalar, ou copiar p/ System32), rodar no Linux, compilar e publicar
+  releases (push de tag). Documentada a limitação do preview `/p` (miniatura em branco).
+
+Incremento de **infra + docs** (sem código Rust), então a `ci.yml` segue verde
+(102 testes). YAML do workflow validado; o `release.yml` roda só em tag/dispatch.
+
+**Próximo:** mais melhorias — resolução nativa/HD, estatísticas, auditoria de
+easter-eggs/paridade.
+
+---
+
 ## 2026-06-14 — Melhoria: ciclo dia-noite real de 24h (opcional)
 
 **Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #17).
