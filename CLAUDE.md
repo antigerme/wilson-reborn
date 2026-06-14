@@ -34,7 +34,8 @@ cargo test --workspace          # testes
 
 ## Regras de trabalho (combinadas com o usuário)
 - **Sempre 100% → 100%:** cada incremento compila, passa lint e testes (local **e** CI).
-- **CI do GitHub** roda em `ubuntu-latest` e `windows-latest` (`.github/workflows/ci.yml`).
+- **CI do GitHub** roda em `ubuntu-latest`, `windows-latest` e `fedora-latest`
+  (container `fedora:latest`) — `.github/workflows/ci.yml`.
   Se o CI falhar, **resolver**.
 - **PRs:** acompanhar PRs (conflitos/CI) e resolver. O usuário faz squash merge e apaga a
   branch. Posso abrir PR quando a branch estiver madura. Trabalhar em **branch nova**

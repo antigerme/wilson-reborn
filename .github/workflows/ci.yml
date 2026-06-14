@@ -44,3 +44,38 @@ jobs:
 
       - name: Test
         run: cargo test --workspace --all-features --verbose
+
+  # GitHub does not provide a "fedora-latest" runner, so we run the same checks
+  # inside an official Fedora container on an Ubuntu host. The toolchain is
+  # installed via rustup so it matches the `stable` used by the other jobs.
+  test-fedora:
+    name: Build & Test (fedora-latest)
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    steps:
+      - name: Install system dependencies
+        run: dnf -y install gcc git
+
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain (rustup)
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal
+          . "$HOME/.cargo/env"
+          rustup component add clippy rustfmt
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Clippy (deny warnings)
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+      - name: Build
+        run: cargo build --workspace --all-targets --verbose
+
+      - name: Test
+        run: cargo test --workspace --all-features --verbose

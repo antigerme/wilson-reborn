@@ -26,7 +26,7 @@ melhorias, licença GPLv3. Início da implementação em incrementos 100% funcio
 - **Testes** unitários com fixtures sintéticas (rodam sem dados originais): round-trip
   LZW (incl. cruzamento 9→10 bits), vetores RLE, índice de recursos, paleta, chunks.
 - **CI** (`.github/workflows/ci.yml`): fmt + clippy `-D warnings` + build + test em
-  Ubuntu e Windows.
+  Ubuntu, Windows e Fedora (container `fedora:latest` em host Ubuntu, toolchain via rustup).
 - **Licença** GPL-3.0-or-later (`LICENSE`).
 - **Memória/continuidade:** `CLAUDE.md`, este log, e
   `knowledge-base/08-decisoes-e-status.md`.

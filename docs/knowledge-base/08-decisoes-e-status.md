@@ -14,7 +14,7 @@
 
 ## Processos permanentes (combinados com o usuário)
 - Sair sempre de um ponto **100% funcionando** para outro **100% funcionando**.
-- **Testes/validações completos** + **CI do GitHub** (Ubuntu + Windows). CI vermelho ⇒ resolver.
+- **Testes/validações completos** + **CI do GitHub** (Ubuntu + Windows + Fedora). CI vermelho ⇒ resolver.
 - **Acompanhar PRs** (conflitos e CI) e resolver. Usuário faz squash merge e apaga a branch;
   posso abrir PR quando a branch amadurecer. Sempre branch nova por incremento.
 - **Documentar tudo** (knowledge-base, este arquivo e PROJECT-LOG) para não perder memória.
