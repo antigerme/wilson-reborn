@@ -85,6 +85,15 @@ pub fn resource_extension(name: &str) -> Option<&str> {
     name.rfind('.').map(|i| &name[i..])
 }
 
+/// A `(id, description)` entry from a `TAG:` table (used by `.ADS`/`.TTM`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Tag {
+    /// Tag identifier (the "scene"/sequence number referenced by scripts).
+    pub id: u16,
+    /// Human-readable description recorded in the resource.
+    pub description: String,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -44,5 +44,6 @@ cargo test --workspace          # testes
 
 ## Status atual
 Ver [`docs/knowledge-base/08-decisoes-e-status.md`](docs/knowledge-base/08-decisoes-e-status.md)
-(seção "Status"). Resumo: **Fase 0 (camada de dados)** em andamento — crate
-`wilson-dgds` (índice de recursos + RLE/LZW + chunks + paleta), com testes e CI.
+(seção "Status"). Resumo: **Fase 0 ✅ e Fase 1a ✅** — o crate `wilson-dgds`
+decodifica `RESOURCE.MAP/.001`, RLE/LZW, chunks, paleta, `.BMP/.SCR/.TTM/.ADS` e o
+`Archive` (30 testes, CI verde). **Próximo: Fase 1b** (bytecode TTM/ADS → instruções + VMs).

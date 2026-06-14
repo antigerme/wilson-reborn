@@ -14,16 +14,28 @@
 //!
 //! No original game data is bundled: callers supply their own `RESOURCE.*` files.
 
+pub mod ads;
+pub mod archive;
+pub mod bmp;
 pub mod chunk;
 pub mod decompress;
 pub mod error;
 pub mod pal;
+pub mod pixels;
 pub mod reader;
 pub mod resource;
+pub mod scr;
+pub mod ttm;
 
+pub use ads::{Ads, AdsRes};
+pub use archive::Archive;
+pub use bmp::{Bmp, BmpImage};
 pub use error::{DgdsError, Result};
 pub use pal::Palette;
+pub use pixels::decode_4bpp;
 pub use reader::Reader;
 pub use resource::{
-    read_entry_header, resource_extension, ResourceEntry, ResourceMap, ResourceMapEntry,
+    read_entry_header, resource_extension, ResourceEntry, ResourceMap, ResourceMapEntry, Tag,
 };
+pub use scr::Scr;
+pub use ttm::Ttm;

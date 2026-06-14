@@ -6,6 +6,32 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-14 — Fase 1a: parsers de recursos + Archive (crate `wilson-dgds`)
+
+**Branch `claude/dgds-resource-parsers`** (a partir da `main` pós-merge do PR #2).
+
+Completa a **camada de decodificação de recursos**, sobre as primitivas da Fase 0:
+- `reader.cstr()` — string NUL-terminada de tamanho variável (espelha o `getString`
+  do jc_reborn; tabelas RES/TAG são empacotadas, não campos fixos de 40 bytes).
+- `pixels::decode_4bpp` — 4bpp → índices de paleta (nibble alto primeiro), compartilhado.
+- `scr` — imagem de tela cheia (`SCR:`/`DIM:`/`BIN:`), decodificada para índices.
+- `bmp` — folha de sprites (`BMP:`/`INF:`/`BIN:`): N imagens, cada uma decodificada.
+- `ttm` — script de animação (`VER/PAG/TT3/TTI/TAG`): versão, páginas, **bytecode**
+  descomprimido e tabela de tags.
+- `ads` — script de sequência (`VER/ADS/RES/SCR/TAG`): versão, tabela **RES**
+  (slot→`.TTM`), **bytecode** e tags.
+- `archive` — carregador que liga `RESOURCE.MAP` + `RESOURCE.001`, decodifica cada
+  recurso por tipo e ignora desconhecidos (`.VIN`).
+
+Tudo fiel ao `jc_reborn` (`resource.c`, `graphics.c`, `utils.c`) — sem parser genérico
+de chunk (cada tipo tem layout próprio). **30 testes** (era 20) com fixtures sintéticas.
+Validado local: fmt, clippy `-D warnings`, build release, 30/30 testes.
+
+**Próximo:** Fase 1b — decodificar o **bytecode TTM/ADS** em instruções (disassembler) e,
+depois, os interpretadores executáveis.
+
+---
+
 ## 2026-06-14 — Fase 0: camada de dados (crate `wilson-dgds`)
 
 **Contexto:** decisões confirmadas pelo usuário — Rust, assets híbridos, todas as

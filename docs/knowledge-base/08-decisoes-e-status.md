@@ -24,7 +24,7 @@ Camadas: I/O de dados → VMs (TTM/ADS) → backend de render/áudio → lógica
 plataformas (`.scr` Win / Linux / standalone / web).
 
 Crates planejados:
-- `wilson-dgds` — formatos + descompressão + recursos. **(em andamento)**
+- `wilson-dgds` — formatos + descompressão + recursos. **(camada de recursos completa)**
 - `wilson-engine` — VMs TTM/ADS + diretor/story + walk + ilha. *(planejado)*
 - `wilson-render` — trait de backend (pixels/wgpu/canvas). *(planejado)*
 - `wilson` — binário/app + modos screensaver. *(planejado)*
@@ -34,8 +34,9 @@ Crates planejados:
 | Fase | Descrição | Estado |
 |---|---|---|
 | KB | Base de conhecimento | ✅ concluída (merged) |
-| **0** | **Camada de dados** (`RESOURCE.*`, RLE/LZW, chunks, PAL) | 🟡 **em andamento** |
-| 1 | Parsers `.BMP/.SCR/.TTM/.ADS` + VMs TTM/ADS | ⬜ |
+| **0** | **Camada de dados** (`RESOURCE.*`, RLE/LZW, chunks, PAL) | ✅ concluída (PR #2) |
+| **1a** | **Parsers `.BMP/.SCR/.TTM/.ADS` + `Archive`** | ✅ concluída |
+| 1b | Decodificar bytecode TTM/ADS (disassembler) + VMs | 🟡 **próximo** |
 | 2 | Render em camadas + paleta + sprites + som | ⬜ |
 | 3 | Ilha/maré/noite/nuvens + walk/pathfinding | ⬜ |
 | 4 | Diretor (ciclo 11 dias, feriados) → **paridade** | ⬜ |
