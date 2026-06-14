@@ -1,0 +1,15 @@
+[package]
+name = "wilson"
+description = "Wilson Reborn — the Johnny Castaway screensaver app (winit + softbuffer)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+default-run = "wilson"
+
+[dependencies]
+wilson-dgds = { path = "../wilson-dgds" }
+wilson-engine = { path = "../wilson-engine" }
+winit = { version = "0.29", features = ["rwh_06"] }
+softbuffer = "0.4"

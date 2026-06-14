@@ -54,7 +54,9 @@ jobs:
     container: fedora:latest
     steps:
       - name: Install system dependencies
-        run: dnf -y install gcc git
+        # gcc/git for the toolchain; the rest are link-time deps the GUI app may
+        # need on Linux (winit/softbuffer dlopen most of these, but be safe).
+        run: dnf -y install gcc git wayland-devel libxkbcommon-devel libX11-devel
 
       - uses: actions/checkout@v4
 
