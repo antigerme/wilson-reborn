@@ -6,6 +6,30 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-14 — Melhoria: ciclo dia-noite real de 24h (opcional)
+
+**Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #17).
+
+Segunda melhoria da lista. O original usa um ciclo **acelerado de 8h** (noite quando
+`hora % 8 ∈ {0,7}`); agora há também um ciclo **real de 24h** (noite 20:00–06:00, pelo
+relógio), selecionável — **sem perder o comportamento original** (que segue sendo o
+padrão e mostra cenas noturnas em qualquer hora).
+
+- **`wilson-engine/story.rs`**: enum `DayNight { Original, Real24h }` (+`parse`/`as_str`),
+  `is_night_24h`, `is_night_mode`; `Director` ganha o campo `daynight` + builder
+  `with_daynight`; `plan_run` usa o modo. Exportado em `lib.rs`.
+- **`wilson` (config)**: opção `daynight=original|real24h` no `config.txt` + flag
+  `--daynight`; `main.rs` aplica via `Director::with_daynight`; `/c` mostra o modo.
+- README + tabela de opções atualizados.
+
+**102 testes** (32 wilson + 35 dgds + 35 engine [+2: ciclo 24h, diretor dirige o
+plan_run]). Validado: fmt, clippy `-D warnings` (com **e** sem `audio`), `build --release`;
+`wilson /c --daynight real24h` confirma o override.
+
+**Próximo:** empacotamento `.scr` + CI de release (artefatos Win/Linux).
+
+---
+
 ## 2026-06-14 — Fase 2d: polimento funcional — config + opções (tela cheia, escala, som, velocidade)
 
 **Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #16).

@@ -71,6 +71,8 @@ validado visualmente contra os dados reais; o **prop de feriado** agora é compo
 cenário (`island.rs`). **Polimento funcional** (`config.rs`): opções via `config.txt` +
 flags de CLI — **tela cheia por padrão** (`--windowed`), escala fit/stretch/integer
 (`scale.rs`), `--mute`, `--speed 25–400`; verbo `/c` imprime a config. **Engine completo
-+ janela + validação real + som + persistência + arte recriada + config**, 100 testes,
-CI verde. **Próximo:** dia-noite 24h (opcional), empacotamento `.scr`, e demais melhorias
-(o usuário pediu **todas**, em incrementos).
++ janela + validação real + som + persistência + arte recriada + config**. **Ciclo
+dia-noite**: `DayNight {Original 8h, Real24h}` no `story.rs` (opção `daynight`, padrão
+original), aplicado via `Director::with_daynight`. **102 testes**, CI verde. **Próximo:**
+empacotamento `.scr` + CI de release, HD, estatísticas (o usuário pediu **todas** as
+melhorias, em incrementos).
