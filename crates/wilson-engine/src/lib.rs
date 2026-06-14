@@ -16,6 +16,8 @@ pub mod story;
 pub mod surface;
 pub mod ttm_exec;
 pub mod ttm_vm;
+pub mod walk;
+pub mod walk_data;
 
 pub use ads_vm::{AdsFrame, AdsVm, MAX_TTM_SLOTS, MAX_TTM_THREADS};
 pub use error::{EngineError, Result};
@@ -25,3 +27,4 @@ pub use story::{Director, Holiday, IslandState, ScenePlay, StoryRun, StoryScene,
 pub use surface::{Rect, Surface, TRANSPARENT};
 pub use ttm_exec::{TtmSlot, TtmThread, MAX_BMP_SLOTS};
 pub use ttm_vm::{TtmStep, TtmVm};
+pub use walk::{WalkFrame, Walker};
