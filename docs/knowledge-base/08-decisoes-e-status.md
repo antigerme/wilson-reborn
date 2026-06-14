@@ -35,8 +35,9 @@ Crates planejados:
 |---|---|---|
 | KB | Base de conhecimento | ✅ concluída (merged) |
 | **0** | **Camada de dados** (`RESOURCE.*`, RLE/LZW, chunks, PAL) | ✅ concluída (PR #2) |
-| **1a** | **Parsers `.BMP/.SCR/.TTM/.ADS` + `Archive`** | ✅ concluída |
-| 1b | Decodificar bytecode TTM/ADS (disassembler) + VMs | 🟡 **próximo** |
+| **1a** | **Parsers `.BMP/.SCR/.TTM/.ADS` + `Archive`** | ✅ concluída (PR #3) |
+| **1b** | **Decodificar bytecode TTM/ADS → instruções (disassembler)** | ✅ concluída |
+| 1c | Interpretadores (VMs) TTM/ADS executáveis | 🟡 **próximo** |
 | 2 | Render em camadas + paleta + sprites + som | ⬜ |
 | 3 | Ilha/maré/noite/nuvens + walk/pathfinding | ⬜ |
 | 4 | Diretor (ciclo 11 dias, feriados) → **paridade** | ⬜ |
