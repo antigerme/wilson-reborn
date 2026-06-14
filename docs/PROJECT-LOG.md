@@ -6,6 +6,42 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-14 — Fase 2d (3/4): arte recriada melhor + props de feriado visíveis
+
+**Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #15).
+
+Terceiro passo da Fase 2d: o asset pack recriado (copyright-free, **desenhado em
+código**) deixou de ser retângulos chapados e passou a evocar o original. **Validado
+visualmente contra os dados REAIS** do usuário (renderizei o original como referência).
+
+- **`crates/wilson/src/assets.rs`** reescrito com um mini-canvas de pixel-art (elipses,
+  linhas, discos, dither ordenado de Bayer) e sprites procedurais:
+  - **Céu + horizonte + oceano** (antes era oceano até o topo): céu ciano de dia / azul
+    estrelado de noite, faixa de horizonte, gradiente de mar com espuma; à noite, lua +
+    rastro de brilho na água.
+  - **Ilha plana e dourada** com **anel de espuma**, duna sombreada e textura (antes um
+    cilindro de areia); **palmeira** com tronco avermelhado segmentado e folhas grandes
+    caídas; **nuvens** fofas (sem mais "buracos"); **ondas** em escamas suaves; **jangada**
+    que cresce com o dia (logs amarrados); **props de feriado** (abóbora, pote, pinheiro,
+    fogos); **Johnny** mais parecido com um náufrago (cabelo/barba, camisa rasgada,
+    bermuda) e **ancorado na base** (16×64) para pisar na ilha.
+- **Engine (`island.rs`):** o **prop de feriado agora é composto no cenário** (antes a
+  `holiday_layer` existia mas nunca era desenhada → feriados invisíveis). Mantém a
+  camada separada para quem quiser usá-la.
+- Ferramenta de screenshot **gated** (`WILSON_DUMP=<dir>`, opcional `WILSON_REAL_DIR`)
+  para render end-to-end de demo **ou** dos dados reais — no-op no CI.
+
+**Validação com os dados reais** (`dist.zip`/`jc_reborn.msi` do usuário): teste gated
+`real_data` ✅ (117 bmp, 10 scr, 41 ttm, 10 ads); render do original confere; com o fix,
+o **pinheiro de Natal aparece** na ilha tanto no pack recriado quanto nos dados reais.
+
+**85 testes** (17 wilson + 35 dgds + 33 engine). Validado local: fmt, clippy `-D
+warnings` (com **e** sem a feature `audio`), `build --release`, todos verdes.
+
+**Próximo (2d, 4/4):** empacotamento `.scr` (Windows screensaver) / instaladores.
+
+---
+
 ## 2026-06-14 — Fase 2d (2/4): persistência do dia (arco de 11 dias entre sessões)
 
 **Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #14).

@@ -64,6 +64,9 @@ letterbox. **Som** (`audio.rs`): toca `soundN.wav` via `rodio` (feature opcional
 `audio`, ligada por padrão; degrada para silêncio sem dispositivo/arquivos), os efeitos
 vêm com `--data`. **Persistência do dia** (`state.rs` + `Show::day_state`): o arco de 11
 dias continua entre sessões (grava `current_day`/`stored_yday` no diretório de estado do
-usuário; zero deps; best-effort). **Engine completo + janela + validação real + som +
-persistência**, 83 testes, CI verde. **Próximo: Fase 2d (3/4)** — arte recriada melhor,
-depois empacotamento `.scr`.
+usuário; zero deps; best-effort). **Arte recriada melhor** (`assets.rs`): pack
+copyright-free desenhado em código (céu+horizonte+oceano, ilha plana dourada com anel de
+espuma, palmeira, nuvens, jangada que cresce, props de feriado, Johnny náufrago) —
+validado visualmente contra os dados reais; o **prop de feriado** agora é composto no
+cenário (`island.rs`). **Engine completo + janela + validação real + som + persistência +
+arte recriada**, 85 testes, CI verde. **Próximo: Fase 2d (4/4)** — empacotamento `.scr`.
