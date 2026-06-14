@@ -25,7 +25,7 @@ plataformas (`.scr` Win / Linux / standalone / web).
 
 Crates planejados:
 - `wilson-dgds` — formatos + descompressão + recursos. **(camada de recursos completa)**
-- `wilson-engine` — VMs TTM/ADS + diretor/story + walk + ilha. **(TTM, escalonador ADS e diretor prontos; walk e render da ilha pendentes)**
+- `wilson-engine` — VMs TTM/ADS + diretor/story + walk + ilha. **(TTM, ADS, diretor e pathfinding prontos; walk animation e render da ilha pendentes)**
 - `wilson-render` — trait de backend (pixels/wgpu/canvas). *(planejado)*
 - `wilson` — binário/app + modos screensaver. *(planejado)*
 
@@ -39,9 +39,10 @@ Crates planejados:
 | **1b** | **Decodificar bytecode TTM/ADS → instruções (disassembler)** | ✅ concluída (PR #4) |
 | **1c** | **Interpretador TTM executável (headless, 1 thread) + `Surface`** | ✅ concluída (PR #5) |
 | **1d** | **Escalonador ADS (multi-thread + composição + RANDOM/gatilhos)** | ✅ concluída (PR #6) |
-| **1e** | **Diretor (story 11 dias, seleção, estado da ilha: maré/noite/jangada/feriado)** | ✅ concluída |
-| 1f | Walk/pathfinding entre os spots (frames + adjacência) | 🟡 **próximo** |
-| 1g | Render da ilha (fundo, jangada, nuvens, ondas, props de feriado) | ⬜ |
+| **1e** | **Diretor (story 11 dias, seleção, estado da ilha: maré/noite/jangada/feriado)** | ✅ concluída (PR #7) |
+| **1f** | **Pathfinding entre os spots (matriz de adjacência 2ª ordem + rotas)** | ✅ concluída |
+| 1g | Walk animation (frames de `walk_data.h` + máquina de estados) | 🟡 **próximo** |
+| 1h | Render da ilha (fundo, jangada, nuvens, ondas, props de feriado) | ⬜ |
 | 2 | Backend de render real (pixels/wgpu) + janela/screensaver | ⬜ |
 | 3 | Empacotamento (`.scr` Win, Linux, web/WASM) → **paridade jogável** | ⬜ |
 | 4 | Melhorias (HD, dia/noite 24h, config UI, estatísticas, etc.) | ⬜ |
