@@ -645,15 +645,23 @@ fn holiday_sheet() -> Bmp {
     }
 }
 
-/// The castaway in one of four walk phases (0 = standing), bottom-anchored in a
-/// 16×64 sprite so that — blitted by its top-left at the walk Y — his feet land on
-/// the island (the engine places the figure's spots well above the island's top row).
-fn johnny_pose(phase: u8) -> BmpImage {
-    let fig = johnny_figure(phase);
+/// A recreated castaway pose for the standalone vignettes.
+#[derive(Clone, Copy)]
+enum Pose {
+    Stand,
+    Wave,
+    Fish,
+    Read,
+}
+
+/// Bottom-anchor a 16×32 figure into a 16×64 sprite, so that — blitted by its top-left
+/// at the walk/scene Y — the feet land on the island (the spots sit well above the
+/// island's top row).
+fn embed_tall(fig: &Canvas) -> BmpImage {
     let mut c = Canvas::new(16, 64);
     for y in 0..32 {
         for x in 0..16 {
-            let p = fig.pixels[(y * 16 + x) as usize];
+            let p = fig.px[(y * 16 + x) as usize];
             if p != TRANSPARENT_INDEX {
                 c.set(x, y + 32, p);
             }
@@ -662,9 +670,8 @@ fn johnny_pose(phase: u8) -> BmpImage {
     c.into_image()
 }
 
-/// The 16×32 castaway figure used by [`johnny_pose`].
-fn johnny_figure(phase: u8) -> BmpImage {
-    let mut c = Canvas::new(16, 32);
+/// Head, torso, ragged shorts and legs (with an optional walk `stride`). No arms.
+fn draw_castaway_base(c: &mut Canvas, stride: u8) {
     // Head: hair, face, eyes, a hint of a castaway beard.
     c.rect(5, 1, 6, 3, HAIR);
     c.set(4, 2, HAIR);
@@ -682,15 +689,10 @@ fn johnny_figure(phase: u8) -> BmpImage {
             c.set(x, 16, SHIRT);
         }
     }
-    // Arms + hands.
-    c.rect(3, 9, 1, 7, SKIN);
-    c.rect(12, 9, 1, 7, SKIN);
-    c.set(3, 16, SKIN);
-    c.set(12, 16, SKIN);
     // Ragged shorts.
     c.rect(4, 17, 8, 4, PANTS);
-    // Legs + a small stride offset by phase.
-    let (lf, rf) = match phase % 4 {
+    // Legs + a small stride offset (only the walk poses stride).
+    let (lf, rf) = match stride % 4 {
         1 => (2, -1),
         3 => (-1, 2),
         _ => (0, 0),
@@ -703,18 +705,67 @@ fn johnny_figure(phase: u8) -> BmpImage {
         c.set(9, y, SKIN);
         c.set(10 + rf.clamp(0, 1), y, SKIN);
     }
-    // Feet.
     c.hspan(4 + lf, 7 + lf, 31, SKIN);
     c.hspan(9 + rf, 12 + rf, 31, SKIN);
-    c.into_image()
+}
+
+/// Both arms hanging at the sides.
+fn arms_down(c: &mut Canvas) {
+    c.rect(3, 9, 1, 7, SKIN);
+    c.rect(12, 9, 1, 7, SKIN);
+    c.set(3, 16, SKIN);
+    c.set(12, 16, SKIN);
+}
+
+/// The castaway in a walk phase (used by `JOHNWALK.BMP`), 16×64 bottom-anchored.
+fn johnny_pose(phase: u8) -> BmpImage {
+    let mut c = Canvas::new(16, 32);
+    draw_castaway_base(&mut c, phase);
+    arms_down(&mut c);
+    embed_tall(&c)
+}
+
+/// A recreated action pose for the standalone scenes, 16×64 bottom-anchored. `phase`
+/// drives sub-frame motion (e.g. the wave).
+fn johnny_action(pose: Pose, phase: u8) -> BmpImage {
+    let mut c = Canvas::new(16, 32);
+    draw_castaway_base(&mut c, 0);
+    match pose {
+        Pose::Stand => arms_down(&mut c),
+        Pose::Wave => {
+            // Left arm down, right arm raised and waving.
+            c.rect(3, 9, 1, 7, SKIN);
+            c.set(3, 16, SKIN);
+            let up = if phase.is_multiple_of(2) { 0 } else { 1 };
+            c.line(12, 10, 14, 4 + up, SKIN); // raised arm
+            c.set(14, 3 + up, SKIN); // hand
+        }
+        Pose::Fish => {
+            // Both hands forward (right), holding a rod angled up to the corner.
+            c.rect(12, 11, 1, 3, SKIN);
+            c.set(13, 11, SKIN);
+            c.line(12, 12, 15, 3, TRUNK_HI); // rod
+            c.line(15, 3, 15, 15, FOAM); // line down to the water
+        }
+        Pose::Read => {
+            // Hands forward holding an open book at chest height.
+            c.rect(3, 11, 1, 3, SKIN);
+            c.rect(12, 11, 1, 3, SKIN);
+            c.rect(4, 11, 8, 4, FOAM); // pages
+            c.set(7, 11, ROCK); // spine
+            c.set(8, 11, ROCK);
+        }
+    }
+    embed_tall(&c)
 }
 
 fn op(c: u16) -> [u8; 2] {
     c.to_le_bytes()
 }
 
-/// A TTM that draws the castaway standing (gently bobbing) for a few frames.
-fn jdemo_ttm() -> Ttm {
+/// A TTM that animates the castaway through `steps` of `(sprite_frame, y)`, drawing
+/// `JDEMO.BMP` frame `sprite_frame` at `(312, y)` each step (gently bobbing/acting).
+fn vignette_ttm(steps: &[(u16, u16)]) -> Ttm {
     let mut code = Vec::new();
     code.extend_from_slice(&op(0x1111)); // TAG 1
     code.extend_from_slice(&1u16.to_le_bytes());
@@ -724,11 +775,11 @@ fn jdemo_ttm() -> Ttm {
     code.extend_from_slice(b"JDEMO.BMP\0"); // 10 bytes (even)
     code.extend_from_slice(&op(0x1021)); // SET_DELAY 8
     code.extend_from_slice(&8u16.to_le_bytes());
-    for y in [250u16, 246, 250] {
-        code.extend_from_slice(&op(0xA601)); // CLEAR_SCREEN 0
+    for &(frame, y) in steps {
+        code.extend_from_slice(&op(0xA601)); // CLEAR_SCREEN
         code.extend_from_slice(&0u16.to_le_bytes());
-        code.extend_from_slice(&op(0xA504)); // DRAW_SPRITE 312 y 0 0
-        for v in [312u16, y, 0, 0] {
+        code.extend_from_slice(&op(0xA504)); // DRAW_SPRITE 312 y frame 0
+        for v in [312u16, y, frame, 0] {
             code.extend_from_slice(&v.to_le_bytes());
         }
         code.extend_from_slice(&op(0x0FF0)); // UPDATE
@@ -739,13 +790,48 @@ fn jdemo_ttm() -> Ttm {
         bytecode: code,
         tags: vec![Tag {
             id: 1,
-            description: "stand".into(),
+            description: "vignette".into(),
         }],
     }
 }
 
-/// A minimal ADS that plays the standing TTM once (works for any requested tag).
-fn demo_ads() -> Ads {
+/// The recreated vignette TTMs, by name (each plays a distinct action).
+fn vignette_ttms() -> Vec<(String, Ttm)> {
+    // JDEMO.BMP frames: 0 = stand, 1 = wave, 2 = fish, 3 = read.
+    vec![
+        (
+            "STAND.TTM".to_string(),
+            vignette_ttm(&[(0, 250), (0, 247), (0, 250)]),
+        ),
+        // Wave: alternate the raised-arm frame with the arm-down stand frame.
+        (
+            "WAVE.TTM".to_string(),
+            vignette_ttm(&[(1, 250), (0, 250), (1, 250), (0, 250)]),
+        ),
+        (
+            "FISH.TTM".to_string(),
+            vignette_ttm(&[(2, 250), (2, 248), (2, 250)]),
+        ),
+        (
+            "READ.TTM".to_string(),
+            vignette_ttm(&[(3, 250), (3, 249), (3, 250)]),
+        ),
+    ]
+}
+
+/// The recreated action that best fits each `.ADS` category.
+fn ttm_for_ads(ads_name: &str) -> &'static str {
+    match ads_name {
+        "FISHING.ADS" => "FISH.TTM",
+        "ACTIVITY.ADS" => "READ.TTM",
+        "STAND.ADS" | "WALKSTUF.ADS" | "BUILDING.ADS" => "STAND.TTM",
+        // Story/character/visitor/gag scenes: a friendly wave.
+        _ => "WAVE.TTM",
+    }
+}
+
+/// A minimal ADS that plays `ttm_name` once (works for any requested tag).
+fn demo_ads(ttm_name: &str) -> Ads {
     let mut code = Vec::new();
     code.extend_from_slice(&op(0x0001)); // tag 1
     code.extend_from_slice(&op(0x2005)); // ADD_SCENE slot1 tag1 0 0
@@ -758,7 +844,7 @@ fn demo_ads() -> Ads {
         version: "1.20".into(),
         resources: vec![AdsRes {
             id: 1,
-            name: "JDEMO.TTM".into(),
+            name: ttm_name.to_string(),
         }],
         bytecode: code,
         tags: vec![Tag {
@@ -792,7 +878,13 @@ pub fn demo_archive() -> (Archive, Palette) {
                 Bmp {
                     width: 16,
                     height: 64,
-                    images: vec![johnny_pose(0)],
+                    // Action poses: 0 = stand, 1 = wave, 2 = fish, 3 = read.
+                    images: vec![
+                        johnny_action(Pose::Stand, 0),
+                        johnny_action(Pose::Wave, 0),
+                        johnny_action(Pose::Fish, 0),
+                        johnny_action(Pose::Read, 0),
+                    ],
                 },
             ),
             (
@@ -800,7 +892,7 @@ pub fn demo_archive() -> (Archive, Palette) {
                 Bmp {
                     width: 16,
                     height: 64,
-                    // 64 frames (walk sprite ids are < 64); cycle four poses.
+                    // 64 frames (walk sprite ids are < 64); cycle four walk poses.
                     images: (0..64).map(|i| johnny_pose((i % 4) as u8)).collect(),
                 },
             ),
@@ -811,10 +903,11 @@ pub fn demo_archive() -> (Archive, Palette) {
             ("OCEAN02.SCR".to_string(), ocean_scr(0x0C0F_FEE1)),
             ("NIGHT.SCR".to_string(), night_scr()),
         ],
-        ttms: vec![("JDEMO.TTM".to_string(), jdemo_ttm())],
+        ttms: vignette_ttms(),
+        // Each scene category plays its fitting recreated action.
         ads: ads_names
             .iter()
-            .map(|n| (n.to_string(), demo_ads()))
+            .map(|n| (n.to_string(), demo_ads(ttm_for_ads(n))))
             .collect(),
         ..Default::default()
     };
@@ -854,6 +947,40 @@ mod tests {
         for idx in [0usize, 12, 13, 14, 3, 30, 41] {
             assert!(sheet.images[idx].width > 1, "sprite {idx} is a placeholder");
         }
+    }
+
+    #[test]
+    fn recreated_scenes_vary_by_category() {
+        // Different scene categories play different recreated actions.
+        assert_eq!(ttm_for_ads("FISHING.ADS"), "FISH.TTM");
+        assert_eq!(ttm_for_ads("ACTIVITY.ADS"), "READ.TTM");
+        assert_eq!(ttm_for_ads("STAND.ADS"), "STAND.TTM");
+        assert_eq!(ttm_for_ads("MARY.ADS"), "WAVE.TTM");
+        assert_ne!(ttm_for_ads("FISHING.ADS"), ttm_for_ads("ACTIVITY.ADS"));
+
+        // Every referenced TTM exists in the pack.
+        let (archive, _) = demo_archive();
+        for name in ["STAND.TTM", "WAVE.TTM", "FISH.TTM", "READ.TTM"] {
+            assert!(archive.ttm(name).is_some(), "missing {name}");
+        }
+        // Each ADS references the action chosen for its category.
+        for (name, ads) in &archive.ads {
+            assert_eq!(ads.resources[0].name, ttm_for_ads(name));
+        }
+    }
+
+    #[test]
+    fn action_poses_are_distinct() {
+        // JDEMO has the four action poses, and they actually differ.
+        let (archive, _) = demo_archive();
+        let jdemo = archive.bmp("JDEMO.BMP").unwrap();
+        assert_eq!(jdemo.images.len(), 4);
+        let stand = &johnny_action(Pose::Stand, 0).pixels;
+        let fish = &johnny_action(Pose::Fish, 0).pixels;
+        let read = &johnny_action(Pose::Read, 0).pixels;
+        assert_ne!(stand, fish);
+        assert_ne!(stand, read);
+        assert_ne!(fish, read);
     }
 
     #[test]

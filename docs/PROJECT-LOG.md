@@ -6,6 +6,36 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-14 — Pack recriado: ações por categoria (parar de só ficar parado)
+
+**Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #21).
+
+Primeiro passo para fechar a paridade *visual* do pack recriado (ver [09](knowledge-base/09-paridade-e-easter-eggs.md)).
+Antes, **todas** as cenas tocavam o mesmo TTM (Johnny parado); agora cada **categoria de
+`.ADS`** toca uma **ação recriada distinta**.
+
+- **`assets.rs`**: 4 poses do náufrago (`Pose::{Stand,Wave,Fish,Read}`) desenhadas a
+  partir de uma base comum (`draw_castaway_base` + braços/props por pose: braço erguido
+  acenando, vara de pesca com linha, livro aberto). `JDEMO.BMP` agora tem as 4 poses.
+- **`vignette_ttm(steps)`**: TTM genérico que cicla `(frame, y)` — `DRAW_SPRITE` usa o
+  arg `frame` para escolher a pose (descoberto em `ttm_exec`). Quatro vinhetas:
+  `STAND/WAVE/FISH/READ.TTM` (acenar alterna pose erguida/baixa; as outras "respiram").
+- **`ttm_for_ads`**: mapeia categoria→ação — FISHING→pescar, ACTIVITY→ler,
+  STAND/WALKSTUF/BUILDING→parado, e cenas de personagem/visitante/gag→acenar. Cada
+  `.ADS` referencia o TTM da sua categoria.
+
+Validado **visualmente** (pose sheet renderizado: as 4 poses são distintas e
+reconhecíveis). **109 testes** (39 wilson [+2: variedade por categoria, poses distintas]
++ 35 dgds + 35 engine). fmt, clippy `-D warnings` (com **e** sem `audio`), `build
+--release`.
+
+> Ainda é o começo: as ações são por *categoria* (não por cena), e a arte é 16×64. Os
+> próximos passos (personagens Mary/Suzy, visitantes, easter eggs raros) seguem no doc 09.
+
+**Próximo:** mais ações/cenas recriadas e demais melhorias.
+
+---
+
 ## 2026-06-14 — Auditoria de paridade e easter eggs (knowledge-base 09)
 
 **Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #20).
