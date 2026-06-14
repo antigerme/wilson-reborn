@@ -25,7 +25,7 @@ plataformas (`.scr` Win / Linux / standalone / web).
 
 Crates planejados:
 - `wilson-dgds` — formatos + descompressão + recursos. **(camada de recursos completa)**
-- `wilson-engine` — VMs TTM/ADS + diretor/story + walk + ilha. *(planejado)*
+- `wilson-engine` — VMs TTM/ADS + diretor/story + walk + ilha. **(TTM VM headless + `Surface` prontos; ADS/walk/ilha pendentes)**
 - `wilson-render` — trait de backend (pixels/wgpu/canvas). *(planejado)*
 - `wilson` — binário/app + modos screensaver. *(planejado)*
 
@@ -36,8 +36,9 @@ Crates planejados:
 | KB | Base de conhecimento | ✅ concluída (merged) |
 | **0** | **Camada de dados** (`RESOURCE.*`, RLE/LZW, chunks, PAL) | ✅ concluída (PR #2) |
 | **1a** | **Parsers `.BMP/.SCR/.TTM/.ADS` + `Archive`** | ✅ concluída (PR #3) |
-| **1b** | **Decodificar bytecode TTM/ADS → instruções (disassembler)** | ✅ concluída |
-| 1c | Interpretadores (VMs) TTM/ADS executáveis | 🟡 **próximo** |
+| **1b** | **Decodificar bytecode TTM/ADS → instruções (disassembler)** | ✅ concluída (PR #4) |
+| **1c** | **Interpretador TTM executável (headless, 1 thread) + `Surface`** | ✅ concluída |
+| 1d | Escalonador ADS (multi-thread + composição de camadas) | 🟡 **próximo** |
 | 2 | Render em camadas + paleta + sprites + som | ⬜ |
 | 3 | Ilha/maré/noite/nuvens + walk/pathfinding | ⬜ |
 | 4 | Diretor (ciclo 11 dias, feriados) → **paridade** | ⬜ |

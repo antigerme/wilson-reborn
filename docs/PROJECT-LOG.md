@@ -6,6 +6,33 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-14 — Fase 1c: interpretador TTM headless + `Surface` (novo crate `wilson-engine`)
+
+**Branch `claude/engine-ttm-vm`** (a partir da `main` pós-merge do PR #4).
+
+Primeiro crate de runtime. Executa **uma thread TTM** desenhando numa `Surface`
+indexada (headless, sem janela/GPU) — núcleo da animação, testável de forma
+determinística. Porte fiel de `ttm.c`/`graphics.c`:
+- `surface`: framebuffer indexado + primitivas (pixel, linha/círculo Bresenham, rect
+  com clip, blit com cor-chave + flip), composição de camadas e `to_rgba` (paleta).
+  `TRANSPARENT = 0xFF` (sentinela; cor-chave magenta do original).
+- `ttm_vm`: `TtmVm::step()` roda opcodes até `UPDATE` (frame) ou fim; resolve
+  `LOAD_SCREEN`/`LOAD_IMAGE` via `Archive`; `DRAW_SPRITE x,y,frame(slot interno),slot`;
+  coords assinadas + offset `dx/dy`; clip só afeta rect+sprite (como no original);
+  `PLAY_SAMPLE` vira evento de som no frame; `PURGE`/fim → `Finished`.
+- Pendentes para fases seguintes (no-op por ora, como o original já faz nos seus
+  stubs): saved-zones (`COPY_ZONE_TO_BG`/`SAVE_ZONE`), e looping por `sceneTimer`
+  (é responsabilidade do ADS).
+
+**43 testes** (34 dgds + 9 engine), incl. fim-a-fim load→draw→update com
+transparência e composição. Validado local: fmt, clippy `-D warnings`, build release,
+43/43 testes.
+
+**Próximo:** Fase 1d — escalonador ADS (até 10 threads TTM + composição de camadas +
+encadeamento reativo/RANDOM), usando `decode_ads`.
+
+---
+
 ## 2026-06-14 — Fase 1b: disassembler de bytecode TTM/ADS (crate `wilson-dgds`)
 
 **Branch `claude/dgds-bytecode-decoder`** (a partir da `main` pós-merge do PR #3).
