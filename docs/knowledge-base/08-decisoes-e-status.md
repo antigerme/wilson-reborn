@@ -49,8 +49,8 @@ Crates planejados:
 | **2a** | **Integração (`Show`): diretor + ilha + walk + ADS → fluxo de frames** | ✅ concluída (PR #11) |
 | **2b** | **App `wilson`: janela ao vivo (winit + softbuffer) + asset pack recriado + loader `RESOURCE.*`** | ✅ concluída (PR #12) |
 | **2c** | **Validação contra dados REAIS (teste gated) + escala 4:3 (letterbox)** | ✅ concluída — **engine renderiza o Johnny original** |
-| 2d | Polir: som, persistência do dia, arte recriada melhor, empacotamento `.scr` | 🟡 **em curso** — ✅ **som** · ✅ **persistência do dia** · ✅ **arte recriada melhor** · ✅ **polimento funcional** (config `config.rs`: tela cheia, escala fit/stretch/integer, mute, velocidade); próximo: dia-noite 24h, empacotamento `.scr` |
-| 3 | Empacotamento (Win/Linux/web/WASM) + assets → **paridade jogável** | ⬜ |
+| 2d | Polir: som, persistência do dia, arte recriada, polimento funcional | ✅ concluída — som · persistência · arte recriada · config/opções |
+| 3 | Empacotamento (Win/Linux/web/WASM) + assets → **paridade jogável** | 🟡 **em curso** — ✅ **release CI** (`release.yml`: `wilson.scr` Windows + binário Linux em tag/dispatch); falta web/WASM |
 | 4 | Melhorias (HD, dia/noite 24h, config UI, estatísticas, etc.) | 🟡 **em curso** — o usuário pediu **todas as melhorias** (em incrementos): ✅ config/opções · ✅ **ciclo dia-noite 24h** (opção `daynight`, preservando o de 8h); próximo: empacotamento `.scr`, HD, estatísticas |
 
 ## Validação de dados reais ✅
