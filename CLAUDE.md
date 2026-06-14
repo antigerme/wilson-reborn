@@ -79,7 +79,9 @@ instalação em `docs/INSTALL.md`. **Estatísticas** (`stats.rs`): sessões, tem
 maior dia, persistidas em `stats.txt` e exibidas no `/c`. **Auditoria de paridade**
 (knowledge-base [09](docs/knowledge-base/09-paridade-e-easter-eggs.md)): com `--data` o
 engine roda os scripts originais ⇒ **paridade total de conteúdo**; o pack recriado tem
-lógica completa mas visual placeholder (recriar as 63 animações é trabalho futuro).
-**107 testes**, CI verde. **Próximo:** animações recriadas por categoria e demais
-melhorias (o usuário pediu **todas**, em incrementos). HD por render interno adiado
-(engine 640×480; escala já cobre telas grandes).
+lógica completa mas visual placeholder. **Ações recriadas por categoria** (`assets.rs`):
+4 poses (`Pose::{Stand,Wave,Fish,Read}`) + `vignette_ttm` + `ttm_for_ads` ⇒ cada cena do
+pack standalone mostra uma ação (pescar/ler/acenar/parado) em vez de só ficar parado.
+**109 testes**, CI verde. **Próximo:** personagens (Mary/Suzy)/visitantes recriados e
+demais melhorias (o usuário pediu **todas**, em incrementos). HD interno adiado (engine
+640×480; escala já cobre telas grandes).
