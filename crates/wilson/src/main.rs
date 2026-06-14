@@ -95,7 +95,7 @@ fn main() {
                         let frame = show.next_frame(&archive);
                         let rgba = frame.surface.to_rgba(&palette);
                         let mut buffer = surface.buffer_mut().expect("surface buffer");
-                        scale::scale_rgba_to_argb(
+                        scale::scale_rgba_to_argb_fit(
                             &rgba,
                             640,
                             480,
