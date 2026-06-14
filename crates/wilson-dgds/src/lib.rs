@@ -27,7 +27,7 @@ pub mod resource;
 pub mod scr;
 pub mod ttm;
 
-pub use ads::{Ads, AdsRes};
+pub use ads::{ads_opcode_info, decode_ads, Ads, AdsInstruction, AdsRes};
 pub use archive::Archive;
 pub use bmp::{Bmp, BmpImage};
 pub use error::{DgdsError, Result};
@@ -38,4 +38,4 @@ pub use resource::{
     read_entry_header, resource_extension, ResourceEntry, ResourceMap, ResourceMapEntry, Tag,
 };
 pub use scr::Scr;
-pub use ttm::Ttm;
+pub use ttm::{decode_ttm, ttm_opcode_name, Ttm, TtmArgs, TtmInstruction};

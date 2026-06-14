@@ -6,6 +6,28 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-14 — Fase 1b: disassembler de bytecode TTM/ADS (crate `wilson-dgds`)
+
+**Branch `claude/dgds-bytecode-decoder`** (a partir da `main` pós-merge do PR #3).
+
+Decodifica os bytecodes (que a Fase 1a expôs como bytes) em **instruções tipadas**:
+- `ttm`: `decode_ttm` / `TtmInstruction` / `TtmArgs` (`Words`/`Str`) + `ttm_opcode_name`.
+  Regra: nibble baixo = nº de args; `0xF` = string NUL-terminada com padding par.
+- `ads`: `decode_ads` / `AdsInstruction` + `ads_opcode_info` (nome + nº de args fixo).
+  Opcodes fora da tabela = `:TAG` (0 args), como no disassembler de referência.
+- Conveniências `Ttm::instructions()` / `Ads::instructions()`.
+
+Espelha exatamente `repos/jc_reborn/dump.c` (dumpTtm/dumpAds). Args ficam como `u16`
+crus (o sinal — ex.: arg3 de `ADD_SCENE` — é reinterpretado pelo futuro interpretador).
+**34 testes** (era 30): args/strings TTM (padding par/ímpar), opcode desconhecido
+consome args, opcodes/tag ADS e arg3 negativo.
+Validado local: fmt, clippy `-D warnings`, build release, 34/34 testes.
+
+**Próximo:** Fase 1c — interpretadores executáveis (precisam de uma abstração de
+render/áudio; provável novo crate `wilson-engine`).
+
+---
+
 ## 2026-06-14 — Fase 1a: parsers de recursos + Archive (crate `wilson-dgds`)
 
 **Branch `claude/dgds-resource-parsers`** (a partir da `main` pós-merge do PR #2).

@@ -84,6 +84,81 @@ impl Ads {
     }
 }
 
+/// One decoded ADS instruction: a 16-bit opcode and its operands.
+///
+/// Opcodes not in the known table are labelled `"TAG"` and carry no operands
+/// (mirrors the reference disassembler in `repos/jc_reborn/dump.c`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AdsInstruction {
+    /// The 16-bit opcode (or tag id, for the default case).
+    pub opcode: u16,
+    /// The decoded operands (raw 16-bit values; some are interpreted as signed).
+    pub args: Vec<u16>,
+}
+
+impl AdsInstruction {
+    /// Human-readable mnemonic, or `"TAG"` for label/tag ids.
+    pub fn name(&self) -> &'static str {
+        ads_opcode_info(self.opcode).map_or("TAG", |(name, _)| name)
+    }
+
+    /// Whether this is a label/tag id rather than a known opcode.
+    pub fn is_tag(&self) -> bool {
+        ads_opcode_info(self.opcode).is_none()
+    }
+}
+
+impl Ads {
+    /// Decode this resource's bytecode into a list of instructions.
+    pub fn instructions(&self) -> Result<Vec<AdsInstruction>> {
+        decode_ads(&self.bytecode)
+    }
+}
+
+/// Mnemonic and fixed operand count for a known ADS opcode, or `None` if the value
+/// should be treated as a label/tag id (per `repos/jc_reborn/dump.c`).
+pub fn ads_opcode_info(opcode: u16) -> Option<(&'static str, usize)> {
+    Some(match opcode {
+        0x1070 => ("IF_LASTPLAYED_LOCAL", 2),
+        0x1330 => ("IF_UNKNOWN_1", 2),
+        0x1350 => ("IF_LASTPLAYED", 2),
+        0x1360 => ("IF_NOT_RUNNING", 2),
+        0x1370 => ("IF_IS_RUNNING", 2),
+        0x1420 => ("AND", 0),
+        0x1430 => ("OR", 0),
+        0x1510 => ("PLAY_SCENE", 0),
+        0x1520 => ("ADD_SCENE_LOCAL", 5),
+        0x2005 => ("ADD_SCENE", 4),
+        0x2010 => ("STOP_SCENE", 3),
+        0x2014 => ("UNKNOWN_5", 0),
+        0x3010 => ("RANDOM_START", 0),
+        0x3020 => ("NOP", 1),
+        0x30FF => ("RANDOM_END", 0),
+        0x4000 => ("UNKNOWN_6", 3),
+        0xF010 => ("FADE_OUT", 0),
+        0xF200 => ("GOSUB_TAG", 1),
+        0xFFFF => ("END", 0),
+        0xFFF0 => ("END_IF", 0),
+        _ => return None,
+    })
+}
+
+/// Decode an ADS bytecode stream into instructions.
+pub fn decode_ads(bytecode: &[u8]) -> Result<Vec<AdsInstruction>> {
+    let mut r = Reader::new(bytecode);
+    let mut out = Vec::new();
+    while !r.is_empty() {
+        let opcode = r.u16()?;
+        let num_args = ads_opcode_info(opcode).map_or(0, |(_, n)| n);
+        let mut args = Vec::with_capacity(num_args);
+        for _ in 0..num_args {
+            args.push(r.u16()?);
+        }
+        out.push(AdsInstruction { opcode, args });
+    }
+    Ok(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -125,5 +200,40 @@ mod tests {
         assert_eq!(ads.resources[0].name, "FISHING.TTM");
         assert_eq!(ads.bytecode, vec![0x05, 0x20, 0xFF, 0xFF]);
         assert_eq!(ads.tags[0].description, "fish");
+    }
+
+    #[test]
+    fn decode_opcodes_and_tag() {
+        let mut code = Vec::new();
+        // ADD_SCENE 1 2 0xFFFD 0  (arg3 = -3 as u16)
+        code.extend_from_slice(&0x2005u16.to_le_bytes());
+        for v in [1u16, 2, 0xFFFD, 0] {
+            code.extend_from_slice(&v.to_le_bytes());
+        }
+        // RANDOM_START
+        code.extend_from_slice(&0x3010u16.to_le_bytes());
+        // NOP 7
+        code.extend_from_slice(&0x3020u16.to_le_bytes());
+        code.extend_from_slice(&7u16.to_le_bytes());
+        // RANDOM_END
+        code.extend_from_slice(&0x30FFu16.to_le_bytes());
+        // a tag id (default case): 0x0005 -> "TAG", no args
+        code.extend_from_slice(&0x0005u16.to_le_bytes());
+        // END
+        code.extend_from_slice(&0xFFFFu16.to_le_bytes());
+
+        let ins = decode_ads(&code).unwrap();
+        assert_eq!(ins.len(), 6);
+        assert_eq!(ins[0].name(), "ADD_SCENE");
+        assert_eq!(ins[0].args, vec![1, 2, 0xFFFD, 0]);
+        assert_eq!(ins[0].args[2] as i16, -3); // arg3 is signed in practice
+        assert_eq!(ins[1].name(), "RANDOM_START");
+        assert_eq!(ins[2].name(), "NOP");
+        assert_eq!(ins[2].args, vec![7]);
+        assert_eq!(ins[3].name(), "RANDOM_END");
+        assert!(ins[4].is_tag());
+        assert_eq!(ins[4].opcode, 5);
+        assert_eq!(ins[4].name(), "TAG");
+        assert_eq!(ins[5].name(), "END");
     }
 }
