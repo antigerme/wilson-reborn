@@ -49,7 +49,7 @@ Crates planejados:
 | **2a** | **Integração (`Show`): diretor + ilha + walk + ADS → fluxo de frames** | ✅ concluída (PR #11) |
 | **2b** | **App `wilson`: janela ao vivo (winit + softbuffer) + asset pack recriado + loader `RESOURCE.*`** | ✅ concluída (PR #12) |
 | **2c** | **Validação contra dados REAIS (teste gated) + escala 4:3 (letterbox)** | ✅ concluída — **engine renderiza o Johnny original** |
-| 2d | Polir: som, persistência do dia, arte recriada melhor, empacotamento `.scr` | 🟡 **em curso** — ✅ **som** (`rodio`/`audio`) · ✅ **persistência do dia** (`state.rs`, arco de 11 dias entre sessões); próximo: arte recriada melhor |
+| 2d | Polir: som, persistência do dia, arte recriada melhor, empacotamento `.scr` | 🟡 **em curso** — ✅ **som** (`rodio`/`audio`) · ✅ **persistência do dia** (`state.rs`) · ✅ **arte recriada melhor** (céu+ilha+palmeira procedurais; feriados visíveis); próximo: empacotamento `.scr` |
 | 3 | Empacotamento (Win/Linux/web/WASM) + assets → **paridade jogável** | ⬜ |
 | 4 | Melhorias (HD, dia/noite 24h, config UI, estatísticas, etc.) | ⬜ |
 

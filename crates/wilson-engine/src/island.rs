@@ -125,7 +125,8 @@ impl Island {
             island.animate_waves();
         }
 
-        // Holiday prop on its own layer.
+        // Holiday prop. Kept on its own layer (for callers that want it) and also
+        // baked into the scene background so it actually appears (behind Johnny).
         if state.holiday != Holiday::None {
             let mut layer = Surface::new(width, height, TRANSPARENT);
             let holiday = load_remapped(archive, "HOLIDAY.BMP", transparent_src)?;
@@ -137,6 +138,14 @@ impl Island {
                 Holiday::None => unreachable!(),
             };
             draw(&mut layer, &holiday, sprite, x + dx, y + dy, false);
+            draw(
+                &mut island.background,
+                &holiday,
+                sprite,
+                x + dx,
+                y + dy,
+                false,
+            );
             island.holiday = Some(layer);
         }
 
