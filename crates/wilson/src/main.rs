@@ -14,6 +14,7 @@ mod assets;
 mod audio;
 mod clock;
 mod scale;
+mod state;
 
 use std::num::NonZeroU32;
 use std::rc::Rc;
@@ -59,7 +60,11 @@ fn main() {
     };
 
     let clock = clock::now();
-    let director = Director::new(1, clock.yday);
+    // Resume the 11-day story arc from the last session, if we saved one.
+    let director = match state::DayState::load() {
+        Some(s) => Director::new(s.current_day, s.stored_yday),
+        None => Director::new(1, clock.yday),
+    };
     let seed = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_nanos() as u64)
@@ -69,6 +74,10 @@ fn main() {
     // Sound effects are loaded from the data dir (originals carry `soundN.wav`); the
     // player degrades to silence without the `audio` feature, a device, or the files.
     let audio = audio::Audio::new(data_dir.as_deref().map(std::path::Path::new));
+
+    // Persist the story day whenever it advances, so the arc carries over to the next
+    // run. `None` until the first frame establishes today's day.
+    let mut last_saved: Option<(u8, i32)> = None;
 
     let event_loop = EventLoop::new().expect("failed to create event loop");
     let window = Rc::new(
@@ -97,9 +106,21 @@ fn main() {
                         (NonZeroU32::new(size.width), NonZeroU32::new(size.height))
                     {
                         surface.resize(w, h).expect("resize surface");
+                        // Refresh the wall clock so the story day rolls over at midnight
+                        // even within a single long-running session.
+                        show.set_clock(clock::now());
                         let frame = show.next_frame(&archive);
                         for &id in &frame.sounds {
                             audio.play(id);
+                        }
+                        let (day, yday) = show.day_state();
+                        if last_saved != Some((day, yday)) {
+                            state::DayState {
+                                current_day: day,
+                                stored_yday: yday,
+                            }
+                            .save();
+                            last_saved = Some((day, yday));
                         }
                         let rgba = frame.surface.to_rgba(&palette);
                         let mut buffer = surface.buffer_mut().expect("surface buffer");
