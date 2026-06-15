@@ -23,7 +23,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install Linux audio dependencies
         # ALSA dev headers for the optional `audio` feature (rodio/cpal) on Linux.
@@ -64,7 +64,7 @@ jobs:
         # alsa-lib-devel + pkgconf for the optional `audio` feature (rodio/cpal).
         run: dnf -y install gcc git wayland-devel libxkbcommon-devel libX11-devel alsa-lib-devel pkgconf-pkg-config
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install Rust toolchain (rustup)
         run: |
