@@ -87,6 +87,7 @@ cenas de `MARY.ADS` (JDEMO frame 4). **Visitantes** (`boat_sprite`/`visit_ttm`, 
 frame 5): um barco se aproxima da ilha nas cenas de `VISITOR.ADS`. **Suzy + cutaway**
 (`suzy_sprite`/`suzy_ttm`/`beach_scr`=`BEACH.SCR`, JDEMO frame 6, cor `PINK`): cenas
 off-island agora usam `LOAD_SCREEN` p/ um cenário de praia (corrige o fundo preto).
-**109 testes**, CI verde. **Próximo:** easter eggs recriados (SOS na garrafa, dança da
-chuva) e demais melhorias (o usuário pediu **todas**, em incrementos). HD interno adiado
-(engine 640×480; escala cobre telas grandes).
+**Easter egg dança da chuva** (`raincloud_sprite`/`bolt_sprite`/`raindance_ttm`, JDEMO
+frames 7-8): nuvem→raio em `MISCGAG.ADS`. **109 testes**, CI verde. **Próximo:** mais
+easter eggs (SOS na garrafa) e demais melhorias (o usuário pediu **todas**, em
+incrementos). HD interno adiado (engine 640×480; escala cobre telas grandes).
