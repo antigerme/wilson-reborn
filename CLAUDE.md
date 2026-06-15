@@ -42,6 +42,10 @@ WILSON_DATA_DIR=<dir> cargo test -p wilson-dgds --test real_data -- --nocapture 
 
 ## Regras de trabalho (combinadas com o usuário)
 - **Sempre 100% → 100%:** cada incremento compila, passa lint e testes (local **e** CI).
+- **⚠️ Todo bug encontrado entra com teste de regressão que FALHA sem o fix** (verificar que
+  falha antes de aplicar a correção) — para nunca reverter algo já corrigido. Vale também
+  para invariantes de workflow/CI (ex.: lint do `release.yml`). (Pedido do usuário,
+  2026-06-15.)
 - **CI do GitHub** roda em `ubuntu-latest`, `windows-latest`, `fedora-latest`
   (container `fedora:latest`) e `macos-latest` — `.github/workflows/ci.yml`.
   Se o CI falhar, **resolver**.
