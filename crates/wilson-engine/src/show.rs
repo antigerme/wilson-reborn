@@ -697,4 +697,55 @@ mod tests {
         assert_eq!(ads_offset((-272, 0), true), (0, 0));
         assert_eq!(ads_offset((-100, -30), true), (172, -30));
     }
+
+    #[test]
+    fn real_data_timing_is_paced_like_jc_reborn() {
+        // Gated: only runs when WILSON_DATA_DIR points at the original data.
+        //
+        // jc_reborn waits `grUpdateDelay * 20 ms` between display updates, where
+        // `grUpdateDelay` is the shortest pending thread delay (`ads.c`). Our engine
+        // mirrors this: `AdsFrame::delay_ticks == mini`, and the host waits
+        // `ticks * 20 ms` (`config::frame_delay_ms`). This asserts the *engine* emits a
+        // human-visible pace — so once the host honours `delay_ticks` (the winit loop
+        // must not redraw faster than the timer) the playback speed matches the original.
+        let Some(dir) = std::env::var_os("WILSON_DATA_DIR") else {
+            return;
+        };
+        let dir = std::path::PathBuf::from(dir);
+        let map = std::fs::read(wilson_dgds::find_ci(&dir, "RESOURCE.MAP").expect("RESOURCE.MAP"))
+            .expect("read map");
+        let rm = wilson_dgds::ResourceMap::parse(&map).expect("parse map");
+        let data =
+            std::fs::read(wilson_dgds::find_ci(&dir, &rm.data_file_name).expect("data file"))
+                .expect("read data");
+        let arch = Archive::parse(&map, &data).expect("parse archive");
+        let pal = arch.palette().cloned().expect("palette");
+
+        let director = Director::new(1, 0);
+        let clock = Clock {
+            yday: 0,
+            hour: 12,
+            month: 6,
+            day: 14,
+        };
+        let mut show = Show::new(&arch, &pal, 640, 480, director, clock, 7);
+
+        const N: u32 = 3000;
+        let mut total_ticks = 0u64;
+        let mut max_ticks = 0u16;
+        for _ in 0..N {
+            let f = show.next_frame(&arch);
+            total_ticks += u64::from(f.delay_ticks);
+            max_ticks = max_ticks.max(f.delay_ticks);
+        }
+        let total_ms = total_ticks * 20;
+        let avg_ms = total_ms as f64 / f64::from(N);
+        eprintln!(
+            "real-data pace: {N} frames over {:.1}s, avg {avg_ms:.0} ms/frame, max {} ms",
+            total_ms as f64 / 1000.0,
+            u32::from(max_ticks) * 20
+        );
+        // A real, contemplative pace — not the uncapped spin of the old winit loop.
+        assert!(avg_ms >= 50.0, "engine pace too fast: {avg_ms:.0} ms/frame");
+    }
 }
