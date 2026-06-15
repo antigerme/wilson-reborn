@@ -59,6 +59,42 @@ impl Island {
             }
         }
 
+        // The OCEAN screens use the magenta colour key (index 0) for the strip the island
+        // normally covers. When the island drifts (VARPOS), that strip is uncovered — and
+        // since the background is opaque, the bare key would render as magenta (jc_reborn
+        // has the same quirk). Fill those holes with the nearest sea pixel above (then
+        // below) so the exposed water blends in. No-op for NIGHT.SCR (no key pixels).
+        if let Some(key) = transparent_src {
+            let (w, h) = (i32::from(width), i32::from(height));
+            for x in 0..w {
+                let mut last: Option<u8> = None;
+                for y in 0..h {
+                    match background.get(x, y) {
+                        Some(p) if p == key => {
+                            if let Some(fill) = last {
+                                background.put_pixel(x, y, fill);
+                            }
+                        }
+                        Some(p) => last = Some(p),
+                        None => {}
+                    }
+                }
+                // Holes above the first sea pixel (rare): fill upward from below.
+                let mut last: Option<u8> = None;
+                for y in (0..h).rev() {
+                    match background.get(x, y) {
+                        Some(p) if p == key => {
+                            if let Some(fill) = last {
+                                background.put_pixel(x, y, fill);
+                            }
+                        }
+                        Some(p) => last = Some(p),
+                        None => {}
+                    }
+                }
+            }
+        }
+
         // Raft (its own sheet), offset by the island position.
         let raft = load_remapped(archive, "MRAFT.BMP", transparent_src)?;
         if state.raft >= 1 {
@@ -444,5 +480,49 @@ mod tests {
         assert_eq!(layer.get(404, 267), Some(5)); // Christmas tree sprite (value 5)
                                                   // Most of the layer is transparent.
         assert_eq!(layer.get(0, 0), Some(TRANSPARENT));
+    }
+
+    #[test]
+    fn ocean_key_holes_are_filled_not_left_as_magenta() {
+        // The OCEAN screens use the magenta key (index 0) for the strip the island
+        // covers; drift exposes it. Island::build must fill those holes with sea, so the
+        // exposed area never renders as the bare magenta key. (NIGHT.SCR has no key, so
+        // it is unaffected — but the OCEAN screens carry ~3% key pixels.)
+        let mut colors = [[0u8; 3]; 256];
+        colors[0] = [168, 0, 168]; // the magenta colour key
+        colors[5] = [0, 0, 200]; // a sea colour
+        let pal = Palette { colors };
+
+        // A screen of sea (index 5) with a horizontal band of key (index 0) in the middle.
+        let (w, h) = (64u16, 64u16);
+        let mut pixels = vec![5u8; w as usize * h as usize];
+        for y in 30..40 {
+            for x in 0..w as usize {
+                pixels[y * w as usize + x] = 0;
+            }
+        }
+        let arch = Archive {
+            bitmaps: vec![
+                ("BACKGRND.BMP".to_string(), solid_bmp(42, 1)),
+                ("MRAFT.BMP".to_string(), solid_bmp(5, 9)),
+            ],
+            screens: vec![(
+                "OCEAN00.SCR".to_string(),
+                Scr {
+                    width: w,
+                    height: h,
+                    pixels,
+                },
+            )],
+            ..Default::default()
+        };
+        let mut rng = Rng::new(1);
+        let isl =
+            Island::build(&arch, &state(false, 0, Holiday::None), &pal, w, h, &mut rng).unwrap();
+        let key_left = isl.background().pixels.iter().filter(|&&p| p == 0).count();
+        assert_eq!(
+            key_left, 0,
+            "magenta-key holes must be filled (found {key_left})"
+        );
     }
 }
