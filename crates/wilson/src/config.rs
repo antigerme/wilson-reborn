@@ -134,7 +134,7 @@ impl Config {
              mute={}\n\
              # speed: playback speed percent ({SPEED_MIN}–{SPEED_MAX}; 100 = original).\n\
              speed={}\n\
-             # scale: how the picture fills the window — fit | stretch | integer.\n\
+             # scale: window fit — fit | stretch | integer | extend (extend fills widescreen).\n\
              scale={}\n\
              # filter: pixel sampling — nearest (crisp/retro) | linear (smooth) | xbr (HD).\n\
              filter={}\n\

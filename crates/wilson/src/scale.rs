@@ -3,7 +3,8 @@
 //!
 //! Two independent choices:
 //! * [`ScaleMode`] — the destination rectangle: aspect-fit with letterbox, stretch-to-
-//!   fill, or largest integer multiple.
+//!   fill, largest integer multiple, or `extend` (aspect-fit but the bars are filled by
+//!   extending the scene's edges — fills a widescreen with no black bars, no distortion).
 //! * [`Filter`] — how source pixels are sampled into that rectangle: `Nearest` (crisp,
 //!   the original 1992 blocky look), `Linear` (bilinear, smooths the upscaled pixels so
 //!   it looks less "80s/90s"), or `Xbr` (an edge-directed pixel-art 2× upscale then a
@@ -20,15 +21,21 @@ pub enum ScaleMode {
     /// Largest whole-number multiple that fits, centred (crisp pixels); falls back
     /// to [`ScaleMode::Fit`] when the window is smaller than the source.
     Integer,
+    /// Like [`ScaleMode::Fit`] (aspect-correct, centred) but the letterbox/pillarbox
+    /// bars are filled by extending the scene's edge pixels — so the sea/sky/horizon
+    /// continue to the screen edges and fill a widescreen with no black bars and no
+    /// distortion (unlike `stretch`).
+    Extend,
 }
 
 impl ScaleMode {
-    /// Parse a mode name (`fit`/`stretch`/`integer`), case-insensitive.
+    /// Parse a mode name (`fit`/`stretch`/`integer`/`extend`), case-insensitive.
     pub fn parse(s: &str) -> Option<ScaleMode> {
         match s.to_ascii_lowercase().as_str() {
             "fit" => Some(ScaleMode::Fit),
             "stretch" | "fill" => Some(ScaleMode::Stretch),
             "integer" | "int" => Some(ScaleMode::Integer),
+            "extend" | "widescreen" => Some(ScaleMode::Extend),
             _ => None,
         }
     }
@@ -39,6 +46,7 @@ impl ScaleMode {
             ScaleMode::Fit => "fit",
             ScaleMode::Stretch => "stretch",
             ScaleMode::Integer => "integer",
+            ScaleMode::Extend => "extend",
         }
     }
 }
@@ -103,6 +111,52 @@ pub fn scale_rgba_to_argb(
         ScaleMode::Fit => scale_rgba_to_argb_fit(src, sw, sh, dst, dw, dh, filter),
         ScaleMode::Stretch => scale_rgba_to_argb_stretch(src, sw, sh, dst, dw, dh, filter),
         ScaleMode::Integer => scale_rgba_to_argb_integer(src, sw, sh, dst, dw, dh, filter),
+        ScaleMode::Extend => scale_rgba_to_argb_extend(src, sw, sh, dst, dw, dh, filter),
+    }
+}
+
+/// Aspect-correct, centred (like [`scale_rgba_to_argb_fit`]) but with the bars filled by
+/// extending the scene's edge pixels — fills a widescreen window with the sea/sky/horizon
+/// instead of black bars, and without the distortion of `stretch`.
+pub fn scale_rgba_to_argb_extend(
+    src: &[u8],
+    sw: usize,
+    sh: usize,
+    dst: &mut [u32],
+    dw: usize,
+    dh: usize,
+    filter: Filter,
+) {
+    if sw == 0 || sh == 0 || dw == 0 || dh == 0 {
+        for p in dst.iter_mut() {
+            *p = 0;
+        }
+        return;
+    }
+    // Same centred rectangle as Fit.
+    let (tw, th) = if dw * sh <= dh * sw {
+        (dw, (dw * sh / sw).max(1))
+    } else {
+        ((dh * sw / sh).max(1), dh)
+    };
+    let ox = (dw - tw) / 2;
+    let oy = (dh - th) / 2;
+    blit_scaled(src, sw, sh, dst, (dw, dh), (ox, oy, tw, th), filter);
+    // Fill the bars by clamping each bar pixel to the nearest edge pixel of the scene
+    // rectangle (so the edge column/row — ocean/sky/horizon — extends outward).
+    if ox == 0 && oy == 0 {
+        return; // the rectangle already covers the whole window (no bars)
+    }
+    for y in 0..dh {
+        let cy = y.clamp(oy, oy + th - 1);
+        let in_rows = y >= oy && y < oy + th;
+        for x in 0..dw {
+            if in_rows && x >= ox && x < ox + tw {
+                continue; // inside the scene rectangle
+            }
+            let cx = x.clamp(ox, ox + tw - 1);
+            dst[y * dw + x] = dst[cy * dw + cx];
+        }
     }
 }
 
@@ -348,12 +402,37 @@ mod tests {
 
     #[test]
     fn mode_parse_round_trips() {
-        for m in [ScaleMode::Fit, ScaleMode::Stretch, ScaleMode::Integer] {
+        for m in [
+            ScaleMode::Fit,
+            ScaleMode::Stretch,
+            ScaleMode::Integer,
+            ScaleMode::Extend,
+        ] {
             assert_eq!(ScaleMode::parse(m.as_str()), Some(m));
         }
         assert_eq!(ScaleMode::parse("FIT"), Some(ScaleMode::Fit));
         assert_eq!(ScaleMode::parse("fill"), Some(ScaleMode::Stretch));
+        assert_eq!(ScaleMode::parse("widescreen"), Some(ScaleMode::Extend));
         assert_eq!(ScaleMode::parse("nope"), None);
+    }
+
+    #[test]
+    fn extend_fills_bars_with_edge_pixels_not_black() {
+        // 1x2 source (red over blue) into a 4x2 window: aspect-fit centres a 2x2 scene
+        // (red row, blue row) with side bars — which Extend fills with the row's edge
+        // colour instead of black, so every pixel is red (top) or blue (bottom).
+        let src = [255u8, 0, 0, 255, 0, 0, 255, 255]; // (0,0)=red, (0,1)=blue
+        let mut dst = [0u32; 8]; // 4x2
+        scale_rgba_to_argb_extend(&src, 1, 2, &mut dst, 4, 2, N);
+        for x in 0..4 {
+            assert_eq!(dst[x], 0x00FF_0000, "top row should be all red at x={x}");
+            assert_eq!(
+                dst[4 + x],
+                0x0000_00FF,
+                "bottom row should be all blue at x={x}"
+            );
+        }
+        assert!(!dst.contains(&0), "no black bars in extend mode");
     }
 
     #[test]
