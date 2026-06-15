@@ -31,6 +31,32 @@ mostrar uma animação diferente por beat. Estreia com o **SOS na garrafa** (bea
 
 ---
 
+## 2026-06-15 — Preview `/p` do Windows (janela-filha embutida)
+
+**Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #32).
+
+Segundo pedido (preview). O Windows chama o screensaver com `/p <hwnd>` para a
+miniatura de pré-visualização; agora renderizamos **dentro** dessa janelinha.
+
+- **`main.rs`**: `screensaver_action` (substitui `screensaver_verb`) → `Action
+  {Show, Configure, Preview(isize)}`, capturando o HWND (`/p 1234`, `/p:1234`, `-p`,
+  decimal ou `0x`hex; `parse_hwnd`). `apply_preview(builder, hwnd)` cria a janela como
+  **filha sem bordas** do HWND (winit `with_parent_window` + `rwh_06::Win32WindowHandle`),
+  ~152×112. No preview, **não** sai com tecla/mouse (só fecha no `CloseRequested`).
+- **Só Windows:** todo o código de embutir está sob `cfg(windows)`; em outros sistemas
+  `/p` apenas informa e sai (e o Linux build não compila nada disso).
+- Testes: `screensaver_action` (Show/Configure/Preview) + `parse_hwnd` (decimal/hex).
+
+> **Ressalva honesta:** não dá para testar o comportamento real do preview aqui (é
+> Windows puro). Validei que **compila** (Linux local; o CI `windows-latest` compila o
+> caminho `cfg(windows)`); o tamanho exato do painel é fixo (~152×112) por ora. O
+> comportamento na miniatura você confirma no Windows.
+
+**Validação local:** fmt, clippy `-D warnings` (com **e** sem `audio`), suíte (incl. os
+novos testes de parsing), `build --release` — verdes.
+
+---
+
 ## 2026-06-15 — Harness de fidelidade frame-a-frame (dados reais, gated)
 
 **Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #31).
