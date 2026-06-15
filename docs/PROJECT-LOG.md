@@ -31,6 +31,30 @@ mostrar uma animação diferente por beat. Estreia com o **SOS na garrafa** (bea
 
 ---
 
+## 2026-06-15 — Harness de fidelidade frame-a-frame (dados reais, gated)
+
+**Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #31).
+
+Atende ao pedido do usuário ("harness"). Rede de regressão/fidelidade contra os dados
+**originais**, em `crates/wilson-engine/tests/fidelity.rs` (gated por `WILSON_DATA_DIR`;
+no-op no CI):
+1. **Determinismo frame-a-frame:** duas execuções com a mesma semente/relógio produzem a
+   **mesma sequência de frames** (hash FNV por frame) ⇒ qualquer mudança futura que altere
+   a saída é detectada.
+2. **Não-degenerado:** muitos frames distintos (animação acontece).
+3. **As 63 cenas renderizam conteúdo:** itera `STORY_SCENES`, monta um `AdsVm` por cena e
+   garante que cada uma desenha algo (nenhuma cena em branco/faltando).
+4. **Filmstrip opcional** (`WILSON_DUMP=<dir>`): grava PPMs a cada 40 frames para
+   comparar a olho com o original.
+
+Resultado com os dados reais: **63/63 cenas renderizam**; **400 frames, 263 distintos,
+determinístico**. Sem dados, os 3 testes são no-op (CI seguro). fmt + clippy `-D warnings`
++ suíte verdes.
+
+**Próximo:** preview `/p` do Windows (compile-verificado no CI).
+
+---
+
 ## 2026-06-15 — Cobertura total de opcodes: camada de "zonas salvas" (cargueiro gigante)
 
 **Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #30).
