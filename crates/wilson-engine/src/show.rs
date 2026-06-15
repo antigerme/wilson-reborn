@@ -293,11 +293,10 @@ impl Show {
         if let Some(isl) = &self.island {
             vm.set_background(isl.background().clone());
             // Offset Johnny's animation to the island's drifted position, exactly like
-            // walk frames (and jc_reborn `storyPlay`): `ttmDx = xPos + (LEFT_ISLAND ? 272
-            // : 0)`, `ttmDy = yPos`. Without this, in-place gags (juggling, fishing,
-            // sitting…) draw at the un-drifted origin — i.e. off the island, on the water.
-            let (dx, dy) = isl.offset();
-            vm.set_offset(dx + if scene.left_island { 272 } else { 0 }, dy);
+            // walk frames. Without this, in-place gags (juggling, fishing, sitting…) draw
+            // at the un-drifted origin — i.e. off the island, on the water.
+            let (ox, oy) = ads_offset(isl.offset(), scene.left_island);
+            vm.set_offset(ox, oy);
         }
         // Day-beat scenes play the transition cue (`sound 0`) as they begin, like
         // `jc_reborn` (`storyPlay` → `soundPlay(0)` for `dayNo` scenes).
@@ -306,6 +305,13 @@ impl Show {
         }
         Some(vm)
     }
+}
+
+/// The ADS sprite offset for an island scene: the island drift, plus the LEFT_ISLAND
+/// shift. Mirrors jc_reborn `storyPlay`: `ttmDx = xPos + (LEFT_ISLAND ? 272 : 0)`,
+/// `ttmDy = yPos`.
+fn ads_offset((dx, dy): (i32, i32), left_island: bool) -> (i32, i32) {
+    (dx + if left_island { 272 } else { 0 }, dy)
 }
 
 fn remap(bmp: &wilson_dgds::Bmp, transparent_src: Option<u8>) -> Vec<BmpImage> {
@@ -680,5 +686,15 @@ mod tests {
             found_drifted,
             "expected a drifted island scene whose ADS sprite is drawn at the offset"
         );
+    }
+
+    #[test]
+    fn ads_offset_applies_left_island_shift() {
+        // Non-LEFT_ISLAND: just the island drift.
+        assert_eq!(ads_offset((-100, -30), false), (-100, -30));
+        assert_eq!(ads_offset((0, 0), false), (0, 0));
+        // LEFT_ISLAND scenes shift the sprite +272 in x (jc_reborn storyPlay), y unchanged.
+        assert_eq!(ads_offset((-272, 0), true), (0, 0));
+        assert_eq!(ads_offset((-100, -30), true), (172, -30));
     }
 }

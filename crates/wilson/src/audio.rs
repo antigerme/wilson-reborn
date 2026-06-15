@@ -148,4 +148,15 @@ mod tests {
         let audio = Audio::new(None, true);
         audio.play(0);
     }
+
+    #[test]
+    fn from_sounds_muted_is_a_silent_no_op() {
+        // The embed-data path builds the player from in-memory bytes. Muted does not open
+        // an audio device, must not panic, and play is a no-op. (We deliberately do NOT
+        // open a real device here: probing two output streams concurrently crashes WASAPI
+        // on Windows CI; the no-device unmuted path is covered by the test above.)
+        let audio = Audio::from_sounds(vec![Some(vec![0u8; 8]); 25], true);
+        audio.play(0);
+        audio.play(24);
+    }
 }
