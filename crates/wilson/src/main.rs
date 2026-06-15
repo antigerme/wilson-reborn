@@ -359,7 +359,7 @@ fn print_help() {
     println!("OPTIONS:");
     println!("  {help_flags:<33}show this help and exit");
     println!("  --windowed                       run in a 640x480 window (default: fullscreen)");
-    println!("  --mute                           disable sound effects");
+    println!("  --mute                           disable sound effects (default: sound on)");
     println!("  --speed <PCT>                    playback speed 25-400; 100 = original (default)");
     println!("  --scale <fit|stretch|integer>    how the picture fills the window (default: fit)");
     println!("  --filter <nearest|linear|xbr>    pixel sampling (default: xbr):");
@@ -367,7 +367,7 @@ fn print_help() {
     println!("                                     linear  = smooth (bilinear),");
     println!("                                     xbr     = smooth + sharp (\"HD\")");
     println!("  --daynight <original|real24h>    day/night cycle (default: original 8h)");
-    println!("  --data <DIR>                     load the game data from <DIR>");
+    println!("  --data <DIR>                     game data folder (default: auto-detect)");
     if cfg!(windows) {
         println!("\nWINDOWS SCREENSAVER VERBS (as the OS invokes a .scr):");
         println!("  /s                               show the screensaver (same as no args)");
