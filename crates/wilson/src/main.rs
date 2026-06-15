@@ -58,9 +58,12 @@ fn main() {
         eprintln!(
             "Wilson Reborn needs the original Johnny Castaway data files \
              (RESOURCE.MAP + RESOURCE.001).\n\
-             Pass --data <dir>, or place the files in the current directory or next to \
-             the executable."
+             Pass --data <dir>, set WILSON_DATA_DIR, or place the files in the current \
+             directory or next to the executable.\nSearched:"
         );
+        for c in assets::data_candidates(data_arg.as_deref()) {
+            eprintln!("  {}", c.display());
+        }
         return;
     };
     let (archive, palette) = match assets::load(&data_dir) {

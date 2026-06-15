@@ -31,6 +31,29 @@ mostrar uma animação diferente por beat. Estreia com o **SOS na garrafa** (bea
 
 ---
 
+## 2026-06-15 — Polimento #1: robustez do loader de dados
+
+**Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #28).
+
+Primeiro dos focos escolhidos pelo usuário (#1 polir, #2 fidelidade). Torna mais fácil o
+app **achar os arquivos originais**.
+
+- **`assets.rs`**: `data_candidates(explicit)` — ordem de busca: `--data` →
+  `$WILSON_DATA_DIR` → diretório atual → diretório do executável, cada um também
+  sondando uma subpasta `data/`. `find_data_dir` escolhe o 1º com `RESOURCE.MAP` (e cai
+  no `--data` literal p/ erro claro). 
+- **`main.rs`**: quando não acha, **lista todos os caminhos procurados** (mensagem de
+  ajuda acionável) e menciona `WILSON_DATA_DIR`.
+- **Testes**: precedência dos candidatos + `data/` subdir; teste gated que auto-detecta
+  e carrega os dados reais via `WILSON_DATA_DIR`.
+
+Validado: fmt, clippy `-D warnings` (com **e** sem `audio`), suíte; verificado o erro
+listando os caminhos e a auto-detecção com os dados reais.
+
+**Próximo:** #2 — fidelidade de render/timing (comparar com o original).
+
+---
+
 ## 2026-06-15 — PIVÔ: remover o pack recriado, usar 100% os arquivos originais
 
 **Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #27).

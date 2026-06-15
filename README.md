@@ -31,8 +31,9 @@ Cinco reimplementações independentes do motor original, usadas como referênci
 ## Como rodar
 
 O Wilson Reborn usa **os arquivos originais** do Johnny Castaway (`RESOURCE.MAP` +
-`RESOURCE.001`) — não há arte embutida. Aponte para eles com `--data`, ou deixe-os no
-diretório atual / ao lado do executável (auto-detecção):
+`RESOURCE.001`) — não há arte embutida. Ele procura os dados em: `--data <dir>` →
+`$WILSON_DATA_DIR` → diretório atual → ao lado do executável (e numa subpasta `data/` de
+cada um). Sem os dados, lista onde procurou e sai.
 
 ```bash
 cargo run -p wilson -- --data <dir>    # seus RESOURCE.MAP/RESOURCE.001 originais
