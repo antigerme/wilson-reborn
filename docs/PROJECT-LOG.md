@@ -6,6 +6,27 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-14 — Pack recriado: Mary, a sereia
+
+**Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #22).
+
+Continuação da paridade visual do pack recriado: a **sereia Mary** agora aparece nas
+cenas dela (dias 1/4/5/7/8 são beats de `MARY.ADS`).
+
+- **`assets.rs`**: `mary_sprite()` — sereia 16×64 (cabelo loiro esvoaçante, top de
+  concha, cauda verde segmentada com nadadeira), adicionada como `JDEMO.BMP` frame 4.
+- **`mary_ttm()`**: TTM de duas figuras — Johnny na ilha + a sereia na água ao lado,
+  ambos balançando fora de fase. `ttm_for_ads`: `MARY.ADS → MARY.TTM`.
+- Validado **visualmente** (sheet das 5 frames: as 4 ações do Johnny + a sereia, todas
+  reconhecíveis).
+
+**109 testes** (39 wilson + 35 dgds + 35 engine). fmt, clippy `-D warnings` (com **e**
+sem `audio`), `build --release`.
+
+**Próximo:** Suzy / visitantes / easter eggs recriados (doc 09) e demais melhorias.
+
+---
+
 ## 2026-06-14 — Pack recriado: ações por categoria (parar de só ficar parado)
 
 **Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #21).

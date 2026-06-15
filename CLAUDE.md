@@ -82,6 +82,7 @@ engine roda os scripts originais ⇒ **paridade total de conteúdo**; o pack rec
 lógica completa mas visual placeholder. **Ações recriadas por categoria** (`assets.rs`):
 4 poses (`Pose::{Stand,Wave,Fish,Read}`) + `vignette_ttm` + `ttm_for_ads` ⇒ cada cena do
 pack standalone mostra uma ação (pescar/ler/acenar/parado) em vez de só ficar parado.
-**109 testes**, CI verde. **Próximo:** personagens (Mary/Suzy)/visitantes recriados e
-demais melhorias (o usuário pediu **todas**, em incrementos). HD interno adiado (engine
-640×480; escala já cobre telas grandes).
+**Mary, a sereia** (`mary_sprite`/`mary_ttm`): aparece na água ao lado do Johnny nas
+cenas de `MARY.ADS` (JDEMO frame 4). **109 testes**, CI verde. **Próximo:** Suzy/
+visitantes/easter eggs recriados e demais melhorias (o usuário pediu **todas**, em
+incrementos). HD interno adiado (engine 640×480; escala já cobre telas grandes).

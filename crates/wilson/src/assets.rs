@@ -759,8 +759,81 @@ fn johnny_action(pose: Pose, phase: u8) -> BmpImage {
     embed_tall(&c)
 }
 
+/// Mary, the mermaid (`JDEMO.BMP` frame 4): she sits in the water beside the island —
+/// flowing hair, a shell top and a green fish tail. Bottom-anchored in 16×64.
+fn mary_sprite() -> BmpImage {
+    let mut c = Canvas::new(16, 64);
+    // She floats higher than Johnny's feet, so draw from y≈30 down.
+    // Hair + head.
+    c.rect(5, 30, 7, 4, GOLD); // long blonde hair
+    c.set(4, 31, GOLD);
+    c.set(12, 31, GOLD);
+    c.rect(6, 33, 5, 4, SKIN); // face
+    c.set(7, 35, BLACK);
+    c.set(9, 35, BLACK); // eyes
+    c.hspan(4, 5, 37, GOLD); // hair down the shoulders
+    c.hspan(11, 12, 37, GOLD);
+    // Torso + shell top.
+    c.rect(6, 38, 5, 4, SKIN);
+    c.set(6, 39, SHIRT);
+    c.set(10, 39, SHIRT); // shell cups
+    c.rect(4, 39, 1, 3, SKIN); // arms
+    c.rect(12, 39, 1, 3, SKIN);
+    // Green tail: widening, then a fin.
+    for y in 42..56 {
+        let half = 2 + (y - 42) / 5;
+        let color = if (y - 42) % 3 == 0 { LEAF_HI } else { LEAF };
+        c.hspan(8 - half, 8 + half, y, color);
+    }
+    // Tail fin.
+    c.hspan(2, 6, 58, LEAF_HI);
+    c.hspan(10, 14, 58, LEAF_HI);
+    c.hspan(3, 6, 60, LEAF);
+    c.hspan(10, 13, 60, LEAF);
+    c.into_image()
+}
+
 fn op(c: u16) -> [u8; 2] {
     c.to_le_bytes()
+}
+
+/// A two-figure TTM for Mary's scenes: Johnny on the island and the mermaid in the
+/// water beside him, both gently bobbing.
+fn mary_ttm() -> Ttm {
+    let mut code = Vec::new();
+    code.extend_from_slice(&op(0x1111)); // TAG 1
+    code.extend_from_slice(&1u16.to_le_bytes());
+    code.extend_from_slice(&op(0x1051)); // SET_BMP_SLOT 0
+    code.extend_from_slice(&0u16.to_le_bytes());
+    code.extend_from_slice(&op(0xF02F)); // LOAD_IMAGE "JDEMO.BMP"
+    code.extend_from_slice(b"JDEMO.BMP\0");
+    code.extend_from_slice(&op(0x1021)); // SET_DELAY 8
+    code.extend_from_slice(&8u16.to_le_bytes());
+    // (johnny_y, mary_y) per step — they bob out of phase.
+    for &(jy, my) in &[(250u16, 300u16), (248, 302), (250, 300), (248, 298)] {
+        code.extend_from_slice(&op(0xA601)); // CLEAR
+        code.extend_from_slice(&0u16.to_le_bytes());
+        // Johnny (frame 0) at the island.
+        code.extend_from_slice(&op(0xA504));
+        for v in [330u16, jy, 0, 0] {
+            code.extend_from_slice(&v.to_le_bytes());
+        }
+        // Mary (frame 4) in the water to his left.
+        code.extend_from_slice(&op(0xA504));
+        for v in [250u16, my, 4, 0] {
+            code.extend_from_slice(&v.to_le_bytes());
+        }
+        code.extend_from_slice(&op(0x0FF0)); // UPDATE
+    }
+    Ttm {
+        version: "1.20".into(),
+        num_pages: 1,
+        bytecode: code,
+        tags: vec![Tag {
+            id: 1,
+            description: "mary".into(),
+        }],
+    }
 }
 
 /// A TTM that animates the castaway through `steps` of `(sprite_frame, y)`, drawing
@@ -816,6 +889,7 @@ fn vignette_ttms() -> Vec<(String, Ttm)> {
             "READ.TTM".to_string(),
             vignette_ttm(&[(3, 250), (3, 249), (3, 250)]),
         ),
+        ("MARY.TTM".to_string(), mary_ttm()),
     ]
 }
 
@@ -824,6 +898,7 @@ fn ttm_for_ads(ads_name: &str) -> &'static str {
     match ads_name {
         "FISHING.ADS" => "FISH.TTM",
         "ACTIVITY.ADS" => "READ.TTM",
+        "MARY.ADS" => "MARY.TTM", // the mermaid appears beside Johnny
         "STAND.ADS" | "WALKSTUF.ADS" | "BUILDING.ADS" => "STAND.TTM",
         // Story/character/visitor/gag scenes: a friendly wave.
         _ => "WAVE.TTM",
@@ -878,12 +953,13 @@ pub fn demo_archive() -> (Archive, Palette) {
                 Bmp {
                     width: 16,
                     height: 64,
-                    // Action poses: 0 = stand, 1 = wave, 2 = fish, 3 = read.
+                    // Frames: 0 = stand, 1 = wave, 2 = fish, 3 = read, 4 = Mary.
                     images: vec![
                         johnny_action(Pose::Stand, 0),
                         johnny_action(Pose::Wave, 0),
                         johnny_action(Pose::Fish, 0),
                         johnny_action(Pose::Read, 0),
+                        mary_sprite(),
                     ],
                 },
             ),
@@ -955,12 +1031,12 @@ mod tests {
         assert_eq!(ttm_for_ads("FISHING.ADS"), "FISH.TTM");
         assert_eq!(ttm_for_ads("ACTIVITY.ADS"), "READ.TTM");
         assert_eq!(ttm_for_ads("STAND.ADS"), "STAND.TTM");
-        assert_eq!(ttm_for_ads("MARY.ADS"), "WAVE.TTM");
+        assert_eq!(ttm_for_ads("MARY.ADS"), "MARY.TTM");
         assert_ne!(ttm_for_ads("FISHING.ADS"), ttm_for_ads("ACTIVITY.ADS"));
 
         // Every referenced TTM exists in the pack.
         let (archive, _) = demo_archive();
-        for name in ["STAND.TTM", "WAVE.TTM", "FISH.TTM", "READ.TTM"] {
+        for name in ["STAND.TTM", "WAVE.TTM", "FISH.TTM", "READ.TTM", "MARY.TTM"] {
             assert!(archive.ttm(name).is_some(), "missing {name}");
         }
         // Each ADS references the action chosen for its category.
@@ -971,16 +1047,18 @@ mod tests {
 
     #[test]
     fn action_poses_are_distinct() {
-        // JDEMO has the four action poses, and they actually differ.
+        // JDEMO has the four action poses plus Mary, and they actually differ.
         let (archive, _) = demo_archive();
         let jdemo = archive.bmp("JDEMO.BMP").unwrap();
-        assert_eq!(jdemo.images.len(), 4);
+        assert_eq!(jdemo.images.len(), 5);
         let stand = &johnny_action(Pose::Stand, 0).pixels;
         let fish = &johnny_action(Pose::Fish, 0).pixels;
         let read = &johnny_action(Pose::Read, 0).pixels;
+        let mary = &mary_sprite().pixels;
         assert_ne!(stand, fish);
         assert_ne!(stand, read);
         assert_ne!(fish, read);
+        assert_ne!(stand, mary);
     }
 
     #[test]
