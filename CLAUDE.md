@@ -65,7 +65,9 @@ auto-detecção no diretório atual / ao lado do executável; sem dados, explica
 original renderiza; teste gated `wilson-dgds/tests/real_data.rs`). Escala 4:3 com
 letterbox. **Som** (`audio.rs`): toca `soundN.wav` via `rodio` (feature opcional
 `audio`, ligada por padrão; degrada para silêncio sem dispositivo/arquivos), os efeitos
-vêm com `--data`. **Persistência do dia** (`state.rs` + `Show::day_state`): o arco de 11
+vêm com `--data`. Os 23 `soundN.wav` originais decodificam (verificado); efeitos in-scene
+via TTM `0xC051`; **cue de transição de dia** (`sound 0`) emitido nas cenas de day-beat
+(`Show::pending_sound`, igual ao `soundPlay(0)` do jc_reborn). **Persistência do dia** (`state.rs` + `Show::day_state`): o arco de 11
 dias continua entre sessões (grava `current_day`/`stored_yday` no diretório de estado do
 usuário; zero deps; best-effort). **Props de feriado** compostos **por cima** (Show
 `overlay_holiday`, igual ao `grUpdateDisplay` do jc_reborn) ⇒ aparecem com `--data`.
