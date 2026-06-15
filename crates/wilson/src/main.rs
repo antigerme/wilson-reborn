@@ -35,6 +35,13 @@ use winit::window::{Fullscreen, WindowBuilder};
 fn main() {
     let args: Vec<String> = std::env::args().collect();
 
+    // Help first, so `-h`/`--help` (Unix) and `/?`/`/help` (Windows) always work and
+    // never touch the data/window.
+    if wants_help(&args) {
+        print_help();
+        return;
+    }
+
     // Load options (file → defaults), seed a default file on first run, then let CLI
     // flags override for this run only.
     let mut cfg = config::Config::load();
@@ -315,6 +322,72 @@ fn print_config_info(cfg: &config::Config) {
     );
 }
 
+/// Whether `args` ask for help, accepting both Unix (`-h`, `--help`) and Windows
+/// (`/?`, `/help`) conventions (case-insensitive).
+fn wants_help(args: &[String]) -> bool {
+    args.iter().skip(1).any(|a| {
+        matches!(
+            a.to_ascii_lowercase().as_str(),
+            "-h" | "-help" | "--help" | "help" | "/?" | "/h" | "/help"
+        )
+    })
+}
+
+/// Print detailed, platform-appropriate usage. Unix shows `-h/--help`; Windows also
+/// lists the screensaver verbs (`/s /c /p /?`). The `--…` options work on every platform.
+fn print_help() {
+    let help_flags = if cfg!(windows) {
+        "/?, /help"
+    } else {
+        "-h, --help"
+    };
+    let cfg_path = config::config_file()
+        .map(|p| p.display().to_string())
+        .unwrap_or_else(|| "(unknown location)".to_string());
+
+    println!(
+        "Wilson Reborn — a modern, portable clone of the 1992 \"Johnny Castaway\" \
+         screensaver (Sierra/Dynamix).\n"
+    );
+    println!("USAGE:");
+    println!("  wilson [OPTIONS]                  run the screensaver (fullscreen)");
+    println!("  wilson --data <DIR> [OPTIONS]     use the original game data in <DIR>\n");
+    println!("DATA (required):");
+    println!("  Needs the original files RESOURCE.MAP + RESOURCE.001 (and soundN.wav for");
+    println!("  sound). Located via --data <DIR>, the WILSON_DATA_DIR env var, the current");
+    println!("  directory, or next to the executable; file names match case-insensitively.\n");
+    println!("OPTIONS:");
+    println!("  {help_flags:<33}show this help and exit");
+    println!("  --windowed                       run in a 640x480 window (default: fullscreen)");
+    println!("  --mute                           disable sound effects");
+    println!("  --speed <PCT>                    playback speed 25-400; 100 = original (default)");
+    println!("  --scale <fit|stretch|integer>    how the picture fills the window (default: fit)");
+    println!("  --filter <nearest|linear|xbr>    pixel sampling (default: xbr):");
+    println!("                                     nearest = crisp/retro,");
+    println!("                                     linear  = smooth (bilinear),");
+    println!("                                     xbr     = smooth + sharp (\"HD\")");
+    println!("  --daynight <original|real24h>    day/night cycle (default: original 8h)");
+    println!("  --data <DIR>                     load the game data from <DIR>");
+    if cfg!(windows) {
+        println!("\nWINDOWS SCREENSAVER VERBS (as the OS invokes a .scr):");
+        println!("  /s                               show the screensaver (same as no args)");
+        println!("  /c                               show the configuration");
+        println!("  /p <HWND>                        preview inside the configuration pane");
+        println!("  /?, /help                        show this help");
+    }
+    println!("\nCONFIG FILE (persists options; flags override it for one run):");
+    println!("  {cfg_path}");
+    println!("\nEXAMPLES:");
+    if cfg!(windows) {
+        println!("  wilson.scr /c                    show the configuration");
+        println!("  wilson.exe --windowed --speed 200");
+    } else {
+        println!("  wilson --data ~/jc --filter xbr");
+        println!("  wilson --windowed --speed 200 --scale integer");
+    }
+    println!("\nFree software under GPL-3.0-or-later. Plays only your own original game data.");
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -332,6 +405,21 @@ mod tests {
         assert_eq!(screensaver_action(&args(&["-s"])), Action::Show);
         assert_eq!(screensaver_action(&args(&["/S:0"])), Action::Show);
         assert_eq!(screensaver_action(&args(&[])), Action::Show);
+    }
+
+    #[test]
+    fn help_is_detected_per_platform() {
+        // Unix and Windows conventions, case-insensitive.
+        for f in [
+            "-h", "--help", "-help", "help", "/?", "/h", "/help", "--HELP", "/Help",
+        ] {
+            assert!(wants_help(&args(&[f])), "should detect help flag {f:?}");
+        }
+        // Real options must not be mistaken for help.
+        assert!(!wants_help(&args(&[])));
+        assert!(!wants_help(&args(&["--windowed", "--filter", "xbr"])));
+        assert!(!wants_help(&args(&["/c"])));
+        assert!(!wants_help(&args(&["--data", "/some/dir"])));
     }
 
     #[test]

@@ -209,7 +209,7 @@ mod tests {
         assert!(!c.mute);
         assert_eq!(c.speed, 100);
         assert_eq!(c.scale, ScaleMode::Fit);
-        assert_eq!(c.filter, Filter::Linear); // smooth by default
+        assert_eq!(c.filter, Filter::Xbr); // "HD" xBR by default
     }
 
     #[test]

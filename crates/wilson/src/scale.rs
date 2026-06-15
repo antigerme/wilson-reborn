@@ -48,11 +48,12 @@ impl ScaleMode {
 pub enum Filter {
     /// Nearest-neighbour: crisp, blocky — the authentic 1992 look.
     Nearest,
-    /// Bilinear: smooths the upscaled pixels (default — softer, less "retro grid").
-    #[default]
+    /// Bilinear: smooths the upscaled pixels (softer, less "retro grid").
     Linear,
     /// xBR-style edge-directed 2× upscale, then bilinear fit: smooth *and* sharp on
-    /// sprites and edges (the "HD remaster" look). A bit heavier per frame.
+    /// sprites and edges (the "HD remaster" look) — the **default**. A bit heavier per
+    /// frame (negligible for a screensaver).
+    #[default]
     Xbr,
 }
 
@@ -367,7 +368,7 @@ mod tests {
         assert_eq!(Filter::parse("xbr"), Some(Filter::Xbr));
         assert_eq!(Filter::parse("HD"), Some(Filter::Xbr));
         assert_eq!(Filter::parse("nope"), None);
-        assert_eq!(Filter::default(), Filter::Linear); // smooth by default
+        assert_eq!(Filter::default(), Filter::Xbr); // xBR ("HD") by default
     }
 
     #[test]
