@@ -11,6 +11,9 @@ default-run = "wilson"
 [features]
 default = ["audio"]
 audio = ["dep:rodio"]
+# Build a self-contained binary with the original data embedded. Point WILSON_EMBED_DATA
+# at a dir with RESOURCE.MAP + RESOURCE.001 (+ soundN.wav), then build with this feature.
+embed-data = []
 
 [dependencies]
 wilson-dgds = { path = "../wilson-dgds" }

@@ -12,10 +12,13 @@
 //! - Windows screensaver verbs: `/s` (show), `/c` (config), `/p <hwnd>` (preview embedded
 //!   in the configuration pane — Windows only).
 
+#[cfg(not(feature = "embed-data"))]
 mod assets;
 mod audio;
 mod clock;
 mod config;
+#[cfg(feature = "embed-data")]
+mod embedded;
 mod scale;
 mod state;
 mod stats;
@@ -59,29 +62,43 @@ fn main() {
     };
     let is_preview = preview_parent.is_some();
 
-    let data_arg = args
-        .windows(2)
-        .find(|w| w[0] == "--data")
-        .map(|w| w[1].clone());
-
-    let Some(data_dir) = assets::find_data_dir(data_arg.as_deref()) else {
-        eprintln!(
-            "Wilson Reborn needs the original Johnny Castaway data files \
-             (RESOURCE.MAP + RESOURCE.001).\n\
-             Pass --data <dir>, set WILSON_DATA_DIR, or place the files in the current \
-             directory or next to the executable.\nSearched:"
-        );
-        for c in assets::data_candidates(data_arg.as_deref()) {
-            eprintln!("  {}", c.display());
-        }
-        return;
+    // Original data + sounds: embedded (self-contained `embed-data` build) or loaded
+    // from disk (`--data`/auto-detect).
+    #[cfg(feature = "embed-data")]
+    let (archive, palette, audio) = {
+        let (archive, palette) = embedded::archive_and_palette();
+        let audio = audio::Audio::from_sounds(embedded::sound_bytes(), cfg.mute);
+        (archive, palette, audio)
     };
-    let (archive, palette) = match assets::load(&data_dir) {
-        Ok(loaded) => loaded,
-        Err(e) => {
-            eprintln!("Could not load data from {}: {e}", data_dir.display());
+    #[cfg(not(feature = "embed-data"))]
+    let (archive, palette, audio) = {
+        let data_arg = args
+            .windows(2)
+            .find(|w| w[0] == "--data")
+            .map(|w| w[1].clone());
+        let Some(data_dir) = assets::find_data_dir(data_arg.as_deref()) else {
+            eprintln!(
+                "Wilson Reborn needs the original Johnny Castaway data files \
+                 (RESOURCE.MAP + RESOURCE.001).\n\
+                 Pass --data <dir>, set WILSON_DATA_DIR, or place the files in the current \
+                 directory or next to the executable.\nSearched:"
+            );
+            for c in assets::data_candidates(data_arg.as_deref()) {
+                eprintln!("  {}", c.display());
+            }
             return;
-        }
+        };
+        let (archive, palette) = match assets::load(&data_dir) {
+            Ok(loaded) => loaded,
+            Err(e) => {
+                eprintln!("Could not load data from {}: {e}", data_dir.display());
+                return;
+            }
+        };
+        // Sound effects come from the data dir (originals carry `soundN.wav`); the player
+        // degrades to silence without the `audio` feature, a device, the files, or mute.
+        let audio = audio::Audio::new(Some(data_dir.as_path()), cfg.mute);
+        (archive, palette, audio)
     };
 
     let clock = clock::now();
@@ -97,11 +114,6 @@ fn main() {
         .map(|d| d.as_nanos() as u64)
         .unwrap_or(0x9E37_79B9_7F4A_7C15);
     let mut show = Show::new(&archive, &palette, 640, 480, director, clock, seed);
-
-    // Sound effects are loaded from the data dir (originals carry `soundN.wav`); the
-    // player degrades to silence without the `audio` feature, a device, the files, or
-    // when muted.
-    let audio = audio::Audio::new(Some(data_dir.as_path()), cfg.mute);
 
     // Persist the story day whenever it advances, so the arc carries over to the next
     // run. `None` until the first frame establishes today's day.

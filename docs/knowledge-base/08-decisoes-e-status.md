@@ -50,7 +50,7 @@ Crates planejados:
 | **2b** | **App `wilson`: janela ao vivo (winit + softbuffer) + loader `RESOURCE.*`** | ✅ concluída (PR #12) |
 | **2c** | **Validação contra dados REAIS (teste gated) + escala 4:3 (letterbox)** | ✅ concluída — **engine renderiza o Johnny original** |
 | 2d | Polir: som, persistência do dia, config/opções (tela cheia, escala, velocidade) | ✅ concluída — som · persistência · config/opções |
-| 3 | Empacotamento (Win/Linux/web/WASM) → **paridade jogável** com os dados originais | 🟡 **em curso** — ✅ **release CI** (`release.yml`: `wilson.scr` Windows + binário Linux); falta web/WASM |
+| 3 | Empacotamento (Win/Linux/web/WASM) → **paridade jogável** com os dados originais | 🟡 **em curso** — ✅ **release CI** (`release.yml`: `wilson.scr` Windows + binário Linux); ✅ **build autossuficiente** (feature `embed-data`: dados originais embutidos no binário, roda sem `--data`; só em tempo de compilação, nunca no repo — uso pessoal por causa do copyright); falta web/WASM |
 | 4 | Melhorias (dia/noite 24h, config, estatísticas, etc.) | 🟡 **em curso** — ✅ config/opções · ✅ **dia-noite 24h** · ✅ **estatísticas** · ✅ **auditoria de paridade** ([09](09-paridade-e-easter-eggs.md)) · ✅ **robustez do loader** · ✅ **auditoria render/timing vs jc_reborn** (paleta/tick/SET_DELAY conferem; z-order do feriado corrigido) · ✅ **cobertura 100% de opcodes** (camada de zonas salvas `COPY_ZONE_TO_BG`/`RESTORE_ZONE` p/ o cargueiro gigante; nenhum opcode dos dados reais é mais ignorado) |
 
 > **Pivô 2026-06-15:** o **pack recriado** (arte procedural: ilha/palmeira/Johnny/Mary/
@@ -69,8 +69,9 @@ copyright):
 WILSON_DATA_DIR=/caminho/para/dist cargo test -p wilson-dgds --test real_data -- --nocapture
 ```
 > Os dados originais e arquivos copyright (`RESOURCE.*`, `dist.zip`, `.msi`) **não** são
-> redistribuídos pelo engine; o app traz um asset pack recriado e aceita `--data` para os
-> dados do usuário.
+> redistribuídos no repositório nem nas releases públicas; o app **exige** os dados do
+> usuário via `--data`/auto-detecção (ou, para uso pessoal, embutidos no binário pela
+> feature `embed-data` — bytes lidos só em tempo de compilação, nunca versionados).
 
 ### Histórico (antes da validação)
 Os testes usavam apenas fixtures sintéticas; a validação byte-exata do LZW/parsers contra

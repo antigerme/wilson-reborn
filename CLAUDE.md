@@ -87,5 +87,9 @@ engine roda os scripts originais ⇒ **paridade total de conteúdo** (validada).
 o gag do cargueiro gigante; os demais no-ops batem com o `jc_reborn`.
 **Pivô 2026-06-15:** o **pack de arte recriada foi removido** (não atingiu a qualidade
 desejada); o app agora usa **100% os arquivos originais** — `assets.rs` ficou só com
-`load`/`find_data_dir` e `main.rs` exige `--data`/auto-detecção. **CI verde.** **Próximo:**
-melhorias **sobre os dados originais** (a combinar com o usuário).
+`load`/`find_data_dir` e `main.rs` exige `--data`/auto-detecção. **Build autossuficiente**
+(feature `embed-data` + `build.rs` + `embedded.rs`): `WILSON_EMBED_DATA=<dir> cargo build
+--release --features embed-data` embute `RESOURCE.*` + `soundN.wav` no binário (lido só em
+tempo de compilação, **nunca** versionado; uso pessoal por causa do copyright) ⇒ roda sem
+`--data`. **CI verde.** **Próximo:** melhorias **sobre os dados originais** (a combinar com
+o usuário).
