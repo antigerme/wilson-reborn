@@ -4,20 +4,22 @@
 > conteúdo](02-biblia-de-conteudo.md) (tudo que o original tem) com o que o Wilson
 > Reborn já faz. Atualizar quando recursos forem (re)implementados.
 
+> **Pivô 2026-06-15:** o **pack recriado foi removido**. O Wilson Reborn agora usa
+> **100% os arquivos originais**, então o caminho `--data` (paridade total abaixo) é o
+> **único** caminho — e é a experiência completa. As menções ao "pack recriado" / coluna
+> **R** abaixo ficam só como registro histórico.
+
 ## Conclusão em 30 segundos
 
-O Wilson Reborn tem **dois caminhos de conteúdo**, e a paridade é diferente em cada um:
+O conteúdo vem **100% dos arquivos originais** (`--data`): **paridade TOTAL**. O engine
+**interpreta os scripts originais** (`.ADS`/`.TTM` do `RESOURCE.001`), então **todos os
+63 cenas, gags, easter eggs, visitantes e beats de enredo aparecem exatamente como no
+original** — não reimplementamos cada gag, nós **executamos os mesmos bytecodes**.
+Validado de ponta a ponta (ver [08](08-decisoes-e-status.md), teste `real_data`).
 
-1. **Com `--data` (dados originais do usuário): paridade TOTAL de conteúdo.** O engine
-   **interpreta os scripts originais** (`.ADS`/`.TTM` do `RESOURCE.001`), então **todos
-   os 63 cenas, gags, easter eggs, visitantes e beats de enredo aparecem exatamente como
-   no original** — não reimplementamos cada gag, nós **executamos os mesmos bytecodes**.
-   Validado de ponta a ponta (ver [08](08-decisoes-e-status.md), teste `real_data`).
-2. **Pack recriado embutido (copyright-free): lógica completa, visual ainda placeholder.**
-   O **diretor** sorteia corretamente as 63 cenas, os 11 dias, os beats de enredo, os
-   feriados, maré/noite/jangada — mas o **TTM recriado** desenha o Johnny **parado**
-   (mais o caminhar entre spots). Ou seja, a *coreografia* dos gags ainda não foi
-   redesenhada em arte própria. **Recriar as 63 animações é trabalho de conteúdo futuro.**
+> *(Histórico)* Houve um **pack recriado embutido** (arte procedural) com lógica completa
+> mas visual placeholder; foi **removido** em 2026-06-15 por não atingir a qualidade
+> desejada. A coluna **R** nas tabelas abaixo refletia esse pack.
 
 > Em resumo: **nada do original se perde** — está tudo acessível via `--data`. O que
 > falta é **arte recriada** para cada gag, para que o pack standalone seja tão rico

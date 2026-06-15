@@ -8,7 +8,7 @@
 | # | Decisão | Escolha | Racional |
 |---|---|---|---|
 | 1 | **Linguagem/stack** | **Rust** (workspace Cargo) | binário único, cross-compile Win/Linux + WASM, seguro, ideal para processo long-running de screensaver |
-| 2 | **Assets** | **Híbrido** | carrega `RESOURCE.*` originais do usuário **e** (meta) um pacote recriado redistribuível, para uma versão "pronta para distribuição" |
+| 2 | **Assets** | **100% originais** | usa **apenas** os arquivos originais do usuário (`RESOURCE.MAP`/`RESOURCE.001`), via `--data <dir>` ou auto-detecção. **Sem pack recriado** (revisado em 2026-06-15: a arte recriada foi removida — não atingia a qualidade desejada; foco em paridade total com os dados originais). |
 | 3 | **Escopo** | **Todas as melhorias** | mas entregues em **incrementos 100% funcionais** |
 | 4 | **Licença** | **GPL-3.0-or-later** | única que permite reusar jc_reborn/JCOS (GPLv3) + ScummVM (GPLv2+) + castaway/dgds-viewer (MIT). Todos compatíveis ⇒ GPLv3 |
 
@@ -27,10 +27,10 @@ Crates planejados:
 - `wilson-dgds` — formatos + descompressão + recursos. **(camada de recursos completa)**
 - `wilson-engine` — VMs TTM/ADS + diretor/story + walk + ilha + **integração (`Show`)**.
   **✅ engine headless completo** (de `RESOURCE.*` a um fluxo de frames compostos).
-- `wilson` — app/janela (winit + **softbuffer**, CPU) + asset pack recriado + loader
-  dos `RESOURCE.*`. **✅ janela ao vivo rodando.** (Optou-se por `softbuffer` em vez de
-  `pixels/wgpu`: mais leve, sem stack de GPU, CI mais rápido — encaixa no engine, que já
-  produz um buffer de CPU.)
+- `wilson` — app/janela (winit + **softbuffer**, CPU) + loader dos `RESOURCE.*`
+  originais (`--data` ou auto-detecção; sem pack recriado). **✅ janela ao vivo rodando.**
+  (Optou-se por `softbuffer` em vez de `pixels/wgpu`: mais leve, sem stack de GPU, CI mais
+  rápido — encaixa no engine, que já produz um buffer de CPU.)
 
 ## Status (roadmap)
 
@@ -47,11 +47,17 @@ Crates planejados:
 | **1g** | **Walk animation (frames de `walk_data.h` + máquina de estados `Walker`)** | ✅ concluída (PR #9) |
 | **1h** | **Render da ilha (fundo, jangada, nuvens, ondas, props de feriado)** | ✅ concluída (PR #10) — **Fase 1 (engine headless) completa** |
 | **2a** | **Integração (`Show`): diretor + ilha + walk + ADS → fluxo de frames** | ✅ concluída (PR #11) |
-| **2b** | **App `wilson`: janela ao vivo (winit + softbuffer) + asset pack recriado + loader `RESOURCE.*`** | ✅ concluída (PR #12) |
+| **2b** | **App `wilson`: janela ao vivo (winit + softbuffer) + loader `RESOURCE.*`** | ✅ concluída (PR #12) |
 | **2c** | **Validação contra dados REAIS (teste gated) + escala 4:3 (letterbox)** | ✅ concluída — **engine renderiza o Johnny original** |
-| 2d | Polir: som, persistência do dia, arte recriada, polimento funcional | ✅ concluída — som · persistência · arte recriada · config/opções |
-| 3 | Empacotamento (Win/Linux/web/WASM) + assets → **paridade jogável** | 🟡 **em curso** — ✅ **release CI** (`release.yml`: `wilson.scr` Windows + binário Linux em tag/dispatch); falta web/WASM |
-| 4 | Melhorias (HD, dia/noite 24h, config UI, estatísticas, etc.) | 🟡 **em curso** — ✅ config/opções · ✅ **dia-noite 24h** · ✅ **estatísticas** · ✅ **auditoria de paridade** ([09](09-paridade-e-easter-eggs.md)) · ✅ **ações recriadas por categoria** (pescar/ler/acenar/parado) · ✅ **Mary, a sereia** · ✅ **visitantes** (barco) · ✅ **Suzy + cenário de cutaway** (`BEACH.SCR`) · ✅ **dança da chuva** (nuvem→raio) · ✅ **mapeamento por-tag + SOS na garrafa** (dia 2, `demo_ads_multi`); próximo: mais beats por-tag (HD interno adiado) |
+| 2d | Polir: som, persistência do dia, config/opções (tela cheia, escala, velocidade) | ✅ concluída — som · persistência · config/opções |
+| 3 | Empacotamento (Win/Linux/web/WASM) → **paridade jogável** com os dados originais | 🟡 **em curso** — ✅ **release CI** (`release.yml`: `wilson.scr` Windows + binário Linux); falta web/WASM |
+| 4 | Melhorias (dia/noite 24h, config, estatísticas, etc.) | 🟡 **em curso** — ✅ config/opções · ✅ **dia-noite 24h** · ✅ **estatísticas** · ✅ **auditoria de paridade** ([09](09-paridade-e-easter-eggs.md)) |
+
+> **Pivô 2026-06-15:** o **pack recriado** (arte procedural: ilha/palmeira/Johnny/Mary/
+> Suzy/visitantes/easter eggs etc.) foi **removido** — não atingia a qualidade desejada.
+> O foco passou a ser **100% os arquivos originais** (paridade total já validada com
+> `--data`). O engine, a janela, som, config, persistência, estatísticas e o
+> empacotamento permanecem.
 
 ## Validação de dados reais ✅
 Validado contra o `RESOURCE.001` **autêntico** (md5 `374e6d05…`): 180 recursos
