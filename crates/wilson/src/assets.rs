@@ -931,8 +931,59 @@ fn bolt_sprite() -> BmpImage {
     c.into_image()
 }
 
+/// The SOS message in a bottle (`JDEMO.BMP` frame 9): a corked glass bottle with a
+/// rolled note, drifting in the water.
+fn bottle_sprite() -> BmpImage {
+    let (w, h) = (18i32, 10i32);
+    let mut c = Canvas::new(w, h);
+    c.rect(2, 3, 11, 4, LEAF_HI); // glass body
+    c.hspan(2, 12, 3, FOAM); // glint
+    c.rect(13, 4, 3, 2, LEAF); // neck
+    c.rect(16, 4, 1, 2, TRUNK); // cork
+    c.rect(5, 4, 4, 2, FOAM); // rolled note
+    c.set(6, 4, ROCK); // a scribble on the note
+    c.into_image()
+}
+
 fn op(c: u16) -> [u8; 2] {
     c.to_le_bytes()
+}
+
+/// The day-2 "SOS in a bottle" beat: Johnny on the island and his bottle drifting out
+/// to sea (it slides away over the steps).
+fn sos_ttm() -> Ttm {
+    let mut code = Vec::new();
+    code.extend_from_slice(&op(0x1111)); // TAG 1
+    code.extend_from_slice(&1u16.to_le_bytes());
+    code.extend_from_slice(&op(0x1051)); // SET_BMP_SLOT 0
+    code.extend_from_slice(&0u16.to_le_bytes());
+    code.extend_from_slice(&op(0xF02F)); // LOAD_IMAGE "JDEMO.BMP"
+    code.extend_from_slice(b"JDEMO.BMP\0");
+    code.extend_from_slice(&op(0x1021)); // SET_DELAY 8
+    code.extend_from_slice(&8u16.to_le_bytes());
+    // (johnny_frame, bottle_x): Johnny waves; the bottle drifts left/out to sea.
+    for &(jf, bx) in &[(1u16, 300u16), (0, 286), (1, 268), (0, 250), (1, 232)] {
+        code.extend_from_slice(&op(0xA601)); // CLEAR
+        code.extend_from_slice(&0u16.to_le_bytes());
+        code.extend_from_slice(&op(0xA504)); // Johnny on the island
+        for v in [330u16, 250, jf, 0] {
+            code.extend_from_slice(&v.to_le_bytes());
+        }
+        code.extend_from_slice(&op(0xA504)); // the drifting bottle (frame 9)
+        for v in [bx, 314, 9, 0] {
+            code.extend_from_slice(&v.to_le_bytes());
+        }
+        code.extend_from_slice(&op(0x0FF0)); // UPDATE
+    }
+    Ttm {
+        version: "1.20".into(),
+        num_pages: 1,
+        bytecode: code,
+        tags: vec![Tag {
+            id: 1,
+            description: "sos".into(),
+        }],
+    }
 }
 
 /// The "rain dance" easter egg: a lone cloud gathers over Johnny and — instead of
@@ -1148,6 +1199,7 @@ fn vignette_ttms() -> Vec<(String, Ttm)> {
         ("VISIT.TTM".to_string(), visit_ttm()),
         ("SUZY.TTM".to_string(), suzy_ttm()),
         ("RAIN.TTM".to_string(), raindance_ttm()),
+        ("SOS.TTM".to_string(), sos_ttm()),
     ]
 }
 
@@ -1190,6 +1242,55 @@ fn demo_ads(ttm_name: &str) -> Ads {
     }
 }
 
+/// An ADS that plays `default_ttm` for any scene tag, except the `overrides`
+/// (`tag → TTM`), which play their own TTM. This lets one `.ADS` file show a different
+/// recreated scene per tag — e.g. a specific story beat — using the engine's per-tag
+/// dispatch (unknown tags fall back to the default sequence at offset 0).
+fn demo_ads_multi(default_ttm: &str, overrides: &[(u16, &str)]) -> Ads {
+    let mut resources = vec![AdsRes {
+        id: 1,
+        name: default_ttm.to_string(),
+    }];
+    // Resolve (and register) the slot id for a TTM name.
+    fn slot_for(resources: &mut Vec<AdsRes>, name: &str) -> u16 {
+        if let Some(r) = resources.iter().find(|r| r.name == name) {
+            return r.id;
+        }
+        let id = resources.len() as u16 + 1;
+        resources.push(AdsRes {
+            id,
+            name: name.to_string(),
+        });
+        id
+    }
+    // Emit one sequence: `tag:` ADD_SCENE(slot, ttm_tag=1) ; PLAY_SCENE.
+    fn emit(code: &mut Vec<u8>, tag: u16, slot: u16) {
+        code.extend_from_slice(&op(tag));
+        code.extend_from_slice(&op(0x2005));
+        for v in [slot, 1u16, 0, 0] {
+            code.extend_from_slice(&v.to_le_bytes());
+        }
+        code.extend_from_slice(&op(0x1510));
+    }
+    let mut code = Vec::new();
+    // Default first (sentinel tag 0x00FF): any non-overridden tag falls back here.
+    emit(&mut code, 0x00FF, 1);
+    for &(tag, ttm) in overrides {
+        let slot = slot_for(&mut resources, ttm);
+        emit(&mut code, tag, slot);
+    }
+    code.extend_from_slice(&op(0xFFFF)); // END
+    Ads {
+        version: "1.20".into(),
+        resources,
+        bytecode: code,
+        tags: vec![Tag {
+            id: 1,
+            description: "multi".into(),
+        }],
+    }
+}
+
 /// Build the built-in recreated asset pack.
 pub fn demo_archive() -> (Archive, Palette) {
     let ads_names = [
@@ -1215,7 +1316,7 @@ pub fn demo_archive() -> (Archive, Palette) {
                     width: 16,
                     height: 64,
                     // Frames: 0=stand,1=wave,2=fish,3=read,4=Mary,5=boat,6=Suzy,
-                    // 7=raincloud, 8=lightning bolt.
+                    // 7=raincloud, 8=lightning bolt, 9=SOS bottle.
                     images: vec![
                         johnny_action(Pose::Stand, 0),
                         johnny_action(Pose::Wave, 0),
@@ -1226,6 +1327,7 @@ pub fn demo_archive() -> (Archive, Palette) {
                         suzy_sprite(),
                         raincloud_sprite(),
                         bolt_sprite(),
+                        bottle_sprite(),
                     ],
                 },
             ),
@@ -1247,10 +1349,18 @@ pub fn demo_archive() -> (Archive, Palette) {
             ("BEACH.SCR".to_string(), beach_scr()),
         ],
         ttms: vignette_ttms(),
-        // Each scene category plays its fitting recreated action.
+        // Each scene category plays its fitting recreated action. JOHNNY.ADS uses
+        // per-tag dispatch so day 2 (tag 2) shows the SOS-in-a-bottle beat.
         ads: ads_names
             .iter()
-            .map(|n| (n.to_string(), demo_ads(ttm_for_ads(n))))
+            .map(|&n| {
+                let ads = if n == "JOHNNY.ADS" {
+                    demo_ads_multi("WAVE.TTM", &[(2, "SOS.TTM")])
+                } else {
+                    demo_ads(ttm_for_ads(n))
+                };
+                (n.to_string(), ads)
+            })
             .collect(),
         ..Default::default()
     };
@@ -1271,7 +1381,7 @@ pub fn load_real(dir: &Path) -> Result<(Archive, Palette), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use wilson_engine::{Clock, Director, Show};
+    use wilson_engine::{AdsVm, Clock, Director, Show};
 
     #[test]
     fn palette_has_transparency_key() {
@@ -1315,6 +1425,7 @@ mod tests {
             "VISIT.TTM",
             "SUZY.TTM",
             "RAIN.TTM",
+            "SOS.TTM",
         ] {
             assert!(archive.ttm(name).is_some(), "missing {name}");
         }
@@ -1330,7 +1441,7 @@ mod tests {
         // JDEMO has the four action poses plus Mary, and they actually differ.
         let (archive, _) = demo_archive();
         let jdemo = archive.bmp("JDEMO.BMP").unwrap();
-        assert_eq!(jdemo.images.len(), 9);
+        assert_eq!(jdemo.images.len(), 10);
         let stand = &johnny_action(Pose::Stand, 0).pixels;
         let fish = &johnny_action(Pose::Fish, 0).pixels;
         let read = &johnny_action(Pose::Read, 0).pixels;
@@ -1341,6 +1452,33 @@ mod tests {
         assert_ne!(stand, mary);
         // The boat is a differently-sized sprite.
         assert_eq!(boat_sprite().width, 30);
+    }
+
+    #[test]
+    fn johnny_ads_is_per_tag() {
+        // JOHNNY.ADS plays the SOS beat on tag 2 and the default wave on other tags.
+        let (archive, palette) = demo_archive();
+        let johnny = &archive
+            .ads
+            .iter()
+            .find(|(n, _)| n.as_str() == "JOHNNY.ADS")
+            .unwrap()
+            .1;
+        let names: Vec<&str> = johnny.resources.iter().map(|r| r.name.as_str()).collect();
+        assert!(names.contains(&"WAVE.TTM"));
+        assert!(names.contains(&"SOS.TTM"));
+
+        // The first composed frame differs between tag 1 (wave) and tag 2 (SOS bottle).
+        let first_frame = |tag: u16| {
+            let mut vm = AdsVm::new(johnny, tag, &archive, &palette, 640, 480, 1).unwrap();
+            for _ in 0..100 {
+                if let Ok(Some(f)) = vm.next_frame(&archive) {
+                    return f.surface.pixels;
+                }
+            }
+            panic!("no frame for tag {tag}");
+        };
+        assert_ne!(first_frame(1), first_frame(2));
     }
 
     #[test]
