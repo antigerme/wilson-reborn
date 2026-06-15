@@ -191,6 +191,12 @@ fn main() {
                             last_flush = Instant::now();
                         }
                         let rgba = frame.surface.to_rgba(&palette);
+                        // Optional: smooth the dithered sea/sky before scaling.
+                        let rgba = if cfg.dedither {
+                            wilson_engine::dedither(&rgba, 640, 480)
+                        } else {
+                            rgba
+                        };
                         let mut buffer = surface.buffer_mut().expect("surface buffer");
                         scale::scale_rgba_to_argb(
                             &rgba,
@@ -314,11 +320,12 @@ fn print_config_info(cfg: &config::Config) {
     println!("  speed:    {}%", cfg.speed);
     println!("  scale:    {}", cfg.scale.as_str());
     println!("  filter:   {}", cfg.filter.as_str());
+    println!("  dedither: {}", cfg.dedither);
     println!("  daynight: {}", cfg.daynight.as_str());
     println!("  stats:    {}", stats::Stats::load().summary());
     println!(
-        "Edit the file above, or pass --windowed/--mute/--speed <pct>/--scale <mode>/\
-         --filter <nearest|linear|xbr>/--daynight <original|real24h>."
+        "Edit the file above, or pass --windowed/--mute/--dedither/--speed <pct>/\
+         --scale <mode>/--filter <nearest|linear|xbr>/--daynight <original|real24h>."
     );
 }
 
@@ -366,6 +373,7 @@ fn print_help() {
     println!("                                     nearest = crisp/retro,");
     println!("                                     linear  = smooth (bilinear),");
     println!("                                     xbr     = smooth + sharp (\"HD\")");
+    println!("  --dedither                       smooth the dithered sea/sky (default: off)");
     println!("  --daynight <original|real24h>    day/night cycle (default: original 8h)");
     println!("  --data <DIR>                     game data folder (default: auto-detect)");
     if cfg!(windows) {

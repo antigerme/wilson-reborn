@@ -35,5 +35,5 @@ pub use story::{
 pub use surface::{Rect, Surface, TRANSPARENT};
 pub use ttm_exec::{TtmSlot, TtmThread, MAX_BMP_SLOTS};
 pub use ttm_vm::{TtmStep, TtmVm};
-pub use upscale::xbr2x;
+pub use upscale::{dedither, xbr2x};
 pub use walk::{WalkFrame, Walker};

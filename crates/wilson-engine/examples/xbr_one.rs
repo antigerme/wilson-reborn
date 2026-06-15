@@ -2,16 +2,17 @@
 //! Apply the engine's [`xbr2x`] upscaler to one binary PPM (P6) image — a tiny harness
 //! to eyeball the xBR-style filter (and compare it against ffmpeg's `xbr`) offline.
 //!
-//! Usage: cargo run -p wilson-engine --example xbr_one -- <in.ppm> <out.ppm>
+//! Usage: cargo run -p wilson-engine --example xbr_one -- <in.ppm> <out.ppm> [dedither]
+//! (pass `dedither` as a 3rd arg to apply the edge-preserving smooth before xBR).
 
 use std::io::Write;
 
-use wilson_engine::xbr2x;
+use wilson_engine::{dedither, xbr2x};
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 3 {
-        eprintln!("usage: xbr_one <in.ppm> <out.ppm>");
+        eprintln!("usage: xbr_one <in.ppm> <out.ppm> [dedither]");
         std::process::exit(2);
     }
     let (w, h, rgb) = read_ppm(&args[1]);
@@ -19,6 +20,9 @@ fn main() {
     let mut rgba = Vec::with_capacity(w * h * 4);
     for px in rgb.chunks_exact(3) {
         rgba.extend_from_slice(&[px[0], px[1], px[2], 255]);
+    }
+    if args.get(3).map(String::as_str) == Some("dedither") {
+        rgba = dedither(&rgba, w, h);
     }
     let up = xbr2x(&rgba, w, h);
     // Back to RGB for PPM output.
