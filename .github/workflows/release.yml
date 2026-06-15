@@ -1,8 +1,9 @@
 name: Release
 
 # Build distributable binaries: the Windows screensaver (`wilson.scr`) and a Linux
-# binary. Runs on a version tag (`v*`) — attaching the files to a GitHub Release — and
-# can be triggered manually (`workflow_dispatch`) to download the artifacts for testing.
+# binary. Runs on a version tag (`v*`) — attaching the files to a GitHub Release with
+# auto-generated notes (`generate_release_notes`) — and can be triggered manually
+# (`workflow_dispatch`) to download the artifacts for testing.
 on:
   push:
     tags: ["v*"]
@@ -47,6 +48,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
+          generate_release_notes: true
           files: |
             wilson.scr
             target/release/wilson.exe
@@ -82,4 +84,5 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
+          generate_release_notes: true
           files: wilson-linux-x86_64.tar.gz
