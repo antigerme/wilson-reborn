@@ -147,7 +147,7 @@ impl Show {
                 Action::Walk(wf) => return self.frame_from_walk(wf),
                 Action::Play(af) => {
                     return Frame {
-                        surface: af.surface,
+                        surface: self.overlay_holiday(af.surface),
                         delay_ticks: af.delay_ticks,
                         sounds: af.sounds,
                     }
@@ -194,9 +194,18 @@ impl Show {
             }
         }
         Frame {
-            surface,
+            surface: self.overlay_holiday(surface),
             delay_ticks: wf.delay,
             sounds: Vec::new(),
+        }
+    }
+
+    /// Composite the holiday prop layer on top of `surface` (like `jc_reborn`'s
+    /// `grUpdateDisplay`, the holiday is drawn last — above Johnny). No-op off-island.
+    fn overlay_holiday(&self, surface: Surface) -> Surface {
+        match self.island.as_ref().and_then(Island::holiday_layer) {
+            Some(layer) => surface.compose_over(layer),
+            None => surface,
         }
     }
 
@@ -436,6 +445,39 @@ mod tests {
             assert_eq!(f.surface.height, 480);
             assert!(f.delay_ticks > 0);
         }
+    }
+
+    #[test]
+    fn holiday_prop_is_composited_on_top() {
+        // Like `jc_reborn` (`grUpdateDisplay`), the holiday layer is drawn on top of
+        // Johnny. HOLIDAY.BMP uses value 5 in the fixture; a Christmas date must add
+        // those pixels vs the same scenes on a non-holiday date (same seed → same runs).
+        let arch = full_archive();
+        let pal = Palette {
+            colors: [[1u8; 3]; 256],
+        };
+        let count_holiday_pixels = |month: u8, day: u8| {
+            let director = Director::new(5, 100);
+            let clock = Clock {
+                yday: 100,
+                hour: 12,
+                month,
+                day,
+            };
+            let mut show = Show::new(&arch, &pal, 640, 480, director, clock, 7);
+            let mut total = 0usize;
+            for _ in 0..800 {
+                let f = show.next_frame(&arch);
+                total += f.surface.pixels.iter().filter(|&&p| p == 5).count();
+            }
+            total
+        };
+        let xmas = count_holiday_pixels(12, 24); // Christmas → prop on top
+        let plain = count_holiday_pixels(6, 14); // no holiday
+        assert!(
+            xmas > plain,
+            "holiday prop should appear on top (xmas={xmas}, plain={plain})"
+        );
     }
 
     #[test]
