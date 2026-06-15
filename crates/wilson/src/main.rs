@@ -9,7 +9,7 @@
 //! - `wilson --data <dir>` — load the data from `<dir>`.
 //! - `wilson` — auto-detects the data in the working directory or next to the executable.
 //! - `wilson --windowed --mute --speed <pct> --scale fit|stretch|integer
-//!   --filter nearest|linear` — options (`--filter linear` smooths; `nearest` = crisp).
+//!   --filter nearest|linear|xbr` — options (`linear`/`xbr` smooth; `nearest` = crisp).
 //! - Windows screensaver verbs: `/s` (show), `/c` (config), `/p <hwnd>` (preview embedded
 //!   in the configuration pane — Windows only).
 
@@ -311,7 +311,7 @@ fn print_config_info(cfg: &config::Config) {
     println!("  stats:    {}", stats::Stats::load().summary());
     println!(
         "Edit the file above, or pass --windowed/--mute/--speed <pct>/--scale <mode>/\
-         --filter <nearest|linear>/--daynight <original|real24h>."
+         --filter <nearest|linear|xbr>/--daynight <original|real24h>."
     );
 }
 
