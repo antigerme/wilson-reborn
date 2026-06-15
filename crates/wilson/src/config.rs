@@ -10,7 +10,7 @@ use std::path::PathBuf;
 
 use wilson_engine::DayNight;
 
-use crate::scale::ScaleMode;
+use crate::scale::{Filter, ScaleMode};
 
 /// Minimum/maximum playback speed (percent of the original timing).
 const SPEED_MIN: u32 = 25;
@@ -27,6 +27,8 @@ pub struct Config {
     pub speed: u32,
     /// How the frame is scaled into the window.
     pub scale: ScaleMode,
+    /// How upscaled pixels are sampled (nearest = crisp/retro, linear = smooth).
+    pub filter: Filter,
     /// How the day/night cycle is driven (original 8-hour vs real 24-hour).
     pub daynight: DayNight,
 }
@@ -38,6 +40,7 @@ impl Default for Config {
             mute: false,
             speed: 100,
             scale: ScaleMode::Fit,
+            filter: Filter::default(),
             daynight: DayNight::Original,
         }
     }
@@ -96,6 +99,11 @@ impl Config {
                         c.scale = m;
                     }
                 }
+                "filter" => {
+                    if let Some(f) = Filter::parse(value) {
+                        c.filter = f;
+                    }
+                }
                 "daynight" => {
                     if let Some(m) = DayNight::parse(value) {
                         c.daynight = m;
@@ -118,18 +126,21 @@ impl Config {
              speed={}\n\
              # scale: how the picture fills the window — fit | stretch | integer.\n\
              scale={}\n\
+             # filter: pixel sampling — nearest (crisp/retro) | linear (smooth).\n\
+             filter={}\n\
              # daynight: day/night cycle — original (8h, as in 1992) | real24h (wall clock).\n\
              daynight={}\n",
             self.windowed,
             self.mute,
             self.speed,
             self.scale.as_str(),
+            self.filter.as_str(),
             self.daynight.as_str(),
         )
     }
 
-    /// Apply CLI overrides: `--windowed`, `--mute`, `--speed <pct>`, `--scale <mode>`.
-    /// Unknown flags are ignored (e.g. `--data` is handled elsewhere).
+    /// Apply CLI overrides: `--windowed`, `--mute`, `--speed <pct>`, `--scale <mode>`,
+    /// `--filter <nearest|linear>`. Unknown flags are ignored (`--data` is elsewhere).
     pub fn apply_args(&mut self, args: &[String]) {
         let mut i = 0;
         while i < args.len() {
@@ -145,6 +156,12 @@ impl Config {
                 "--scale" => {
                     if let Some(m) = args.get(i + 1).and_then(|v| ScaleMode::parse(v)) {
                         self.scale = m;
+                        i += 1;
+                    }
+                }
+                "--filter" => {
+                    if let Some(f) = args.get(i + 1).and_then(|v| Filter::parse(v)) {
+                        self.filter = f;
                         i += 1;
                     }
                 }
@@ -191,6 +208,7 @@ mod tests {
         assert!(!c.mute);
         assert_eq!(c.speed, 100);
         assert_eq!(c.scale, ScaleMode::Fit);
+        assert_eq!(c.filter, Filter::Linear); // smooth by default
     }
 
     #[test]
@@ -200,6 +218,7 @@ mod tests {
             mute: true,
             speed: 250,
             scale: ScaleMode::Integer,
+            filter: Filter::Nearest,
             daynight: DayNight::Real24h,
         };
         assert_eq!(Config::parse(&c.serialize()), c);
@@ -208,11 +227,12 @@ mod tests {
     #[test]
     fn parse_is_lenient() {
         let c = Config::parse(
-            "# comment\n\nwindowed=yes\nmute=off\nbogus=1\nscale=stretch\ndaynight=24h\n",
+            "# comment\n\nwindowed=yes\nmute=off\nbogus=1\nscale=stretch\nfilter=crisp\ndaynight=24h\n",
         );
         assert!(c.windowed);
         assert!(!c.mute);
         assert_eq!(c.scale, ScaleMode::Stretch);
+        assert_eq!(c.filter, Filter::Nearest); // "crisp" synonym
         assert_eq!(c.daynight, DayNight::Real24h);
         assert_eq!(c.speed, 100); // untouched → default
     }
@@ -234,6 +254,8 @@ mod tests {
             "200",
             "--scale",
             "integer",
+            "--filter",
+            "nearest",
             "--daynight",
             "real24h",
         ]
@@ -245,6 +267,7 @@ mod tests {
         assert!(c.mute);
         assert_eq!(c.speed, 200);
         assert_eq!(c.scale, ScaleMode::Integer);
+        assert_eq!(c.filter, Filter::Nearest);
         assert_eq!(c.daynight, DayNight::Real24h);
     }
 

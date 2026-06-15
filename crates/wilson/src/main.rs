@@ -8,7 +8,8 @@
 //! It needs the original Johnny Castaway data (`RESOURCE.MAP` + `RESOURCE.001`):
 //! - `wilson --data <dir>` — load the data from `<dir>`.
 //! - `wilson` — auto-detects the data in the working directory or next to the executable.
-//! - `wilson --windowed --mute --speed <pct> --scale fit|stretch|integer` — options.
+//! - `wilson --windowed --mute --speed <pct> --scale fit|stretch|integer
+//!   --filter nearest|linear` — options (`--filter linear` smooths; `nearest` = crisp).
 //! - Windows screensaver verbs: `/s` (show), `/c` (config), `/p <hwnd>` (preview embedded
 //!   in the configuration pane — Windows only).
 
@@ -192,6 +193,7 @@ fn main() {
                             size.width as usize,
                             size.height as usize,
                             cfg.scale,
+                            cfg.filter,
                         );
                         buffer.present().expect("present");
                         let delay = Duration::from_millis(cfg.frame_delay_ms(frame.delay_ticks));
@@ -304,11 +306,12 @@ fn print_config_info(cfg: &config::Config) {
     println!("  mute:     {}", cfg.mute);
     println!("  speed:    {}%", cfg.speed);
     println!("  scale:    {}", cfg.scale.as_str());
+    println!("  filter:   {}", cfg.filter.as_str());
     println!("  daynight: {}", cfg.daynight.as_str());
     println!("  stats:    {}", stats::Stats::load().summary());
     println!(
         "Edit the file above, or pass --windowed/--mute/--speed <pct>/--scale <mode>/\
-         --daynight <original|real24h>."
+         --filter <nearest|linear>/--daynight <original|real24h>."
     );
 }
 
