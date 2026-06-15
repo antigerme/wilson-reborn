@@ -82,11 +82,21 @@ mod tests {
 
     #[test]
     fn explicit_dir_falls_back_when_no_data_found() {
-        // Nothing on disk matches, so the explicit path is returned for a clear error.
-        assert_eq!(
-            find_data_dir(Some("/nonexistent/wilson/xyz")),
-            Some(PathBuf::from("/nonexistent/wilson/xyz"))
-        );
+        // When no candidate directory actually has data, the explicit path is returned so
+        // `load` can report a clear error. If the environment exposes real data (e.g.
+        // `WILSON_DATA_DIR` during a gated `cargo test` run, which is added to the
+        // candidates), `find_data_dir` legitimately returns that — so only assert the
+        // strict fallback when nothing is detectable.
+        let explicit = "/nonexistent/wilson/xyz";
+        let any_real = data_candidates(Some(explicit))
+            .iter()
+            .any(|c| find_ci(c, "RESOURCE.MAP").is_some());
+        let got = find_data_dir(Some(explicit)).expect("always Some with an explicit path");
+        if any_real {
+            assert!(find_ci(&got, "RESOURCE.MAP").is_some());
+        } else {
+            assert_eq!(got, PathBuf::from(explicit));
+        }
     }
 
     #[test]
