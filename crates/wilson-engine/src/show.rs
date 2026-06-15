@@ -64,6 +64,8 @@ pub struct Show {
     scene_idx: usize,
     island: Option<Island>,
     stage: Stage,
+    /// A sound to emit on the next produced frame (the day-beat cue, `sound 0`).
+    pending_sound: Option<u16>,
 }
 
 impl Show {
@@ -106,6 +108,7 @@ impl Show {
             scene_idx: 0,
             island: None,
             stage: Stage::Idle,
+            pending_sound: None,
         };
         show.plan_new_run(archive);
         show
@@ -146,11 +149,15 @@ impl Show {
             match action {
                 Action::Walk(wf) => return self.frame_from_walk(wf),
                 Action::Play(af) => {
+                    let mut sounds = af.sounds;
+                    if let Some(s) = self.pending_sound.take() {
+                        sounds.insert(0, s);
+                    }
                     return Frame {
                         surface: self.overlay_holiday(af.surface),
                         delay_ticks: af.delay_ticks,
-                        sounds: af.sounds,
-                    }
+                        sounds,
+                    };
                 }
                 Action::WalkDone => {
                     let scene = self.run.scenes[self.scene_idx];
@@ -279,6 +286,11 @@ impl Show {
         .ok()?;
         if let Some(isl) = &self.island {
             vm.set_background(isl.background().clone());
+        }
+        // Day-beat scenes play the transition cue (`sound 0`) as they begin, like
+        // `jc_reborn` (`storyPlay` → `soundPlay(0)` for `dayNo` scenes).
+        if scene.day_beat {
+            self.pending_sound = Some(0);
         }
         Some(vm)
     }
@@ -478,6 +490,33 @@ mod tests {
             xmas > plain,
             "holiday prop should appear on top (xmas={xmas}, plain={plain})"
         );
+    }
+
+    #[test]
+    fn day_beat_emits_transition_sound() {
+        // Day-beat scenes play `sound 0` as they begin (jc_reborn `storyPlay`). The
+        // fixture's TTM emits no sounds, so seeing `0` means the day-beat cue fired.
+        let arch = full_archive();
+        let pal = Palette {
+            colors: [[1u8; 3]; 256],
+        };
+        // Day 5's beat is MARY.ADS#1 (a FINAL day scene); over many runs it is chosen.
+        let director = Director::new(5, 100);
+        let clock = Clock {
+            yday: 100,
+            hour: 12,
+            month: 6,
+            day: 14,
+        };
+        let mut show = Show::new(&arch, &pal, 640, 480, director, clock, 42);
+        let mut heard = false;
+        for _ in 0..6000 {
+            if show.next_frame(&arch).sounds.contains(&0) {
+                heard = true;
+                break;
+            }
+        }
+        assert!(heard, "expected the day-beat transition sound (0)");
     }
 
     #[test]

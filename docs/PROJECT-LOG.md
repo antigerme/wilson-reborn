@@ -31,6 +31,33 @@ mostrar uma animação diferente por beat. Estreia com o **SOS na garrafa** (bea
 
 ---
 
+## 2026-06-15 — Som: auditoria + cue de transição de dia (sound 0)
+
+**Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #33).
+
+Em resposta a "o som está funcional?": auditei e corrigi uma lacuna.
+
+**Verificado (funcional):**
+- **Os 23 `soundN.wav` originais decodificam** com o `rodio` (1ch, 11025 Hz) — formato
+  compatível, arquivos tocáveis (teste de decodificação independe de placa de som).
+- **Efeitos in-scene wired:** TTM `0xC051` → `Frame.sounds` → `audio.play` (os TTMs reais
+  usam `0xC051` 535×). Toca onde houver dispositivo de áudio; degrada p/ silêncio sem
+  device/arquivos/feature/mute, sem pânico.
+
+**Lacuna corrigida — cue de transição de dia (`sound 0`):**
+- O `jc_reborn` toca `soundPlay(0)` quando uma cena tem `dayNo` (`story.c:246/268`); a
+  gente não tocava. Agora o `Show` emite **`sound 0`** ao iniciar uma cena de **day-beat**
+  (`pending_sound`, consumido no 1º frame da cena). Teste
+  `show::day_beat_emits_transition_sound`.
+
+> Ressalva: aqui (sandbox sem placa de som) não dá para **ouvir**; validei decodificação
+> + pipeline + emissão por testes. A audição final você confirma numa máquina com áudio.
+
+**~110 testes**; fmt + clippy `-D warnings` (com **e** sem `audio`) + suíte + release +
+harness `fidelity` (determinismo intacto) — verdes.
+
+---
+
 ## 2026-06-15 — Preview `/p` do Windows (janela-filha embutida)
 
 **Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #32).
