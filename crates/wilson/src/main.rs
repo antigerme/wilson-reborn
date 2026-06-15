@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! Wilson Reborn — the Johnny Castaway screensaver, as a live window.
 //!
-//! Runs the [`wilson_engine`] runtime and presents each composited frame with
-//! `softbuffer` in a `winit` window. Any key or mouse input quits, like a real
-//! screensaver. Runs fullscreen by default (use `--windowed` for development).
+//! Runs the [`wilson_engine`] runtime on the **original** game data and presents each
+//! composited frame with `softbuffer` in a `winit` window. Any key or mouse input quits,
+//! like a real screensaver. Runs fullscreen by default (use `--windowed` for dev).
 //!
-//! Usage:
-//! - `wilson` — fullscreen, with the built-in recreated assets.
-//! - `wilson --data <dir>` — run with the user's original `RESOURCE.*` files.
+//! It needs the original Johnny Castaway data (`RESOURCE.MAP` + `RESOURCE.001`):
+//! - `wilson --data <dir>` — load the data from `<dir>`.
+//! - `wilson` — auto-detects the data in the working directory or next to the executable.
 //! - `wilson --windowed --mute --speed <pct> --scale fit|stretch|integer` — options.
 //! - Windows screensaver verbs `/s` (show), `/p` (preview), `/c` (config) are accepted.
 
@@ -49,20 +49,26 @@ fn main() {
         _ => {}              // 's' or none → show
     }
 
-    let data_dir = args
+    let data_arg = args
         .windows(2)
         .find(|w| w[0] == "--data")
         .map(|w| w[1].clone());
 
-    let (archive, palette) = match &data_dir {
-        Some(dir) => match assets::load_real(std::path::Path::new(dir)) {
-            Ok(loaded) => loaded,
-            Err(e) => {
-                eprintln!("Could not load data from {dir}: {e}\nFalling back to demo assets.");
-                assets::demo_archive()
-            }
-        },
-        None => assets::demo_archive(),
+    let Some(data_dir) = assets::find_data_dir(data_arg.as_deref()) else {
+        eprintln!(
+            "Wilson Reborn needs the original Johnny Castaway data files \
+             (RESOURCE.MAP + RESOURCE.001).\n\
+             Pass --data <dir>, or place the files in the current directory or next to \
+             the executable."
+        );
+        return;
+    };
+    let (archive, palette) = match assets::load(&data_dir) {
+        Ok(loaded) => loaded,
+        Err(e) => {
+            eprintln!("Could not load data from {}: {e}", data_dir.display());
+            return;
+        }
     };
 
     let clock = clock::now();
@@ -82,7 +88,7 @@ fn main() {
     // Sound effects are loaded from the data dir (originals carry `soundN.wav`); the
     // player degrades to silence without the `audio` feature, a device, the files, or
     // when muted.
-    let audio = audio::Audio::new(data_dir.as_deref().map(std::path::Path::new), cfg.mute);
+    let audio = audio::Audio::new(Some(data_dir.as_path()), cfg.mute);
 
     // Persist the story day whenever it advances, so the arc carries over to the next
     // run. `None` until the first frame establishes today's day.

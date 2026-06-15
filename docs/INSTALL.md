@@ -1,8 +1,9 @@
 # Instalação e empacotamento
 
-O app **`wilson`** é um único binário **standalone** — traz o asset pack recriado
-embutido, então não precisa de arquivos externos. (Para usar os dados originais, passe
-`--data <dir>` com os seus `RESOURCE.MAP`/`RESOURCE.001`.)
+O app **`wilson`** usa os **arquivos originais** do Johnny Castaway
+(`RESOURCE.MAP` + `RESOURCE.001`) — não há arte embutida. Coloque esses arquivos **no
+mesmo diretório do executável** (ou no diretório de trabalho), ou aponte com
+`--data <dir>`. Sem eles, o app explica o que falta e sai.
 
 ## Baixar os binários
 
@@ -20,7 +21,11 @@ baixar os artefatos sem criar uma release.
 Um screensaver do Windows é apenas o executável com a extensão `.scr`.
 
 1. Baixe `wilson.scr`.
-2. **Instalar:** clique com o botão direito em `wilson.scr` → **Instalar** (já abre a
+2. **Coloque os dados originais** (`RESOURCE.MAP` + `RESOURCE.001`) **na mesma pasta** do
+   `wilson.scr` (ou aponte com `--data <dir>`). Sem eles, o screensaver não tem o que
+   mostrar. *(Nota: ao instalar em `System32`, os dados precisam estar lá também — ou
+   prefira rodar de uma pasta própria.)*
+3. **Instalar:** clique com o botão direito em `wilson.scr` → **Instalar** (já abre a
    janela de configuração de proteção de tela com o Wilson selecionado). Ou copie o
    arquivo para `C:\Windows\System32\` e escolha **Wilson** em *Configurações → Tela de
    bloqueio → Proteção de tela*.
@@ -34,8 +39,9 @@ Um screensaver do Windows é apenas o executável com a extensão `.scr`.
 ## Linux
 
 1. Baixe e extraia: `tar -xzf wilson-linux-x86_64.tar.gz`
-2. Rode: `./wilson` (tela cheia; qualquer tecla/clique encerra). Use `--windowed` para
-   rodar em janela.
+2. Rode com os dados originais: `./wilson --data <dir>` (ou deixe `RESOURCE.MAP`/
+   `RESOURCE.001` ao lado do binário / no diretório atual). Tela cheia; qualquer
+   tecla/clique encerra. Use `--windowed` para janela.
 3. Para áudio, instale o ALSA em runtime se necessário (`libasound2`).
 
 Não há um framework universal de "screensaver" no Linux; rode o `wilson` diretamente,

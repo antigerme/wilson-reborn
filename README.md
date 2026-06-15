@@ -30,13 +30,16 @@ Cinco reimplementações independentes do motor original, usadas como referênci
 
 ## Como rodar
 
+O Wilson Reborn usa **os arquivos originais** do Johnny Castaway (`RESOURCE.MAP` +
+`RESOURCE.001`) — não há arte embutida. Aponte para eles com `--data`, ou deixe-os no
+diretório atual / ao lado do executável (auto-detecção):
+
 ```bash
-cargo run -p wilson                    # tela cheia, com o asset pack recriado embutido
-cargo run -p wilson -- --windowed      # em janela 640×480 (útil no desenvolvimento)
-cargo run -p wilson -- --data <dir>    # usando seus RESOURCE.MAP/RESOURCE.001 originais
+cargo run -p wilson -- --data <dir>    # seus RESOURCE.MAP/RESOURCE.001 originais
+cargo run -p wilson -- --data <dir> --windowed   # em janela 640×480 (dev)
 ```
 Roda em **tela cheia** por padrão (comportamento de screensaver); qualquer tecla/clique
-encerra. Requer Rust estável.
+encerra. Requer Rust estável. Sem os dados, o app explica o que falta e sai.
 
 ### Opções
 
@@ -67,8 +70,9 @@ screensaver no Windows, rodar no Linux e publicar releases.
 - `wilson-dgds` — formatos DGDS: `RESOURCE.MAP/.001`, RLE/LZW, `.BMP/.SCR/.TTM/.ADS`, disassembler.
 - `wilson-engine` — runtime: interpretadores TTM/ADS, diretor (63 cenas, ciclo de 11 dias,
   feriados/maré/noite), pathfinding, walk e render da ilha; integração `Show`.
-- `wilson` — app de janela (winit + softbuffer) com asset pack **recriado** (copyright-free).
+- `wilson` — app de janela (winit + softbuffer) que carrega os **arquivos originais**
+  (`--data` ou auto-detecção); som, config/opções, persistência do dia e estatísticas.
 
 CI verde em **Ubuntu, Windows e Fedora**. Progresso e decisões em
 [`docs/knowledge-base/08-decisoes-e-status.md`](docs/knowledge-base/08-decisoes-e-status.md).
-Próximo: arte recriada melhor, som, e empacotamento `.scr`/instaladores.
+O foco é **paridade total com os dados originais** (sem arte recriada).

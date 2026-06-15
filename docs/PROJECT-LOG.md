@@ -31,6 +31,38 @@ mostrar uma animação diferente por beat. Estreia com o **SOS na garrafa** (bea
 
 ---
 
+## 2026-06-15 — PIVÔ: remover o pack recriado, usar 100% os arquivos originais
+
+**Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #27).
+
+Decisão do usuário: a arte recriada **não estava ficando boa**; remover tudo e mudar o
+foco para usar **100% os arquivos originais**.
+
+- **`crates/wilson/src/assets.rs`**: de ~1560 linhas (pack procedural completo) para
+  ~70 — só **`load(dir)`** (carrega `RESOURCE.MAP`/`RESOURCE.001` → `Archive`+`Palette`)
+  e **`find_data_dir(explicit)`** (auto-detecção: `--data`, senão diretório atual ou ao
+  lado do executável). Removidos: palette/`Canvas`/sprites/SCRs/TTMs/ADS recriados,
+  `demo_archive`, `demo_ads*`, `vignette_*`, `ttm_for_ads`, Mary/Suzy/visitantes/easter
+  eggs, etc.
+- **`crates/wilson/src/main.rs`**: sem fallback demo — **exige** os dados (erro claro e
+  saída se não achar). `audio` usa o diretório de dados resolvido. `/c` segue funcionando
+  sem dados.
+- **Decisão #2 atualizada** (era "híbrido/recriado" → **"100% originais"**) em
+  `08-decisoes-e-status.md`, `CLAUDE.md`, `README.md`, `docs/INSTALL.md` e nota no doc 09.
+- Mantidos (não são "assets recriados"): engine, janela, som, config/opções,
+  persistência do dia, estatísticas, escala, ciclo dia-noite, empacotamento `.scr`, e o
+  fix de composição de **props de feriado** no `island.rs` (faz os feriados aparecerem
+  com `--data`).
+
+**Validado com os dados originais** (`/tmp/realdata/dist`): teste gated `real_data` ok
+(117 bmp, 10 scr, 41 ttm, 10 ads); o app **auto-detecta e carrega** os dados (som
+inclusive); sem dados, mensagem de ajuda e saída limpa; `/c` ok. fmt + clippy `-D
+warnings` (com **e** sem `audio`) + suíte + `build --release` — verdes.
+
+**Próximo:** melhorias **sobre os dados originais** (a combinar).
+
+---
+
 ## 2026-06-15 — Pack recriado: easter egg da dança da chuva (nuvem → raio)
 
 **Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #25).
