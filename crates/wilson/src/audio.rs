@@ -17,6 +17,7 @@ pub struct Audio {
 impl Audio {
     /// Create the player, loading `soundN.wav` from `dir` if provided. When `muted`,
     /// no audio device is opened and playback is a no-op.
+    #[cfg_attr(feature = "embed-data", allow(dead_code))] // embed builds use from_sounds
     pub fn new(dir: Option<&Path>, muted: bool) -> Self {
         #[cfg(feature = "audio")]
         {
@@ -27,6 +28,27 @@ impl Audio {
         #[cfg(not(feature = "audio"))]
         {
             let _ = (dir, muted);
+            Audio {}
+        }
+    }
+
+    /// Create the player from already-loaded sound bytes (`sounds[id]`), e.g. data
+    /// embedded into the binary. When `muted`, playback is a no-op.
+    #[cfg_attr(not(feature = "embed-data"), allow(dead_code))] // only embed builds use it
+    pub fn from_sounds(sounds: Vec<Option<Vec<u8>>>, muted: bool) -> Self {
+        #[cfg(feature = "audio")]
+        {
+            Audio {
+                backend: if muted {
+                    None
+                } else {
+                    Backend::from_sounds(sounds)
+                },
+            }
+        }
+        #[cfg(not(feature = "audio"))]
+        {
+            let _ = (sounds, muted);
             Audio {}
         }
     }
@@ -46,11 +68,13 @@ impl Audio {
 
 /// The on-disk filename for sound effect `id`.
 #[cfg(feature = "audio")]
+#[cfg_attr(feature = "embed-data", allow(dead_code))]
 fn sound_filename(id: u16) -> String {
     format!("sound{id}.wav")
 }
 
 #[cfg(feature = "audio")]
+#[cfg_attr(feature = "embed-data", allow(dead_code))]
 const NUM_SOUNDS: usize = 25;
 
 #[cfg(feature = "audio")]
@@ -63,8 +87,8 @@ struct Backend {
 
 #[cfg(feature = "audio")]
 impl Backend {
+    #[cfg_attr(feature = "embed-data", allow(dead_code))]
     fn new(dir: Option<&Path>) -> Option<Self> {
-        let (stream, handle) = rodio::OutputStream::try_default().ok()?;
         let mut sounds = vec![None; NUM_SOUNDS];
         if let Some(dir) = dir {
             for (id, slot) in sounds.iter_mut().enumerate() {
@@ -73,6 +97,12 @@ impl Backend {
                 }
             }
         }
+        Backend::from_sounds(sounds)
+    }
+
+    #[cfg_attr(not(feature = "embed-data"), allow(dead_code))]
+    fn from_sounds(sounds: Vec<Option<Vec<u8>>>) -> Option<Self> {
+        let (stream, handle) = rodio::OutputStream::try_default().ok()?;
         Some(Backend {
             _stream: stream,
             handle,

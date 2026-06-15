@@ -56,6 +56,23 @@ cargo build --release -p wilson
 # binário em target/release/wilson (ou wilson.exe no Windows)
 ```
 
+## Build autossuficiente (dados embutidos)
+
+Para um **único arquivo** que roda **sem** os dados ao lado (nada de `--data`), compile
+com a feature `embed-data` apontando `WILSON_EMBED_DATA` para uma pasta com os dados
+originais (`RESOURCE.MAP` + `RESOURCE.001` e, se quiser som, os `soundN.wav`):
+
+```bash
+WILSON_EMBED_DATA=<dir-com-os-dados> cargo build --release -p wilson --features embed-data
+# o binário resultante (~5 MB) embute RESOURCE.* + soundN.wav e roda de qualquer pasta
+```
+
+Os bytes são lidos **só em tempo de compilação** pela [`build.rs`](../crates/wilson/build.rs)
+e nunca entram no repositório. Como esses dados são **copyright** da Sierra/Dynamix, **não**
+distribua publicamente o binário com dados embutidos — esse build é para uso pessoal de quem
+já tem o jogo original. (Sem `WILSON_EMBED_DATA`, a feature compila um *stub* com um aviso e
+o binário não roda — útil só para o CI checar a compilação.)
+
 ## Publicar uma release (mantenedor)
 
 ```bash

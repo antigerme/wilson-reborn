@@ -6,28 +6,41 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
-## 2026-06-15 — Pack recriado: mapeamento por-tag + SOS na garrafa (dia 2)
+## 2026-06-15 — Build autossuficiente: dados originais embutidos (feature `embed-data`)
 
-**Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #26).
+**Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #34).
 
-Desbloqueia cenas **por tag** (não só por arquivo `.ADS`): agora um mesmo `.ADS` pode
-mostrar uma animação diferente por beat. Estreia com o **SOS na garrafa** (beat do dia 2).
+Em resposta a "distribuir o app com os assets/áudio originais — facilitar ao máximo o uso":
+um build **opcional** que embute os dados originais no binário, gerando um **único arquivo**
+que roda **sem** `--data`/auto-detecção.
 
-- **`assets.rs`**: `demo_ads_multi(default, overrides)` — gera um `.ADS` com uma sequência
-  por tag (cada `tag: ADD_SCENE; PLAY_SCENE`), aproveitando que o `play_chunk` **para no
-  `PLAY_SCENE`** e que tags desconhecidas caem no offset 0 (sequência default, tag
-  sentinela `0x00FF`). `bottle_sprite()` (frame 9) + `sos_ttm()` (Johnny + garrafa
-  derivando ao mar). `JOHNNY.ADS` → `demo_ads_multi("WAVE.TTM", [(2,"SOS.TTM")])`.
-- **Teste comportamental**: via `AdsVm`, a tag 2 (SOS) compõe um frame **diferente** da
-  tag 1 (wave) — prova o dispatch por-tag de ponta a ponta.
+- **`crates/wilson/build.rs`** (novo): com a feature `embed-data` ligada, lê `RESOURCE.MAP`
+  (+ o data file nomeado nos bytes 6..19, default `RESOURCE.001`) e os `soundN.wav` do
+  diretório `WILSON_EMBED_DATA` e gera `embedded_data.rs` (via `include_bytes!`) no
+  `OUT_DIR`. **Os bytes só são lidos em tempo de compilação — nunca entram no repo.** Sem
+  `WILSON_EMBED_DATA`, gera um *stub* vazio + `cargo:warning` (o `--all-features` do CI
+  compila sem precisar dos dados; o binário-stub não roda).
+- **`crates/wilson/src/embedded.rs`** (novo): `archive_and_palette()` (parse em memória,
+  sem arquivos temporários) e `sound_bytes()` (vetor de 25 opcionais).
+- **`crates/wilson/src/audio.rs`**: `Audio::from_sounds`/`Backend::from_sounds` — tocam a
+  partir de bytes já carregados (em vez de ler do disco). `cfg_attr(allow(dead_code))` para
+  os caminhos não usados em cada combinação de feature.
+- **`crates/wilson/src/main.rs`**: `cfg`-split — `embed-data` usa
+  `embedded::archive_and_palette()` + `Audio::from_sounds`; senão, o caminho normal
+  (`find_data_dir`/`load`/erro). O módulo `assets` só é compilado **sem** a feature.
+- **`Cargo.toml`**: nova feature `embed-data = []`.
+- **`docs/INSTALL.md`**: seção "Build autossuficiente (dados embutidos)" com o comando e o
+  aviso de **copyright** (não distribuir publicamente o binário com dados embutidos).
 
-**110 testes** (40 wilson [+1: per-tag] + 35 dgds + 35 engine). fmt, clippy `-D warnings`
-(com **e** sem `audio`), `build --release`. Validado visualmente (a garrafa derivando).
+**Validado:** `WILSON_EMBED_DATA=<dir> cargo build --release --features embed-data` →
+binário **~5 MB**, autossuficiente; rodado de uma **pasta vazia** (sem arquivos de dados ao
+lado) chega ao event loop (parse dos dados embutidos + áudio OK; só falha por não haver
+display no sandbox headless). fmt + clippy `-D warnings` em **todas** as combinações
+(default, `--features embed-data`, `--all-features`, `--no-default-features`) + suíte
+completa + gated `real_data` (117/10/41/10) + harness `fidelity` (63 cenas, 400 frames,
+determinismo) — verdes.
 
-> Base para dar beats próprios a Mary/Suzy/Johnny (ex.: avião do dia 11, escritório do
-> dia 10) em incrementos futuros.
-
-**Próximo:** mais beats por-tag e demais melhorias.
+**Próximo:** validação minuciosa pré-release e (com OK do usuário) a release.
 
 ---
 
@@ -222,6 +235,29 @@ inclusive); sem dados, mensagem de ajuda e saída limpa; `/c` ok. fmt + clippy `
 warnings` (com **e** sem `audio`) + suíte + `build --release` — verdes.
 
 **Próximo:** melhorias **sobre os dados originais** (a combinar).
+
+---
+
+## 2026-06-15 — Pack recriado: mapeamento por-tag + SOS na garrafa (dia 2)
+
+> **Nota:** este trabalho do pack recriado foi **revertido** pelo PIVÔ acima
+> (entrada de 2026-06-15). Mantido aqui como registro cronológico.
+
+**Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #26).
+
+Desbloqueia cenas **por tag** (não só por arquivo `.ADS`): agora um mesmo `.ADS` pode
+mostrar uma animação diferente por beat. Estreia com o **SOS na garrafa** (beat do dia 2).
+
+- **`assets.rs`**: `demo_ads_multi(default, overrides)` — gera um `.ADS` com uma sequência
+  por tag (cada `tag: ADD_SCENE; PLAY_SCENE`), aproveitando que o `play_chunk` **para no
+  `PLAY_SCENE`** e que tags desconhecidas caem no offset 0 (sequência default, tag
+  sentinela `0x00FF`). `bottle_sprite()` (frame 9) + `sos_ttm()` (Johnny + garrafa
+  derivando ao mar). `JOHNNY.ADS` → `demo_ads_multi("WAVE.TTM", [(2,"SOS.TTM")])`.
+- **Teste comportamental**: via `AdsVm`, a tag 2 (SOS) compõe um frame **diferente** da
+  tag 1 (wave) — prova o dispatch por-tag de ponta a ponta.
+
+**110 testes** (40 wilson [+1: per-tag] + 35 dgds + 35 engine). fmt, clippy `-D warnings`
+(com **e** sem `audio`), `build --release`. Validado visualmente (a garrafa derivando).
 
 ---
 
