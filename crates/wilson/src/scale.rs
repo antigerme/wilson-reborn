@@ -1,8 +1,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-//! Nearest-neighbour scaling of an RGBA frame into a softbuffer `0x00RRGGBB` buffer,
-//! in three modes (aspect-fit with letterbox, stretch-to-fill, integer-multiple).
+//! Scaling of an RGBA frame into a softbuffer `0x00RRGGBB` buffer.
+//!
+//! Two independent choices:
+//! * [`ScaleMode`] — the destination rectangle: aspect-fit with letterbox, stretch-to-
+//!   fill, or largest integer multiple.
+//! * [`Filter`] — how source pixels are sampled into that rectangle: `Nearest` (crisp,
+//!   the original 1992 blocky look) or `Linear` (bilinear, smooths the upscaled pixels
+//!   so it looks less "80s/90s" on modern resolutions).
+//!
+//! (An xBR/HQx-style pixel-art upscaler — smooth *and* sharp — is a planned third
+//! `Filter`; bilinear is the simple, dependency-free smoothing that ships first.)
 
-/// How a frame is scaled into the window.
+/// How a frame is scaled into the window (the destination rectangle).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum ScaleMode {
     /// Preserve aspect ratio, centred, with black letterbox bars (default).
@@ -36,7 +45,40 @@ impl ScaleMode {
     }
 }
 
-/// Scale `src` (RGBA8888, `sw`×`sh`) into `dst` (`0x00RRGGBB`, `dw`×`dh`) using `mode`.
+/// How source pixels are sampled when scaling.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum Filter {
+    /// Nearest-neighbour: crisp, blocky — the authentic 1992 look.
+    Nearest,
+    /// Bilinear: smooths the upscaled pixels (default — softer, less "retro grid").
+    #[default]
+    Linear,
+}
+
+impl Filter {
+    /// Parse a filter name (`nearest`/`linear`), case-insensitive. Common synonyms
+    /// (`crisp`, `pixel`; `smooth`, `bilinear`) are accepted too.
+    pub fn parse(s: &str) -> Option<Filter> {
+        match s.to_ascii_lowercase().as_str() {
+            "nearest" | "crisp" | "pixel" | "none" => Some(Filter::Nearest),
+            "linear" | "smooth" | "bilinear" => Some(Filter::Linear),
+            _ => None,
+        }
+    }
+
+    /// The canonical name (round-trips with [`Filter::parse`]).
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Filter::Nearest => "nearest",
+            Filter::Linear => "linear",
+        }
+    }
+}
+
+/// Scale `src` (RGBA8888, `sw`×`sh`) into `dst` (`0x00RRGGBB`, `dw`×`dh`) using `mode`
+/// for the destination rectangle and `filter` for pixel sampling.
+// Source dims + destination dims + mode + filter are all genuinely needed here.
+#[allow(clippy::too_many_arguments)]
 pub fn scale_rgba_to_argb(
     src: &[u8],
     sw: usize,
@@ -45,11 +87,12 @@ pub fn scale_rgba_to_argb(
     dw: usize,
     dh: usize,
     mode: ScaleMode,
+    filter: Filter,
 ) {
     match mode {
-        ScaleMode::Fit => scale_rgba_to_argb_fit(src, sw, sh, dst, dw, dh),
-        ScaleMode::Stretch => scale_rgba_to_argb_stretch(src, sw, sh, dst, dw, dh),
-        ScaleMode::Integer => scale_rgba_to_argb_integer(src, sw, sh, dst, dw, dh),
+        ScaleMode::Fit => scale_rgba_to_argb_fit(src, sw, sh, dst, dw, dh, filter),
+        ScaleMode::Stretch => scale_rgba_to_argb_stretch(src, sw, sh, dst, dw, dh, filter),
+        ScaleMode::Integer => scale_rgba_to_argb_integer(src, sw, sh, dst, dw, dh, filter),
     }
 }
 
@@ -58,8 +101,32 @@ fn argb(src: &[u8], si: usize) -> u32 {
     (u32::from(src[si]) << 16) | (u32::from(src[si + 1]) << 8) | u32::from(src[si + 2])
 }
 
+/// Bilinearly sample `src` at fractional source position `(fx, fy)` (in source-pixel
+/// units), returning a packed `0x00RRGGBB`. Coordinates are clamped to the image.
+#[inline]
+fn sample_bilinear(src: &[u8], sw: usize, sh: usize, fx: f32, fy: f32) -> u32 {
+    let fx = fx.clamp(0.0, (sw - 1) as f32);
+    let fy = fy.clamp(0.0, (sh - 1) as f32);
+    let x0 = fx.floor() as usize;
+    let y0 = fy.floor() as usize;
+    let x1 = (x0 + 1).min(sw - 1);
+    let y1 = (y0 + 1).min(sh - 1);
+    let wx = fx - x0 as f32;
+    let wy = fy - y0 as f32;
+    let i00 = (y0 * sw + x0) * 4;
+    let i01 = (y0 * sw + x1) * 4;
+    let i10 = (y1 * sw + x0) * 4;
+    let i11 = (y1 * sw + x1) * 4;
+    let chan = |o: usize| -> u32 {
+        let top = src[i00 + o] as f32 * (1.0 - wx) + src[i01 + o] as f32 * wx;
+        let bot = src[i10 + o] as f32 * (1.0 - wx) + src[i11 + o] as f32 * wx;
+        (top * (1.0 - wy) + bot * wy).round() as u32
+    };
+    (chan(0) << 16) | (chan(1) << 8) | chan(2)
+}
+
 /// Blit `src` (`sw`×`sh`) into `dst` (`dst_dims`) as the rectangle `rect` =
-/// `(ox, oy, tw, th)`, nearest-neighbour scaled.
+/// `(ox, oy, tw, th)`, sampling with `filter`.
 fn blit_scaled(
     src: &[u8],
     sw: usize,
@@ -67,6 +134,7 @@ fn blit_scaled(
     dst: &mut [u32],
     dst_dims: (usize, usize),
     rect: (usize, usize, usize, usize),
+    filter: Filter,
 ) {
     let (dw, dh) = dst_dims;
     let (ox, oy, tw, th) = rect;
@@ -74,14 +142,31 @@ fn blit_scaled(
         if oy + ty >= dh {
             break;
         }
-        let sy = ty * sh / th;
         let drow = (oy + ty) * dw + ox;
-        let srow = sy * sw;
-        for tx in 0..tw {
-            if ox + tx >= dw {
-                break;
+        match filter {
+            Filter::Nearest => {
+                let sy = ty * sh / th;
+                let srow = sy * sw;
+                for tx in 0..tw {
+                    if ox + tx >= dw {
+                        break;
+                    }
+                    dst[drow + tx] = argb(src, (srow + tx * sw / tw) * 4);
+                }
             }
-            dst[drow + tx] = argb(src, (srow + tx * sw / tw) * 4);
+            Filter::Linear => {
+                // Map the destination pixel centre back to source space, then blend the
+                // four surrounding source texels. `-0.5` centres the sample so the image
+                // is not shifted half a pixel.
+                let fy = (ty as f32 + 0.5) * sh as f32 / th as f32 - 0.5;
+                for tx in 0..tw {
+                    if ox + tx >= dw {
+                        break;
+                    }
+                    let fx = (tx as f32 + 0.5) * sw as f32 / tw as f32 - 0.5;
+                    dst[drow + tx] = sample_bilinear(src, sw, sh, fx, fy);
+                }
+            }
         }
     }
 }
@@ -94,6 +179,7 @@ pub fn scale_rgba_to_argb_stretch(
     dst: &mut [u32],
     dw: usize,
     dh: usize,
+    filter: Filter,
 ) {
     if sw == 0 || sh == 0 || dw == 0 || dh == 0 {
         for p in dst.iter_mut() {
@@ -101,7 +187,7 @@ pub fn scale_rgba_to_argb_stretch(
         }
         return;
     }
-    blit_scaled(src, sw, sh, dst, (dw, dh), (0, 0, dw, dh));
+    blit_scaled(src, sw, sh, dst, (dw, dh), (0, 0, dw, dh), filter);
 }
 
 /// Largest whole-number multiple that fits, centred; falls back to fit when the
@@ -113,6 +199,7 @@ pub fn scale_rgba_to_argb_integer(
     dst: &mut [u32],
     dw: usize,
     dh: usize,
+    filter: Filter,
 ) {
     for p in dst.iter_mut() {
         *p = 0;
@@ -123,13 +210,13 @@ pub fn scale_rgba_to_argb_integer(
     let k = (dw / sw).min(dh / sh);
     if k == 0 {
         // Window smaller than the source: best-effort aspect fit.
-        scale_rgba_to_argb_fit(src, sw, sh, dst, dw, dh);
+        scale_rgba_to_argb_fit(src, sw, sh, dst, dw, dh, filter);
         return;
     }
     let (tw, th) = (sw * k, sh * k);
     let ox = (dw - tw) / 2;
     let oy = (dh - th) / 2;
-    blit_scaled(src, sw, sh, dst, (dw, dh), (ox, oy, tw, th));
+    blit_scaled(src, sw, sh, dst, (dw, dh), (ox, oy, tw, th), filter);
 }
 
 /// Scale `src` (RGBA8888, `sw`×`sh`) into `dst` (`0x00RRGGBB`, `dw`×`dh`) preserving
@@ -141,6 +228,7 @@ pub fn scale_rgba_to_argb_fit(
     dst: &mut [u32],
     dw: usize,
     dh: usize,
+    filter: Filter,
 ) {
     for p in dst.iter_mut() {
         *p = 0;
@@ -156,19 +244,23 @@ pub fn scale_rgba_to_argb_fit(
     };
     let ox = (dw - tw) / 2;
     let oy = (dh - th) / 2;
-    blit_scaled(src, sw, sh, dst, (dw, dh), (ox, oy, tw, th));
+    blit_scaled(src, sw, sh, dst, (dw, dh), (ox, oy, tw, th), filter);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    // Most geometry tests use Nearest so exact pixel positions are asserted without
+    // blending; the Linear path has its own tests below.
+    const N: Filter = Filter::Nearest;
+
     #[test]
     fn fit_exact_aspect_fills_fully() {
         // 1x1 red into 3x3 (same aspect): fills everything, no bars.
         let src = [255u8, 0, 0, 255];
         let mut dst = [0u32; 9];
-        scale_rgba_to_argb_fit(&src, 1, 1, &mut dst, 3, 3);
+        scale_rgba_to_argb_fit(&src, 1, 1, &mut dst, 3, 3, N);
         assert!(dst.iter().all(|&p| p == 0x00FF_0000));
     }
 
@@ -180,7 +272,7 @@ mod tests {
             0, 0, 255, 255, 255, 255, 0, 255, // row 1: blue, yellow
         ];
         let mut dst = [123u32; 12]; // pre-filled; bars must be cleared to black
-        scale_rgba_to_argb_fit(&src, 2, 2, &mut dst, 6, 2);
+        scale_rgba_to_argb_fit(&src, 2, 2, &mut dst, 6, 2, N);
         assert_eq!(dst[0], 0);
         assert_eq!(dst[1], 0);
         assert_eq!(dst[2], 0x00FF_0000); // red
@@ -195,9 +287,10 @@ mod tests {
     fn zero_dims_are_safe() {
         let src = [0u8; 4];
         let mut dst = [0u32; 0];
-        scale_rgba_to_argb_fit(&src, 1, 1, &mut dst, 0, 0);
-        scale_rgba_to_argb_stretch(&src, 1, 1, &mut dst, 0, 0);
-        scale_rgba_to_argb_integer(&src, 1, 1, &mut dst, 0, 0);
+        scale_rgba_to_argb_fit(&src, 1, 1, &mut dst, 0, 0, N);
+        scale_rgba_to_argb_stretch(&src, 1, 1, &mut dst, 0, 0, N);
+        scale_rgba_to_argb_integer(&src, 1, 1, &mut dst, 0, 0, N);
+        scale_rgba_to_argb_fit(&src, 1, 1, &mut dst, 0, 0, Filter::Linear);
     }
 
     #[test]
@@ -205,7 +298,7 @@ mod tests {
         // 1x1 red stretched into 4x3: every pixel red, no bars.
         let src = [255u8, 0, 0, 255];
         let mut dst = [0u32; 12];
-        scale_rgba_to_argb_stretch(&src, 1, 1, &mut dst, 4, 3);
+        scale_rgba_to_argb_stretch(&src, 1, 1, &mut dst, 4, 3, N);
         assert!(dst.iter().all(|&p| p == 0x00FF_0000));
     }
 
@@ -214,7 +307,7 @@ mod tests {
         // 1x1 red into 5x5: k=5 (a 5x5 block), so it fills fully here.
         let src = [255u8, 0, 0, 255];
         let mut dst = [0u32; 25];
-        scale_rgba_to_argb_integer(&src, 1, 1, &mut dst, 5, 5);
+        scale_rgba_to_argb_integer(&src, 1, 1, &mut dst, 5, 5, N);
         assert!(dst.iter().all(|&p| p == 0x00FF_0000));
 
         // 2x2 source into 5x5: k=2 → a 4x4 block centred at (0,0)+offset, 1px bar.
@@ -223,7 +316,7 @@ mod tests {
             0, 0, 255, 255, 255, 255, 0, 255, // blue, yellow
         ];
         let mut d2 = [9u32; 25];
-        scale_rgba_to_argb_integer(&s2, 2, 2, &mut d2, 5, 5);
+        scale_rgba_to_argb_integer(&s2, 2, 2, &mut d2, 5, 5, N);
         // ox = (5-4)/2 = 0, oy = 0 → top-left of the 4x4 block is at (0,0).
         assert_eq!(d2[0], 0x00FF_0000); // red (top-left)
         assert_eq!(d2[2], 0x0000_FF00); // green
@@ -237,7 +330,7 @@ mod tests {
         // 4x4 source into 2x2: k=0 → falls back to fit (fills the 2x2).
         let src = vec![200u8; 4 * 4 * 4];
         let mut dst = [0u32; 4];
-        scale_rgba_to_argb_integer(&src, 4, 4, &mut dst, 2, 2);
+        scale_rgba_to_argb_integer(&src, 4, 4, &mut dst, 2, 2, N);
         assert!(dst.iter().all(|&p| p == 0x00C8_C8C8));
     }
 
@@ -249,5 +342,49 @@ mod tests {
         assert_eq!(ScaleMode::parse("FIT"), Some(ScaleMode::Fit));
         assert_eq!(ScaleMode::parse("fill"), Some(ScaleMode::Stretch));
         assert_eq!(ScaleMode::parse("nope"), None);
+    }
+
+    #[test]
+    fn filter_parse_round_trips() {
+        for f in [Filter::Nearest, Filter::Linear] {
+            assert_eq!(Filter::parse(f.as_str()), Some(f));
+        }
+        assert_eq!(Filter::parse("NEAREST"), Some(Filter::Nearest));
+        assert_eq!(Filter::parse("crisp"), Some(Filter::Nearest));
+        assert_eq!(Filter::parse("smooth"), Some(Filter::Linear));
+        assert_eq!(Filter::parse("bilinear"), Some(Filter::Linear));
+        assert_eq!(Filter::parse("nope"), None);
+        assert_eq!(Filter::default(), Filter::Linear); // smooth by default
+    }
+
+    #[test]
+    fn linear_flat_image_keeps_the_colour() {
+        // Bilinear of a single colour must reproduce exactly that colour everywhere.
+        let src = [10u8, 20, 30, 255];
+        let mut dst = [0u32; 16];
+        scale_rgba_to_argb_stretch(&src, 1, 1, &mut dst, 4, 4, Filter::Linear);
+        assert!(dst.iter().all(|&p| p == 0x000A_141E));
+    }
+
+    #[test]
+    fn linear_blends_between_neighbours() {
+        // A 2x1 source (black | white) stretched wide must produce intermediate greys in
+        // the middle (proof that it interpolates rather than hard-stepping).
+        let src = [0u8, 0, 0, 255, 255, 255, 255, 255]; // black, white
+        let mut dst = [0u32; 8];
+        scale_rgba_to_argb_stretch(&src, 2, 1, &mut dst, 8, 1, Filter::Linear);
+        // Ends stay near black/white; somewhere in the middle is a true grey blend.
+        let grey = |p: u32| {
+            let (r, g, b) = ((p >> 16) & 0xFF, (p >> 8) & 0xFF, p & 0xFF);
+            r == g && g == b && (1..=254).contains(&r)
+        };
+        assert!(
+            dst.iter().any(|&p| grey(p)),
+            "expected a blended grey: {dst:?}"
+        );
+        // Nearest, by contrast, only ever emits pure black or white.
+        let mut dn = [0u32; 8];
+        scale_rgba_to_argb_stretch(&src, 2, 1, &mut dn, 8, 1, Filter::Nearest);
+        assert!(dn.iter().all(|&p| p == 0 || p == 0x00FF_FFFF));
     }
 }
