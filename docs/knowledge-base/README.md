@@ -26,7 +26,7 @@ open-source** (em `repos/`).
 | 06 | [Projetos de Referência](06-projetos-de-referencia.md) | Comparativo dos 5 repos, o que reusar, licenças |
 | 07 | [**Plano do Port Moderno**](07-plano-do-port-moderno.md) | Stack recomendada, independência de resolução, empacotamento, **roadmap de melhorias**, plano faseado, decisões em aberto |
 | 08 | [Decisões e Status](08-decisoes-e-status.md) | Estado consolidado: decisões firmes (ADR), processos e o roadmap por fases |
-| 09 | [**Auditoria de Paridade e Easter Eggs**](09-paridade-e-easter-eggs.md) | Confronto bíblia × implementação: `--data` = paridade total; pack recriado = lógica completa, visual pendente |
+| 09 | [**Auditoria de Paridade e Easter Eggs**](09-paridade-e-easter-eggs.md) | Confronto bíblia × implementação: com os dados originais (`--data`/auto-detecção/`embed-data`) = **paridade total** *(o "pack recriado" foi removido no pivô de 2026-06-15; mantido só como histórico)* |
 
 **Notas técnicas brutas** (dumps detalhados por repositório, com tabelas completas de
 opcodes e referências file:line): [`raw/`](raw/).

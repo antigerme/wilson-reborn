@@ -55,15 +55,21 @@ configuração (criado no 1º uso; veja o caminho com `wilson /c`):
 | `--scale <modo>` | `fit`\|`stretch`\|`integer` | como a imagem preenche a janela (`scale=fit`) |
 | `--daynight <modo>` | `original`\|`real24h` | ciclo dia/noite: 8h como em 1992, ou 24h pelo relógio (`daynight=original`) |
 
-**Verbos de screensaver do Windows:** `/s` (mostrar), `/p` (preview — ainda não embutido),
-`/c` (configuração — imprime as opções, o caminho do arquivo e as **estatísticas**:
-sessões, tempo total e maior dia alcançado).
+**Verbos de screensaver do Windows:** `/s` (mostrar), `/p <hwnd>` (preview embutido na
+miniatura da janela de configuração — só no Windows), `/c` (configuração — imprime as
+opções, o caminho do arquivo e as **estatísticas**: sessões, tempo total e maior dia
+alcançado).
 
 ## Instalação / empacotamento
 
 Binários prontos (Windows `wilson.scr` e Linux) são publicados a cada tag de versão pelo
 workflow de release. Veja **[`docs/INSTALL.md`](docs/INSTALL.md)** para instalar o
 screensaver no Windows, rodar no Linux e publicar releases.
+
+> **Build autossuficiente (uso pessoal):** quem já tem o jogo original pode embutir os
+> dados no binário com `WILSON_EMBED_DATA=<dir> cargo build --release -p wilson --features
+> embed-data` — gera um único arquivo que roda sem `--data`. Os dados são copyright e
+> **não** são redistribuídos; por isso esse build não é publicado nas releases.
 
 ## Status
 

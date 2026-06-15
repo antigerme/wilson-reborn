@@ -35,9 +35,10 @@ Ou seja: **não há mais nenhum opcode dos dados reais sendo silenciosamente ign
 > mas visual placeholder; foi **removido** em 2026-06-15 por não atingir a qualidade
 > desejada. A coluna **R** nas tabelas abaixo refletia esse pack.
 
-> Em resumo: **nada do original se perde** — está tudo acessível via `--data`. O que
-> falta é **arte recriada** para cada gag, para que o pack standalone seja tão rico
-> quanto o original sem precisar dos dados do usuário.
+> Em resumo: **nada do original se perde** — está tudo acessível via `--data`
+> (ou auto-detecção, ou o build `embed-data`). Como o foco passou a ser **100% os dados
+> originais**, **não há nada pendente de "arte recriada"**: a experiência completa é a do
+> original.
 
 ## Lógica do diretor — paridade ✅ (com testes)
 
@@ -102,13 +103,18 @@ A bíblia §12 lista bugs do original; alguns viraram **piadas queridas** ("ilha
 "dezenas de Johnnys", "gêmeos"). Ideia de melhoria: um **modo easter-egg opcional** que
 os reproduz de propósito. Não implementado (não é regressão — são bugs, não recursos).
 
-## Próximos passos para fechar a paridade *visual* do pack recriado
+## *(Histórico)* Roadmap visual do pack recriado — cancelado no pivô
 
-Em ordem de impacto (cada um é um incremento de conteúdo):
+> Estes eram os próximos passos **quando** o objetivo era um pack standalone de arte
+> recriada. O pivô de 2026-06-15 **removeu o pack**; ficam aqui só como registro. Hoje o
+> conteúdo vem **100% dos dados originais**, então **não há paridade visual pendente**.
+
+Em ordem de impacto (cada um era um incremento de conteúdo do pack):
 1. **Animações recriadas por categoria** (pesca, banho, leitura, dormir, cocos…), para o
    `STAND/ACTIVITY/FISHING/...` mostrarem ações distintas em vez do Johnny parado.
 2. **Personagens recriados** (Mary, Suzy) para os beats dos dias 1/3/4/5/7/8/9.
 3. **Visitantes recriados** (`VISITOR.ADS`) e **easter eggs raros**.
 4. **SOS na garrafa** (dia 2) e **dança da chuva**.
 
-Enquanto isso, **`--data` entrega 100% do conteúdo original**.
+Com os dados originais (`--data`/auto-detecção/`embed-data`), **tudo isso já aparece** —
+são os próprios bytecodes do jogo.
