@@ -148,10 +148,12 @@ pub enum FrameOutcome {
 ///
 /// `background` is the shared global background (set by `LOAD_SCREEN`); `dx`/`dy` are
 /// the island offset added to all coordinates.
+#[allow(clippy::too_many_arguments)]
 pub fn run_frame(
     thread: &mut TtmThread,
     slot: &mut TtmSlot,
     background: &mut Surface,
+    saved_zones: &mut Surface,
     transparent_src: Option<u8>,
     dx: i32,
     dy: i32,
@@ -249,6 +251,23 @@ pub fn run_frame(
                 }
             }
             0xA601 => thread.layer.fill(TRANSPARENT),
+            // COPY_ZONE_TO_BG: copy a zone of this layer into the persistent "saved
+            // zones" layer (composited between background and threads). Used by the
+            // giant cargo-ship visitor gag. The `+2` width mirrors jc_reborn's
+            // `grCopyZoneToBg` glitch workaround for an off-by-two in the original data.
+            0x4204 => saved_zones.blit_zone(
+                &thread.layer,
+                signed(a, 0) + dx,
+                signed(a, 1) + dy,
+                unsigned(a, 2) + 2,
+                unsigned(a, 3),
+            ),
+            // RESTORE_ZONE: release the saved-zones layer (jc_reborn `grRestoreZone`).
+            0xA064 => saved_zones.fill(TRANSPARENT),
+            // Recognised, but intentionally no-ops here — `jc_reborn` also ignores these
+            // (SET_PALETTE_SLOT, region-id, SET_FRAME1, SAVE_IMAGE1, SAVE_ZONE,
+            // DRAW_SCREEN, LOAD_PALETTE): the game uses one global palette.
+            0x1061 | 0x1121 | 0x2012 | 0x4214 | 0xA054 | 0xB606 | 0xF05F => {}
             0xC051 => sounds.push(word(a, 0)),
             0xF01F => {
                 let name = string(a);

@@ -79,7 +79,10 @@ original), aplicado via `Director::with_daynight`. **Empacotamento**: `release.y
 instalação em `docs/INSTALL.md`. **Estatísticas** (`stats.rs`): sessões, tempo total e
 maior dia, persistidas em `stats.txt` e exibidas no `/c`. **Auditoria de paridade**
 (knowledge-base [09](docs/knowledge-base/09-paridade-e-easter-eggs.md)): com `--data` o
-engine roda os scripts originais ⇒ **paridade total de conteúdo** (validada).
+engine roda os scripts originais ⇒ **paridade total de conteúdo** (validada). **Cobertura
+100% de opcodes** (auditado nos dados reais): camada de **zonas salvas**
+(`COPY_ZONE_TO_BG`/`RESTORE_ZONE`, `Surface::blit_zone`; composta fundo→zonas→threads) p/
+o gag do cargueiro gigante; os demais no-ops batem com o `jc_reborn`.
 **Pivô 2026-06-15:** o **pack de arte recriada foi removido** (não atingiu a qualidade
 desejada); o app agora usa **100% os arquivos originais** — `assets.rs` ficou só com
 `load`/`find_data_dir` e `main.rs` exige `--data`/auto-detecção. **CI verde.** **Próximo:**

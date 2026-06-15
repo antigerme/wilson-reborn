@@ -51,7 +51,7 @@ Crates planejados:
 | **2c** | **Validação contra dados REAIS (teste gated) + escala 4:3 (letterbox)** | ✅ concluída — **engine renderiza o Johnny original** |
 | 2d | Polir: som, persistência do dia, config/opções (tela cheia, escala, velocidade) | ✅ concluída — som · persistência · config/opções |
 | 3 | Empacotamento (Win/Linux/web/WASM) → **paridade jogável** com os dados originais | 🟡 **em curso** — ✅ **release CI** (`release.yml`: `wilson.scr` Windows + binário Linux); falta web/WASM |
-| 4 | Melhorias (dia/noite 24h, config, estatísticas, etc.) | 🟡 **em curso** — ✅ config/opções · ✅ **dia-noite 24h** · ✅ **estatísticas** · ✅ **auditoria de paridade** ([09](09-paridade-e-easter-eggs.md)) · ✅ **robustez do loader** · ✅ **auditoria render/timing vs jc_reborn** (paleta/tick/SET_DELAY conferem; z-order do feriado corrigido p/ compor por cima) |
+| 4 | Melhorias (dia/noite 24h, config, estatísticas, etc.) | 🟡 **em curso** — ✅ config/opções · ✅ **dia-noite 24h** · ✅ **estatísticas** · ✅ **auditoria de paridade** ([09](09-paridade-e-easter-eggs.md)) · ✅ **robustez do loader** · ✅ **auditoria render/timing vs jc_reborn** (paleta/tick/SET_DELAY conferem; z-order do feriado corrigido) · ✅ **cobertura 100% de opcodes** (camada de zonas salvas `COPY_ZONE_TO_BG`/`RESTORE_ZONE` p/ o cargueiro gigante; nenhum opcode dos dados reais é mais ignorado) |
 
 > **Pivô 2026-06-15:** o **pack recriado** (arte procedural: ilha/palmeira/Johnny/Mary/
 > Suzy/visitantes/easter eggs etc.) foi **removido** — não atingia a qualidade desejada.

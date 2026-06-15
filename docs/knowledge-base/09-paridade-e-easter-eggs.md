@@ -17,6 +17,20 @@ O conteúdo vem **100% dos arquivos originais** (`--data`): **paridade TOTAL**. 
 original** — não reimplementamos cada gag, nós **executamos os mesmos bytecodes**.
 Validado de ponta a ponta (ver [08](08-decisoes-e-status.md), teste `real_data`).
 
+### Cobertura de opcodes — 100% (auditado 2026-06-15)
+
+Auditamos **todos** os opcodes que os dados reais usam (41 TTM + 10 ADS) vs o que o
+engine trata:
+- **ADS:** 100% coberto.
+- **TTM:** 100% coberto. Os opcodes de "zona salva" **`COPY_ZONE_TO_BG` (0x4204)** e
+  **`RESTORE_ZONE` (0xA064)** — usados pelo **gag do cargueiro gigante** — agora estão
+  implementados (camada de zonas salvas composta entre fundo e threads, como o
+  `grUpdateDisplay` do `jc_reborn`). Os demais opcodes que o engine trata como no-op
+  (`LOAD_PALETTE` 0xF05F, `SET_PALETTE_SLOT`, `SAVE_IMAGE1`, `SAVE_ZONE`, `DRAW_SCREEN`,
+  `SET_FRAME1`) **também são no-op no `jc_reborn`** ⇒ batemos com a referência.
+
+Ou seja: **não há mais nenhum opcode dos dados reais sendo silenciosamente ignorado**.
+
 > *(Histórico)* Houve um **pack recriado embutido** (arte procedural) com lógica completa
 > mas visual placeholder; foi **removido** em 2026-06-15 por não atingir a qualidade
 > desejada. A coluna **R** nas tabelas abaixo refletia esse pack.

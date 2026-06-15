@@ -31,6 +31,34 @@ mostrar uma animação diferente por beat. Estreia com o **SOS na garrafa** (bea
 
 ---
 
+## 2026-06-15 — Cobertura total de opcodes: camada de "zonas salvas" (cargueiro gigante)
+
+**Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #30).
+
+Resposta à pergunta "está tudo realmente implementado?": fiz uma **auditoria de opcodes**
+nos dados reais (41 TTM + 10 ADS) e encontrei **uma** lacuna real — agora fechada.
+
+- **Auditoria:** ADS 100% coberto. No TTM, vários opcodes que tratávamos como no-op
+  **também são no-op no `jc_reborn`** (`LOAD_PALETTE` 0xF05F, `SET_PALETTE_SLOT`,
+  `SAVE_IMAGE1`, `SAVE_ZONE`, `DRAW_SCREEN`, `SET_FRAME1`) ⇒ fiéis. **Lacuna real:**
+  `COPY_ZONE_TO_BG` (0x4204, 38×) + `RESTORE_ZONE` (0xA064) — o mecanismo de **camada de
+  zonas salvas** do **gag do cargueiro gigante** (visitante que enche a tela).
+- **Implementado:** `Surface::blit_zone` (copia uma zona não-transparente); `ttm_exec`
+  ganha `saved_zones` e os opcodes 0x4204 (copia zona do layer p/ a camada salva, com o
+  `+2` de largura do `jc_reborn`) e 0xA064 (libera a camada); os no-ops viram arms
+  documentados. `ads_vm`/`ttm_vm` mantêm a camada e compõem **fundo → zonas salvas →
+  threads** (idêntico ao `grUpdateDisplay`).
+- **Testes:** `ttm_vm::copy_zone_to_bg_persists_after_clear` (pixel sobrevive ao clear do
+  layer) e `restore_zone_releases_saved_zones`.
+
+Confirmado: **nenhum opcode dos dados reais é mais ignorado silenciosamente** (cobertura
+100%). ~108 testes; fmt + clippy `-D warnings` (com **e** sem `audio`) + suíte + release +
+`real_data` — verdes.
+
+**Próximo:** seguir conforme o usuário pedir.
+
+---
+
 ## 2026-06-15 — Fidelidade #2: auditoria de render/timing + fix de z-order do feriado
 
 **Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #29).
