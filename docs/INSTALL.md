@@ -73,6 +73,29 @@ distribua publicamente o binário com dados embutidos — esse build é para uso
 já tem o jogo original. (Sem `WILSON_EMBED_DATA`, a feature compila um *stub* com um aviso e
 o binário não roda — útil só para o CI checar a compilação.)
 
+### Gerar embedded para várias plataformas (a partir do Linux)
+
+O script [`scripts/build-embedded.sh`](../scripts/build-embedded.sh) gera, de uma vez, os
+binários **embedded** do seu Linux:
+
+```bash
+scripts/build-embedded.sh <pasta-dos-dados> [pasta-de-saida]
+```
+
+- **Linux** `x86_64` (nativo) → `wilson-linux-x86_64`.
+- **Windows** `x86_64` (cross via mingw-w64) → `wilson.exe` + `wilson.scr` (runtime mingw
+  estático, então é um arquivo só). Precisa do alvo e do mingw:
+  ```bash
+  rustup target add x86_64-pc-windows-gnu
+  sudo dnf install -y mingw64-gcc        # Fedora  (Debian/Ubuntu: gcc-mingw-w64-x86-64)
+  ```
+- **macOS**: não dá para gerar a partir do Linux (precisa do SDK da Apple/osxcross). Faça
+  **num Mac**: `WILSON_EMBED_DATA=<dir> cargo build --release -p wilson --features embed-data`
+  e, para o screensaver, `crates/wilson-saver/macos/build-saver.sh`.
+
+Saída em `target/embedded/` por padrão. Os binários contêm os dados copyright — **uso
+pessoal**.
+
 ## Publicar uma release (mantenedor)
 
 ```bash

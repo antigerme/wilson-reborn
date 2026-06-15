@@ -92,7 +92,10 @@ impl Backend {
         let mut sounds = vec![None; NUM_SOUNDS];
         if let Some(dir) = dir {
             for (id, slot) in sounds.iter_mut().enumerate() {
-                if let Ok(bytes) = std::fs::read(dir.join(sound_filename(id as u16))) {
+                // Match the file name case-insensitively (sound2.wav / SOUND2.WAV / …).
+                if let Some(bytes) = wilson_dgds::find_ci(dir, &sound_filename(id as u16))
+                    .and_then(|p| std::fs::read(p).ok())
+                {
                     *slot = Some(bytes);
                 }
             }

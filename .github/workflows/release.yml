@@ -110,15 +110,26 @@ jobs:
         # macos-latest is Apple Silicon, so this is an arm64 binary.
         run: tar -czf wilson-macos-arm64.tar.gz -C target/release wilson
 
+      - name: Build .saver bundle
+        run: bash crates/wilson-saver/macos/build-saver.sh
+
+      - name: Package .saver
+        # `ditto` preserves the bundle structure inside the zip.
+        run: ditto -c -k --keepParent target/saver/WilsonReborn.saver WilsonReborn.saver.zip
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: wilson-macos
-          path: wilson-macos-arm64.tar.gz
+          path: |
+            wilson-macos-arm64.tar.gz
+            WilsonReborn.saver.zip
 
       - name: Attach to release
         # No `generate_release_notes` here — the linux job is the sole notes generator.
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: wilson-macos-arm64.tar.gz
+          files: |
+            wilson-macos-arm64.tar.gz
+            WilsonReborn.saver.zip

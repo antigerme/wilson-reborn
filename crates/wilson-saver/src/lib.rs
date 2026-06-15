@@ -14,7 +14,7 @@
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use wilson_dgds::{Archive, Palette, ResourceMap};
+use wilson_dgds::{find_ci, Archive, Palette, ResourceMap};
 use wilson_engine::{clock, Director, Show};
 
 /// The frame size the engine renders; the caller scales it to the view (4:3 letterbox).
@@ -50,17 +50,18 @@ fn data_dirs() -> Vec<PathBuf> {
     )
 }
 
-/// Load the archive + palette from the first directory that has valid data.
+/// Load the archive + palette from the first directory that has valid data. File names
+/// are matched case-insensitively (`resource.map` / `RESOURCE.001` / … all work).
 fn load_data() -> Option<(Archive, Palette)> {
     for dir in data_dirs() {
-        let map = match std::fs::read(dir.join("RESOURCE.MAP")) {
-            Ok(m) => m,
-            Err(_) => continue,
+        let Some(map) = find_ci(&dir, "RESOURCE.MAP").and_then(|p| std::fs::read(p).ok()) else {
+            continue;
         };
         let Ok(rm) = ResourceMap::parse(&map) else {
             continue;
         };
-        let Ok(data) = std::fs::read(dir.join(&rm.data_file_name)) else {
+        let Some(data) = find_ci(&dir, &rm.data_file_name).and_then(|p| std::fs::read(p).ok())
+        else {
             continue;
         };
         let Ok(archive) = Archive::parse(&map, &data) else {

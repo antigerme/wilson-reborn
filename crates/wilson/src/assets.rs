@@ -7,15 +7,19 @@
 
 use std::path::{Path, PathBuf};
 
-use wilson_dgds::{Archive, Palette, ResourceMap};
+use wilson_dgds::{find_ci, Archive, Palette, ResourceMap};
 
-/// Load the original `RESOURCE.MAP` + its data file from `dir`.
+/// Load the original `RESOURCE.MAP` + its data file from `dir` (file names are matched
+/// case-insensitively, so `resource.map` / `RESOURCE.001` etc. all work).
 pub fn load(dir: &Path) -> Result<(Archive, Palette), String> {
-    let map_bytes =
-        std::fs::read(dir.join("RESOURCE.MAP")).map_err(|e| format!("RESOURCE.MAP: {e}"))?;
+    let map_path = find_ci(dir, "RESOURCE.MAP")
+        .ok_or_else(|| format!("RESOURCE.MAP: not found in {dir:?}"))?;
+    let map_bytes = std::fs::read(&map_path).map_err(|e| format!("RESOURCE.MAP: {e}"))?;
     let map = ResourceMap::parse(&map_bytes).map_err(|e| e.to_string())?;
-    let archive_bytes = std::fs::read(dir.join(&map.data_file_name))
-        .map_err(|e| format!("{}: {e}", map.data_file_name))?;
+    let data_path = find_ci(dir, &map.data_file_name)
+        .ok_or_else(|| format!("{}: not found in {dir:?}", map.data_file_name))?;
+    let archive_bytes =
+        std::fs::read(&data_path).map_err(|e| format!("{}: {e}", map.data_file_name))?;
     let archive = Archive::parse(&map_bytes, &archive_bytes).map_err(|e| e.to_string())?;
     let palette = archive
         .palette()
@@ -57,7 +61,10 @@ pub fn data_candidates(explicit: Option<&str>) -> Vec<PathBuf> {
 /// report a clear error) when nothing matches.
 pub fn find_data_dir(explicit: Option<&str>) -> Option<PathBuf> {
     let candidates = data_candidates(explicit);
-    if let Some(found) = candidates.iter().find(|c| c.join("RESOURCE.MAP").is_file()) {
+    if let Some(found) = candidates
+        .iter()
+        .find(|c| find_ci(c, "RESOURCE.MAP").is_some())
+    {
         return Some(found.clone());
     }
     explicit.map(PathBuf::from)
@@ -98,7 +105,7 @@ mod tests {
         // Gated: only runs when WILSON_DATA_DIR points at real data.
         if let Some(dir) = std::env::var_os("WILSON_DATA_DIR") {
             let found = find_data_dir(None).expect("auto-detect via WILSON_DATA_DIR");
-            assert!(found.join("RESOURCE.MAP").is_file());
+            assert!(find_ci(&found, "RESOURCE.MAP").is_some());
             assert!(load(&found).is_ok());
             let _ = dir;
         }
