@@ -125,6 +125,12 @@ impl Show {
         (self.director.current_day, self.director.stored_yday)
     }
 
+    /// The current run's island drift offset, if on the island (for tests).
+    #[cfg(test)]
+    fn island_offset(&self) -> Option<(i32, i32)> {
+        self.island.as_ref().map(Island::offset)
+    }
+
     /// Produce the next composited frame (the runtime never ends).
     pub fn next_frame(&mut self, archive: &Archive) -> Frame {
         for _ in 0..20_000 {
@@ -286,6 +292,12 @@ impl Show {
         .ok()?;
         if let Some(isl) = &self.island {
             vm.set_background(isl.background().clone());
+            // Offset Johnny's animation to the island's drifted position, exactly like
+            // walk frames (and jc_reborn `storyPlay`): `ttmDx = xPos + (LEFT_ISLAND ? 272
+            // : 0)`, `ttmDy = yPos`. Without this, in-place gags (juggling, fishing,
+            // sitting…) draw at the un-drifted origin — i.e. off the island, on the water.
+            let (dx, dy) = isl.offset();
+            vm.set_offset(dx + if scene.left_island { 272 } else { 0 }, dy);
         }
         // Day-beat scenes play the transition cue (`sound 0`) as they begin, like
         // `jc_reborn` (`storyPlay` → `soundPlay(0)` for `dayNo` scenes).
@@ -592,5 +604,81 @@ mod tests {
             let f = show.next_frame(&arch);
             assert_eq!(f.surface.width, 64);
         }
+    }
+
+    /// A TTM that draws a single distinctive pixel at `(x, y)`, then yields a frame.
+    fn marker_ttm(x: u16, y: u16, color: u8) -> Ttm {
+        let mut code = Vec::new();
+        code.extend_from_slice(&op(0x1111)); // TAG 1
+        code.extend_from_slice(&1u16.to_le_bytes());
+        code.extend_from_slice(&op(0x1021)); // SET_DELAY 6
+        code.extend_from_slice(&6u16.to_le_bytes());
+        code.extend_from_slice(&op(0x2002)); // SET_COLOR fg=color bg=color
+        code.extend_from_slice(&u16::from(color).to_le_bytes());
+        code.extend_from_slice(&u16::from(color).to_le_bytes());
+        code.extend_from_slice(&op(0xA002)); // DRAW_PIXEL x y
+        code.extend_from_slice(&x.to_le_bytes());
+        code.extend_from_slice(&y.to_le_bytes());
+        code.extend_from_slice(&op(0x0FF0)); // UPDATE
+        Ttm {
+            version: "1.20".into(),
+            num_pages: 1,
+            bytecode: code,
+            tags: vec![Tag {
+                id: 1,
+                description: "s".into(),
+            }],
+        }
+    }
+
+    #[test]
+    fn ads_animation_follows_island_drift() {
+        // Regression for the "Johnny off the island" bug: ADS/TTM scenes must be drawn at
+        // the island's drifted offset (like walk frames and jc_reborn `storyPlay`'s
+        // ttmDx/ttmDy), not at the un-drifted origin. We mark Johnny's TTM with a unique
+        // pixel at (MX,MY) and require it to land at (MX+dx, MY+dy) on a drifted run.
+        const MX: u16 = 320;
+        const MY: u16 = 240;
+        const MARK: u8 = 0x2A; // distinct from every fixture background/sprite value
+        let mut arch = full_archive();
+        arch.ttms = vec![("J.TTM".to_string(), marker_ttm(MX, MY, MARK))];
+        let pal = Palette {
+            colors: [[1u8; 3]; 256],
+        };
+
+        // Deterministically search seeds for a drifted island play frame that drew the
+        // mark; assert it is at the offset position (and never at the un-offset origin).
+        let mut found_drifted = false;
+        'seeds: for seed in 0..128u64 {
+            let director = Director::new(5, 100);
+            let clock = Clock {
+                yday: 100,
+                hour: 12,
+                month: 6, // no holiday layer to overdraw the mark
+                day: 14,
+            };
+            let mut show = Show::new(&arch, &pal, 640, 480, director, clock, seed);
+            for _ in 0..400 {
+                let f = show.next_frame(&arch);
+                let Some((dx, dy)) = show.island_offset() else {
+                    continue;
+                };
+                let at_offset = f.surface.get(MX as i32 + dx, MY as i32 + dy) == Some(MARK);
+                if dx != 0 || dy != 0 {
+                    // On a drifted run the mark must never sit at the un-offset origin.
+                    if f.surface.get(MX as i32, MY as i32) == Some(MARK) {
+                        panic!("ADS sprite drawn at un-offset origin (island offset ignored)");
+                    }
+                    if at_offset {
+                        found_drifted = true;
+                        break 'seeds;
+                    }
+                }
+            }
+        }
+        assert!(
+            found_drifted,
+            "expected a drifted island scene whose ADS sprite is drawn at the offset"
+        );
     }
 }
