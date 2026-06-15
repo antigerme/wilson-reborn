@@ -171,7 +171,19 @@ pub fn run_frame(
         thread.ip = idx + 1;
         let a = &ins.args;
 
+        // TTM opcode interpreter. Every drawing op adds the island drift `(dx, dy)` to its
+        // coordinates, so Johnny's animation tracks the island. Opcode names (see
+        // `wilson_dgds::ttm_opcode_name` / jc_reborn `dump.c`):
+        //   0x0FF0 UPDATE (emit this frame)   0x0110 PURGE (loop/end on the scene budget)
+        //   0x1021 SET_DELAY  0x2022 TIMER    0x1051 SET_BMP_SLOT  0x1201 GOTO_TAG
+        //   0x2002 SET_COLORS 0x4004 SET_CLIP_ZONE
+        //   0xA002 DRAW_PIXEL 0xA0A4 DRAW_LINE 0xA104 DRAW_RECT 0xA404 DRAW_CIRCLE
+        //   0xA504/0xA524 DRAW_SPRITE[_FLIP]  0xA601 CLEAR_SCREEN (fill transparent)
+        //   0x4204 COPY_ZONE_TO_BG  0xA064 RESTORE_ZONE
+        // Unhandled-but-recognised opcodes fall through to the no-op arm below (jc_reborn
+        // ignores them too — the game uses a single global palette).
         match ins.opcode {
+            // UPDATE: this thread's frame is ready — hand it back to the scheduler.
             0x0FF0 => return Ok(FrameOutcome::Frame { sounds }),
             0x0110 => {
                 // PURGE: loop the scene while a "play for N ticks" budget is active,

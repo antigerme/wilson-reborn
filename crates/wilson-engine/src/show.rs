@@ -748,4 +748,151 @@ mod tests {
         // A real, contemplative pace — not the uncapped spin of the old winit loop.
         assert!(avg_ms >= 50.0, "engine pace too fast: {avg_ms:.0} ms/frame");
     }
+
+    /// FNV-1a hash of a surface's pixels — a cheap frame fingerprint for liveness
+    /// checks (are consecutive frames actually changing, or is the run frozen?).
+    fn frame_hash(s: &Surface) -> u64 {
+        let mut h = 0xcbf2_9ce4_8422_2325u64;
+        for &p in &s.pixels {
+            h ^= u64::from(p);
+            h = h.wrapping_mul(0x0000_0100_0000_01b3);
+        }
+        h
+    }
+
+    #[test]
+    fn engine_run_stays_live_and_paced() {
+        // CI-friendly long run on fixtures (no original data needed). The screensaver
+        // must, over thousands of frames: never panic, always emit a 640x480 frame, keep
+        // animating (no frozen stretch), and stay at a human pace. This is the automatic
+        // safety net for the bug classes we hit (runaway speed, freezes, bad frames); the
+        // gated test below asserts the same — plus opacity and day-cycling — on real data.
+        let arch = full_archive();
+        let pal = Palette {
+            colors: [[1u8; 3]; 256],
+        };
+        let mut show = Show::new(
+            &arch,
+            &pal,
+            640,
+            480,
+            Director::new(1, 0),
+            Clock {
+                yday: 0,
+                hour: 12,
+                month: 6,
+                day: 14,
+            },
+            9,
+        );
+
+        const N: u32 = 4000;
+        let mut total_ticks = 0u64;
+        let mut all = std::collections::HashSet::new();
+        let mut window = std::collections::HashSet::new();
+        for i in 0..N {
+            let f = show.next_frame(&arch);
+            assert_eq!(
+                (f.surface.width, f.surface.height),
+                (640, 480),
+                "frame {i} has wrong dimensions"
+            );
+            total_ticks += u64::from(f.delay_ticks);
+            let h = frame_hash(&f.surface);
+            all.insert(h);
+            window.insert(h);
+            if i % 500 == 499 {
+                assert!(window.len() >= 2, "run appears frozen near frame {i}");
+                window.clear();
+            }
+        }
+        let avg_ms = total_ticks as f64 * 20.0 / f64::from(N);
+        assert!(
+            avg_ms >= 40.0,
+            "fixture pace too fast: {avg_ms:.0} ms/frame"
+        );
+        assert!(
+            all.len() >= 20,
+            "run not animating (only {} distinct frames)",
+            all.len()
+        );
+    }
+
+    #[test]
+    fn real_data_long_run_invariants() {
+        // Gated (WILSON_DATA_DIR): the "render a long run and check it" validation, but
+        // as machine-checkable invariants instead of an unwatchable video. Over ~1000 s
+        // of playback, advancing the calendar so the 11-day arc cycles, assert every
+        // frame is well-formed: right size, fully opaque (no leftover TRANSPARENT — the
+        // "magenta water" class), the run keeps animating, the pace is human, several
+        // distinct story days are reached, and nothing ever panics.
+        let Some(dir) = std::env::var_os("WILSON_DATA_DIR") else {
+            return;
+        };
+        let dir = std::path::PathBuf::from(dir);
+        let map = std::fs::read(wilson_dgds::find_ci(&dir, "RESOURCE.MAP").expect("RESOURCE.MAP"))
+            .expect("read map");
+        let rm = wilson_dgds::ResourceMap::parse(&map).expect("parse map");
+        let data =
+            std::fs::read(wilson_dgds::find_ci(&dir, &rm.data_file_name).expect("data file"))
+                .expect("read data");
+        let arch = Archive::parse(&map, &data).expect("parse archive");
+        let pal = arch.palette().cloned().expect("palette");
+
+        let mut show = Show::new(
+            &arch,
+            &pal,
+            640,
+            480,
+            Director::new(1, 0),
+            Clock {
+                yday: 0,
+                hour: 12,
+                month: 6,
+                day: 14,
+            },
+            1,
+        );
+
+        const N: u32 = 8000;
+        let mut total_ticks = 0u64;
+        let mut all = std::collections::HashSet::new();
+        let mut days = std::collections::HashSet::new();
+        for i in 0..N {
+            // Advance the calendar periodically so the director rolls the story day as
+            // runs complete (each run spans many frames), exercising day progression.
+            if i % 600 == 0 {
+                show.set_clock(Clock {
+                    yday: (i / 600) as i32,
+                    hour: 12,
+                    month: 6,
+                    day: 14,
+                });
+            }
+            let f = show.next_frame(&arch);
+            assert_eq!((f.surface.width, f.surface.height), (640, 480));
+            assert!(
+                !f.surface.pixels.contains(&TRANSPARENT),
+                "frame {i} has unresolved transparent pixels (background not opaque)"
+            );
+            total_ticks += u64::from(f.delay_ticks);
+            all.insert(frame_hash(&f.surface));
+            days.insert(show.day_state().0);
+        }
+        let avg_ms = total_ticks as f64 * 20.0 / f64::from(N);
+        eprintln!(
+            "long-run: {N} frames, {:.0}s playback, avg {avg_ms:.0} ms/frame, \
+             {} distinct frames, days seen {:?}",
+            total_ticks as f64 * 20.0 / 1000.0,
+            all.len(),
+            {
+                let mut d: Vec<u8> = days.iter().copied().collect();
+                d.sort_unstable();
+                d
+            }
+        );
+        assert!(avg_ms >= 50.0, "pace too fast: {avg_ms:.0} ms/frame");
+        assert!(all.len() >= 200, "run not animating enough");
+        assert!(days.len() >= 3, "story day did not advance (saw {days:?})");
+    }
 }

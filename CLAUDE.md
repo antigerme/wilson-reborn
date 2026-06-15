@@ -12,6 +12,7 @@ Windows/Linux com resoluções modernas e melhorias.
 - **Base de conhecimento completa:** [`docs/knowledge-base/`](docs/knowledge-base/README.md)
   (história, bíblia de conteúdo, formatos, opcodes, arquitetura, plano do port).
 - **Decisões e status atual:** [`docs/knowledge-base/08-decisoes-e-status.md`](docs/knowledge-base/08-decisoes-e-status.md)
+- **Arquitetura (mapa do pipeline + como validar):** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - **Log cronológico:** [`docs/PROJECT-LOG.md`](docs/PROJECT-LOG.md)
 - **Referências open-source** (5 reimplementações) em [`repos/`](repos/).
 
@@ -32,6 +33,15 @@ cargo build --workspace
 cargo test --workspace          # testes
 cargo run -p wilson -- --data <dir>   # roda com os RESOURCE.* originais do usuário
 WILSON_DATA_DIR=<dir> cargo test -p wilson-dgds --test real_data -- --nocapture  # valida dados reais
+```
+**Auto-validação (em vez de caçar erro a olho — ver [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)):**
+```bash
+# invariantes automáticos (no CI, sem dados): nunca paniqueia, frame 640x480, anima, ritmo humano
+cargo test -p wilson-engine engine_run_stays_live_and_paced
+# invariantes profundos (com dados): + 100% opaco (sem "água magenta") + dia avança
+WILSON_DATA_DIR=<dir> cargo test -p wilson-engine real_data_long_run_invariants -- --nocapture
+# revisão visual: renderiza a run em quadros p/ virar mosaico/mp4 com ffmpeg
+cargo run -p wilson-engine --example render_run -- <dir> /tmp/out 27000 225 1
 ```
 > Assets originais para teste: `repos/dist.zip` (senha: `felicio`) e `repos/jc_reborn.msi`
 > (extrair com `7z x`). Extraia para fora do repo (ex.: `/tmp`) — são **copyright**.
