@@ -6,6 +6,31 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-15 — Pack recriado: mapeamento por-tag + SOS na garrafa (dia 2)
+
+**Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #26).
+
+Desbloqueia cenas **por tag** (não só por arquivo `.ADS`): agora um mesmo `.ADS` pode
+mostrar uma animação diferente por beat. Estreia com o **SOS na garrafa** (beat do dia 2).
+
+- **`assets.rs`**: `demo_ads_multi(default, overrides)` — gera um `.ADS` com uma sequência
+  por tag (cada `tag: ADD_SCENE; PLAY_SCENE`), aproveitando que o `play_chunk` **para no
+  `PLAY_SCENE`** e que tags desconhecidas caem no offset 0 (sequência default, tag
+  sentinela `0x00FF`). `bottle_sprite()` (frame 9) + `sos_ttm()` (Johnny + garrafa
+  derivando ao mar). `JOHNNY.ADS` → `demo_ads_multi("WAVE.TTM", [(2,"SOS.TTM")])`.
+- **Teste comportamental**: via `AdsVm`, a tag 2 (SOS) compõe um frame **diferente** da
+  tag 1 (wave) — prova o dispatch por-tag de ponta a ponta.
+
+**110 testes** (40 wilson [+1: per-tag] + 35 dgds + 35 engine). fmt, clippy `-D warnings`
+(com **e** sem `audio`), `build --release`. Validado visualmente (a garrafa derivando).
+
+> Base para dar beats próprios a Mary/Suzy/Johnny (ex.: avião do dia 11, escritório do
+> dia 10) em incrementos futuros.
+
+**Próximo:** mais beats por-tag e demais melhorias.
+
+---
+
 ## 2026-06-15 — Pack recriado: easter egg da dança da chuva (nuvem → raio)
 
 **Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #25).

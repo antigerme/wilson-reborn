@@ -88,6 +88,8 @@ frame 5): um barco se aproxima da ilha nas cenas de `VISITOR.ADS`. **Suzy + cuta
 (`suzy_sprite`/`suzy_ttm`/`beach_scr`=`BEACH.SCR`, JDEMO frame 6, cor `PINK`): cenas
 off-island agora usam `LOAD_SCREEN` p/ um cenário de praia (corrige o fundo preto).
 **Easter egg dança da chuva** (`raincloud_sprite`/`bolt_sprite`/`raindance_ttm`, JDEMO
-frames 7-8): nuvem→raio em `MISCGAG.ADS`. **109 testes**, CI verde. **Próximo:** mais
-easter eggs (SOS na garrafa) e demais melhorias (o usuário pediu **todas**, em
+frames 7-8): nuvem→raio em `MISCGAG.ADS`. **Mapeamento por-tag** (`demo_ads_multi`):
+um `.ADS` pode ter animação por beat; estreia com **SOS na garrafa** (`bottle_sprite`
+frame 9 / `sos_ttm`, `JOHNNY.ADS` tag 2 = dia 2). **110 testes**, CI verde. **Próximo:**
+mais beats por-tag (Mary/Suzy/Johnny) e demais melhorias (o usuário pediu **todas**, em
 incrementos). HD interno adiado (engine 640×480; escala cobre telas grandes).
