@@ -793,8 +793,71 @@ fn mary_sprite() -> BmpImage {
     c.into_image()
 }
 
+/// A little visitor's boat (`JDEMO.BMP` frame 5): a motorboat with a cabin, a waving
+/// passenger and a foam wake. Drawn in the water; the TTM moves it toward the island.
+fn boat_sprite() -> BmpImage {
+    let (w, h) = (30i32, 26i32);
+    let mut c = Canvas::new(w, h);
+    // Hull (a trapezoid) sitting on the water.
+    for y in 16..22 {
+        let inset = (y - 16) * 2;
+        c.hspan(2 + inset, 27 - inset, y, TRUNK);
+    }
+    c.hspan(2, 27, 16, TRUNK_HI); // gunwale highlight
+                                  // Cabin + a little passenger waving.
+    c.rect(8, 8, 10, 8, SHIRT);
+    c.rect(10, 10, 6, 4, FOAM); // window
+    c.rect(20, 9, 3, 7, SKIN); // passenger
+    c.set(21, 8, HAIR);
+    c.line(23, 11, 25, 7, SKIN); // raised waving arm
+                                 // Foam wake at the waterline.
+    c.hspan(0, 29, 22, FOAM);
+    c.set(1, 23, FOAM);
+    c.set(28, 23, FOAM);
+    c.into_image()
+}
+
 fn op(c: u16) -> [u8; 2] {
     c.to_le_bytes()
+}
+
+/// A two-figure TTM for visitor scenes: Johnny waves on the island while a boat
+/// approaches from the right (it slides nearer each step).
+fn visit_ttm() -> Ttm {
+    let mut code = Vec::new();
+    code.extend_from_slice(&op(0x1111)); // TAG 1
+    code.extend_from_slice(&1u16.to_le_bytes());
+    code.extend_from_slice(&op(0x1051)); // SET_BMP_SLOT 0
+    code.extend_from_slice(&0u16.to_le_bytes());
+    code.extend_from_slice(&op(0xF02F)); // LOAD_IMAGE "JDEMO.BMP"
+    code.extend_from_slice(b"JDEMO.BMP\0");
+    code.extend_from_slice(&op(0x1021)); // SET_DELAY 8
+    code.extend_from_slice(&8u16.to_le_bytes());
+    // (johnny_wave_frame, boat_x): the boat slides in from the right.
+    for &(jf, bx) in &[(1u16, 540u16), (0, 510), (1, 482), (0, 458), (1, 440)] {
+        code.extend_from_slice(&op(0xA601)); // CLEAR
+        code.extend_from_slice(&0u16.to_le_bytes());
+        // Johnny waving on the island.
+        code.extend_from_slice(&op(0xA504));
+        for v in [330u16, 250, jf, 0] {
+            code.extend_from_slice(&v.to_le_bytes());
+        }
+        // The approaching boat (frame 5) in the water.
+        code.extend_from_slice(&op(0xA504));
+        for v in [bx, 300, 5, 0] {
+            code.extend_from_slice(&v.to_le_bytes());
+        }
+        code.extend_from_slice(&op(0x0FF0)); // UPDATE
+    }
+    Ttm {
+        version: "1.20".into(),
+        num_pages: 1,
+        bytecode: code,
+        tags: vec![Tag {
+            id: 1,
+            description: "visit".into(),
+        }],
+    }
 }
 
 /// A two-figure TTM for Mary's scenes: Johnny on the island and the mermaid in the
@@ -890,6 +953,7 @@ fn vignette_ttms() -> Vec<(String, Ttm)> {
             vignette_ttm(&[(3, 250), (3, 249), (3, 250)]),
         ),
         ("MARY.TTM".to_string(), mary_ttm()),
+        ("VISIT.TTM".to_string(), visit_ttm()),
     ]
 }
 
@@ -898,7 +962,8 @@ fn ttm_for_ads(ads_name: &str) -> &'static str {
     match ads_name {
         "FISHING.ADS" => "FISH.TTM",
         "ACTIVITY.ADS" => "READ.TTM",
-        "MARY.ADS" => "MARY.TTM", // the mermaid appears beside Johnny
+        "MARY.ADS" => "MARY.TTM",     // the mermaid appears beside Johnny
+        "VISITOR.ADS" => "VISIT.TTM", // a boat approaches the island
         "STAND.ADS" | "WALKSTUF.ADS" | "BUILDING.ADS" => "STAND.TTM",
         // Story/character/visitor/gag scenes: a friendly wave.
         _ => "WAVE.TTM",
@@ -953,13 +1018,14 @@ pub fn demo_archive() -> (Archive, Palette) {
                 Bmp {
                     width: 16,
                     height: 64,
-                    // Frames: 0 = stand, 1 = wave, 2 = fish, 3 = read, 4 = Mary.
+                    // Frames: 0=stand, 1=wave, 2=fish, 3=read, 4=Mary, 5=boat.
                     images: vec![
                         johnny_action(Pose::Stand, 0),
                         johnny_action(Pose::Wave, 0),
                         johnny_action(Pose::Fish, 0),
                         johnny_action(Pose::Read, 0),
                         mary_sprite(),
+                        boat_sprite(),
                     ],
                 },
             ),
@@ -1032,11 +1098,19 @@ mod tests {
         assert_eq!(ttm_for_ads("ACTIVITY.ADS"), "READ.TTM");
         assert_eq!(ttm_for_ads("STAND.ADS"), "STAND.TTM");
         assert_eq!(ttm_for_ads("MARY.ADS"), "MARY.TTM");
+        assert_eq!(ttm_for_ads("VISITOR.ADS"), "VISIT.TTM");
         assert_ne!(ttm_for_ads("FISHING.ADS"), ttm_for_ads("ACTIVITY.ADS"));
 
         // Every referenced TTM exists in the pack.
         let (archive, _) = demo_archive();
-        for name in ["STAND.TTM", "WAVE.TTM", "FISH.TTM", "READ.TTM", "MARY.TTM"] {
+        for name in [
+            "STAND.TTM",
+            "WAVE.TTM",
+            "FISH.TTM",
+            "READ.TTM",
+            "MARY.TTM",
+            "VISIT.TTM",
+        ] {
             assert!(archive.ttm(name).is_some(), "missing {name}");
         }
         // Each ADS references the action chosen for its category.
@@ -1050,7 +1124,7 @@ mod tests {
         // JDEMO has the four action poses plus Mary, and they actually differ.
         let (archive, _) = demo_archive();
         let jdemo = archive.bmp("JDEMO.BMP").unwrap();
-        assert_eq!(jdemo.images.len(), 5);
+        assert_eq!(jdemo.images.len(), 6);
         let stand = &johnny_action(Pose::Stand, 0).pixels;
         let fish = &johnny_action(Pose::Fish, 0).pixels;
         let read = &johnny_action(Pose::Read, 0).pixels;
@@ -1059,6 +1133,8 @@ mod tests {
         assert_ne!(stand, read);
         assert_ne!(fish, read);
         assert_ne!(stand, mary);
+        // The boat is a differently-sized sprite.
+        assert_eq!(boat_sprite().width, 30);
     }
 
     #[test]
