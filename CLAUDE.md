@@ -83,6 +83,8 @@ lógica completa mas visual placeholder. **Ações recriadas por categoria** (`a
 4 poses (`Pose::{Stand,Wave,Fish,Read}`) + `vignette_ttm` + `ttm_for_ads` ⇒ cada cena do
 pack standalone mostra uma ação (pescar/ler/acenar/parado) em vez de só ficar parado.
 **Mary, a sereia** (`mary_sprite`/`mary_ttm`): aparece na água ao lado do Johnny nas
-cenas de `MARY.ADS` (JDEMO frame 4). **109 testes**, CI verde. **Próximo:** Suzy/
-visitantes/easter eggs recriados e demais melhorias (o usuário pediu **todas**, em
-incrementos). HD interno adiado (engine 640×480; escala já cobre telas grandes).
+cenas de `MARY.ADS` (JDEMO frame 4). **Visitantes** (`boat_sprite`/`visit_ttm`, JDEMO
+frame 5): um barco se aproxima da ilha nas cenas de `VISITOR.ADS`. **109 testes**, CI
+verde. **Próximo:** Suzy/cutaways + easter eggs recriados e demais melhorias (o usuário
+pediu **todas**, em incrementos). HD interno adiado (engine 640×480; escala cobre telas
+grandes).

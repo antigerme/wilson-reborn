@@ -6,6 +6,27 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-15 — Pack recriado: visitantes (barco se aproximando)
+
+**Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #23).
+
+Mais um passo da paridade visual: as cenas de `VISITOR.ADS` agora mostram um **barco
+se aproximando** da ilha (todas são on-island, então compõem como a Mary).
+
+- **`assets.rs`**: `boat_sprite()` — lancha 30×26 (casco, cabine, passageiro acenando,
+  esteira de espuma), `JDEMO.BMP` frame 5 (sprite de tamanho próprio, suportado pelo
+  `DRAW_SPRITE`). `visit_ttm()`: Johnny acena na ilha enquanto o barco **desliza da
+  direita** se aproximando a cada passo. `ttm_for_ads`: `VISITOR.ADS → VISIT.TTM`.
+- Validado **visualmente** (sheet de 6 frames: 4 ações + Mary + barco).
+
+**109 testes** (39 wilson + 35 dgds + 35 engine). fmt, clippy `-D warnings` (com **e**
+sem `audio`), `build --release`.
+
+**Próximo:** Suzy/cutaways (precisa de cenário) e easter eggs (SOS na garrafa, dança da
+chuva) — ver doc 09.
+
+---
+
 ## 2026-06-14 — Pack recriado: Mary, a sereia
 
 **Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #22).
