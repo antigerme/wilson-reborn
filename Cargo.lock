@@ -1747,6 +1747,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "wilson-saver"
+version = "0.1.0"
+dependencies = [
+ "wilson-dgds",
+ "wilson-engine",
+]
+
+[[package]]
 name = "winapi-util"
 version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"

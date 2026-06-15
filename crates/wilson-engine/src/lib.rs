@@ -9,6 +9,7 @@
 //! later turns [`Surface`] pixels into on-screen frames via a palette.
 
 pub mod ads_vm;
+pub mod clock;
 pub mod error;
 pub mod island;
 pub mod path;
