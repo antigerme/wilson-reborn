@@ -900,8 +900,83 @@ fn suzy_sprite() -> BmpImage {
     c.into_image()
 }
 
+/// A small dark rain cloud (`JDEMO.BMP` frame 7) for the rain-dance gag.
+fn raincloud_sprite() -> BmpImage {
+    let (w, h) = (44i32, 22i32);
+    let mut c = Canvas::new(w, h);
+    let by = 15;
+    c.rect(6, by - 4, w - 12, 6, HAZE);
+    for (i, &cx) in [9, 20, 32].iter().enumerate() {
+        let r = 6 + (i as i32 % 2) * 2;
+        c.disc(cx, by - 5, r, HAZE);
+    }
+    // Darker underside.
+    c.hspan(6, w - 7, by + 1, ROCK);
+    c.into_image()
+}
+
+/// A lightning bolt (`JDEMO.BMP` frame 8) for the rain-dance gag.
+fn bolt_sprite() -> BmpImage {
+    let (w, h) = (16i32, 60i32);
+    let mut c = Canvas::new(w, h);
+    let pts = [(8, 0), (4, 24), (9, 24), (5, 59)];
+    for win in pts.windows(2) {
+        c.line(win[0].0, win[0].1, win[1].0, win[1].1, GOLD);
+    }
+    // Thicken it a touch.
+    let pts2 = [(9, 0), (5, 24), (10, 24), (6, 59)];
+    for win in pts2.windows(2) {
+        c.line(win[0].0, win[0].1, win[1].0, win[1].1, FOAM);
+    }
+    c.into_image()
+}
+
 fn op(c: u16) -> [u8; 2] {
     c.to_le_bytes()
+}
+
+/// The "rain dance" easter egg: a lone cloud gathers over Johnny and — instead of
+/// rain — zaps him with a single lightning bolt.
+fn raindance_ttm() -> Ttm {
+    let mut code = Vec::new();
+    code.extend_from_slice(&op(0x1111)); // TAG 1
+    code.extend_from_slice(&1u16.to_le_bytes());
+    code.extend_from_slice(&op(0x1051)); // SET_BMP_SLOT 0
+    code.extend_from_slice(&0u16.to_le_bytes());
+    code.extend_from_slice(&op(0xF02F)); // LOAD_IMAGE "JDEMO.BMP"
+    code.extend_from_slice(b"JDEMO.BMP\0");
+    code.extend_from_slice(&op(0x1021)); // SET_DELAY 8
+    code.extend_from_slice(&8u16.to_le_bytes());
+    // (draw_bolt, johnny_frame): cloud gathers, then the bolt strikes.
+    for &(bolt, jf) in &[(false, 0u16), (false, 0), (true, 1), (false, 0), (true, 1)] {
+        code.extend_from_slice(&op(0xA601)); // CLEAR
+        code.extend_from_slice(&0u16.to_le_bytes());
+        // The cloud over Johnny.
+        code.extend_from_slice(&op(0xA504));
+        for v in [318u16, 170, 7, 0] {
+            code.extend_from_slice(&v.to_le_bytes());
+        }
+        if bolt {
+            code.extend_from_slice(&op(0xA504)); // the bolt
+            for v in [326u16, 192, 8, 0] {
+                code.extend_from_slice(&v.to_le_bytes());
+            }
+        }
+        code.extend_from_slice(&op(0xA504)); // Johnny
+        for v in [330u16, 250, jf, 0] {
+            code.extend_from_slice(&v.to_le_bytes());
+        }
+        code.extend_from_slice(&op(0x0FF0)); // UPDATE
+    }
+    Ttm {
+        version: "1.20".into(),
+        num_pages: 1,
+        bytecode: code,
+        tags: vec![Tag {
+            id: 1,
+            description: "raindance".into(),
+        }],
+    }
 }
 
 /// A cutaway TTM for Suzy's scenes: a beach-resort backdrop with Suzy sunbathing
@@ -1072,6 +1147,7 @@ fn vignette_ttms() -> Vec<(String, Ttm)> {
         ("MARY.TTM".to_string(), mary_ttm()),
         ("VISIT.TTM".to_string(), visit_ttm()),
         ("SUZY.TTM".to_string(), suzy_ttm()),
+        ("RAIN.TTM".to_string(), raindance_ttm()),
     ]
 }
 
@@ -1083,6 +1159,7 @@ fn ttm_for_ads(ads_name: &str) -> &'static str {
         "MARY.ADS" => "MARY.TTM",     // the mermaid appears beside Johnny
         "VISITOR.ADS" => "VISIT.TTM", // a boat approaches the island
         "SUZY.ADS" => "SUZY.TTM",     // cutaway: Suzy at the resort
+        "MISCGAG.ADS" => "RAIN.TTM",  // the rain-dance easter egg (cloud → lightning)
         "STAND.ADS" | "WALKSTUF.ADS" | "BUILDING.ADS" => "STAND.TTM",
         // Story/character/visitor/gag scenes: a friendly wave.
         _ => "WAVE.TTM",
@@ -1137,7 +1214,8 @@ pub fn demo_archive() -> (Archive, Palette) {
                 Bmp {
                     width: 16,
                     height: 64,
-                    // Frames: 0=stand,1=wave,2=fish,3=read,4=Mary,5=boat,6=Suzy.
+                    // Frames: 0=stand,1=wave,2=fish,3=read,4=Mary,5=boat,6=Suzy,
+                    // 7=raincloud, 8=lightning bolt.
                     images: vec![
                         johnny_action(Pose::Stand, 0),
                         johnny_action(Pose::Wave, 0),
@@ -1146,6 +1224,8 @@ pub fn demo_archive() -> (Archive, Palette) {
                         mary_sprite(),
                         boat_sprite(),
                         suzy_sprite(),
+                        raincloud_sprite(),
+                        bolt_sprite(),
                     ],
                 },
             ),
@@ -1221,6 +1301,7 @@ mod tests {
         assert_eq!(ttm_for_ads("MARY.ADS"), "MARY.TTM");
         assert_eq!(ttm_for_ads("VISITOR.ADS"), "VISIT.TTM");
         assert_eq!(ttm_for_ads("SUZY.ADS"), "SUZY.TTM");
+        assert_eq!(ttm_for_ads("MISCGAG.ADS"), "RAIN.TTM");
         assert_ne!(ttm_for_ads("FISHING.ADS"), ttm_for_ads("ACTIVITY.ADS"));
 
         // Every referenced TTM exists in the pack, and the cutaway backdrop is present.
@@ -1233,6 +1314,7 @@ mod tests {
             "MARY.TTM",
             "VISIT.TTM",
             "SUZY.TTM",
+            "RAIN.TTM",
         ] {
             assert!(archive.ttm(name).is_some(), "missing {name}");
         }
@@ -1248,7 +1330,7 @@ mod tests {
         // JDEMO has the four action poses plus Mary, and they actually differ.
         let (archive, _) = demo_archive();
         let jdemo = archive.bmp("JDEMO.BMP").unwrap();
-        assert_eq!(jdemo.images.len(), 7);
+        assert_eq!(jdemo.images.len(), 9);
         let stand = &johnny_action(Pose::Stand, 0).pixels;
         let fish = &johnny_action(Pose::Fish, 0).pixels;
         let read = &johnny_action(Pose::Read, 0).pixels;

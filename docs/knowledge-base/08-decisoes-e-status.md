@@ -51,7 +51,7 @@ Crates planejados:
 | **2c** | **Validação contra dados REAIS (teste gated) + escala 4:3 (letterbox)** | ✅ concluída — **engine renderiza o Johnny original** |
 | 2d | Polir: som, persistência do dia, arte recriada, polimento funcional | ✅ concluída — som · persistência · arte recriada · config/opções |
 | 3 | Empacotamento (Win/Linux/web/WASM) + assets → **paridade jogável** | 🟡 **em curso** — ✅ **release CI** (`release.yml`: `wilson.scr` Windows + binário Linux em tag/dispatch); falta web/WASM |
-| 4 | Melhorias (HD, dia/noite 24h, config UI, estatísticas, etc.) | 🟡 **em curso** — ✅ config/opções · ✅ **dia-noite 24h** · ✅ **estatísticas** · ✅ **auditoria de paridade** ([09](09-paridade-e-easter-eggs.md)) · ✅ **ações recriadas por categoria** (pescar/ler/acenar/parado) · ✅ **Mary, a sereia** · ✅ **visitantes** (barco) · ✅ **Suzy + cenário de cutaway** (`BEACH.SCR`, corrige o fundo preto das cenas off-island); próximo: easter eggs (SOS na garrafa, dança da chuva) (HD interno adiado) |
+| 4 | Melhorias (HD, dia/noite 24h, config UI, estatísticas, etc.) | 🟡 **em curso** — ✅ config/opções · ✅ **dia-noite 24h** · ✅ **estatísticas** · ✅ **auditoria de paridade** ([09](09-paridade-e-easter-eggs.md)) · ✅ **ações recriadas por categoria** (pescar/ler/acenar/parado) · ✅ **Mary, a sereia** · ✅ **visitantes** (barco) · ✅ **Suzy + cenário de cutaway** (`BEACH.SCR`) · ✅ **easter egg dança da chuva** (nuvem→raio em `MISCGAG.ADS`); próximo: SOS na garrafa e demais (HD interno adiado) |
 
 ## Validação de dados reais ✅
 Validado contra o `RESOURCE.001` **autêntico** (md5 `374e6d05…`): 180 recursos

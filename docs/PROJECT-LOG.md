@@ -6,6 +6,26 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-15 — Pack recriado: easter egg da dança da chuva (nuvem → raio)
+
+**Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #25).
+
+Primeiro easter egg recriado: a **"dança da chuva"** — uma nuvem solitária se forma
+sobre o Johnny e, em vez de chuva, **solta um raio** nele. Via `MISCGAG.ADS` (arquivo só
+de gags, on-island — sem o problema de mistura ilha/cutaway).
+
+- **`assets.rs`**: `raincloud_sprite()` (frame 7) e `bolt_sprite()` (frame 8, zigue-zague
+  dourado); `raindance_ttm()` desenha a nuvem sobre o Johnny e pisca o raio. `ttm_for_ads`:
+  `MISCGAG.ADS → RAIN.TTM`.
+- Validado **visualmente** (nuvem + raio + Johnny).
+
+**109 testes** (39 wilson + 35 dgds + 35 engine). fmt, clippy `-D warnings` (com **e**
+sem `audio`), `build --release`.
+
+**Próximo:** mais easter eggs (SOS na garrafa) e demais melhorias.
+
+---
+
 ## 2026-06-15 — Pack recriado: Suzy + cenário de cutaway (corrige fundo preto)
 
 **Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #24).
