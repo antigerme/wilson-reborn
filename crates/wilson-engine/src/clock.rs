@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! System clock → engine [`Clock`] (no external date crate).
+//!
+//! Shared by the frontends (the `wilson` window app and the macOS `.saver`).
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use wilson_engine::Clock;
+use crate::Clock;
 
 /// The current local-ish wall clock (uses UTC; good enough for day/holiday logic).
 pub fn now() -> Clock {

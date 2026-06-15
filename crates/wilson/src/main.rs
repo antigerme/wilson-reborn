@@ -15,7 +15,6 @@
 #[cfg(not(feature = "embed-data"))]
 mod assets;
 mod audio;
-mod clock;
 mod config;
 #[cfg(feature = "embed-data")]
 mod embedded;
@@ -27,7 +26,7 @@ use std::num::NonZeroU32;
 use std::rc::Rc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use wilson_engine::{Director, Show};
+use wilson_engine::{clock, Director, Show};
 use winit::event::{ElementState, Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::{Fullscreen, WindowBuilder};
