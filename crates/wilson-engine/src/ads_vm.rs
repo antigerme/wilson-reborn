@@ -13,7 +13,7 @@ use wilson_dgds::{decode_ads, Ads, AdsInstruction, Archive, Palette};
 
 use crate::error::{EngineError, Result};
 use crate::rng::Rng;
-use crate::surface::Surface;
+use crate::surface::{Surface, TRANSPARENT};
 use crate::ttm_exec::{detect_transparent, run_frame, FrameOutcome, TtmSlot, TtmThread};
 
 /// Maximum number of concurrent TTM threads (as in the original engine).
@@ -56,6 +56,7 @@ pub struct AdsVm {
     palette: Palette,
     transparent_src: Option<u8>,
     background: Surface,
+    saved_zones: Surface,
     slots: Vec<TtmSlot>,
     threads: Vec<TtmThread>,
     ads: Vec<AdsInstruction>,
@@ -105,6 +106,7 @@ impl AdsVm {
             palette: palette.clone(),
             transparent_src: detect_transparent(palette),
             background: Surface::new(width, height, 0),
+            saved_zones: Surface::new(width, height, TRANSPARENT),
             slots,
             threads,
             ads: instructions,
@@ -159,6 +161,7 @@ impl AdsVm {
                 threads,
                 slots,
                 background,
+                saved_zones,
                 transparent_src,
                 dx,
                 dy,
@@ -176,6 +179,7 @@ impl AdsVm {
                         thread,
                         slot,
                         background,
+                        saved_zones,
                         *transparent_src,
                         *dx,
                         *dy,
@@ -188,8 +192,9 @@ impl AdsVm {
             }
         }
 
-        // 2. Composite background + every active layer.
-        let mut surface = self.background.clone();
+        // 2. Composite background → saved-zones layer → every active thread layer
+        //    (same order as jc_reborn's grUpdateDisplay).
+        let mut surface = self.background.compose_over(&self.saved_zones);
         for t in &self.threads {
             if t.running != 0 {
                 surface = surface.compose_over(&t.layer);

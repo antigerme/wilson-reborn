@@ -224,6 +224,21 @@ impl Surface {
         }
     }
 
+    /// Copy the non-transparent pixels of the rectangle `(x, y, w, h)` from `src` onto
+    /// `self` (used by the TTM `COPY_ZONE_TO_BG` opcode to build the persistent
+    /// "saved zones" layer, mirroring `jc_reborn`'s `grCopyZoneToBg`).
+    pub fn blit_zone(&mut self, src: &Surface, x: i32, y: i32, w: i32, h: i32) {
+        for yy in y..y + h {
+            for xx in x..x + w {
+                if let Some(p) = src.get(xx, yy) {
+                    if p != TRANSPARENT {
+                        self.put_pixel(xx, yy, p);
+                    }
+                }
+            }
+        }
+    }
+
     /// Compose `top` over a copy of `self`: `top`'s non-transparent pixels win.
     pub fn compose_over(&self, top: &Surface) -> Surface {
         let mut out = self.clone();

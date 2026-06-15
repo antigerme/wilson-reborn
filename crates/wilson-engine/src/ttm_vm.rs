@@ -8,7 +8,7 @@
 use wilson_dgds::{Archive, Palette, Ttm};
 
 use crate::error::Result;
-use crate::surface::Surface;
+use crate::surface::{Surface, TRANSPARENT};
 use crate::ttm_exec::{detect_transparent, run_frame, FrameOutcome, TtmSlot, TtmThread};
 
 /// The result of running [`TtmVm::step`] for one frame.
@@ -31,6 +31,7 @@ pub struct TtmVm {
     slot: TtmSlot,
     thread: TtmThread,
     background: Surface,
+    saved_zones: Surface,
     transparent_src: Option<u8>,
     dx: i32,
     dy: i32,
@@ -53,6 +54,7 @@ impl TtmVm {
             slot,
             thread,
             background: Surface::new(width, height, 0),
+            saved_zones: Surface::new(width, height, TRANSPARENT),
             transparent_src: detect_transparent(palette),
             dx: 0,
             dy: 0,
@@ -75,9 +77,12 @@ impl TtmVm {
         &self.background
     }
 
-    /// The composited current frame (background with the layer on top).
+    /// The composited current frame (background, then the saved-zones layer, then the
+    /// thread's layer on top — the same order as the multi-thread runtime).
     pub fn frame(&self) -> Surface {
-        self.background.compose_over(&self.thread.layer)
+        self.background
+            .compose_over(&self.saved_zones)
+            .compose_over(&self.thread.layer)
     }
 
     /// Run opcodes until the next `UPDATE` (a frame) or the end of the script.
@@ -92,6 +97,7 @@ impl TtmVm {
             &mut self.thread,
             &mut self.slot,
             &mut self.background,
+            &mut self.saved_zones,
             self.transparent_src,
             self.dx,
             self.dy,
@@ -233,5 +239,67 @@ mod tests {
                 "NOPE.SCR".to_string()
             ))
         );
+    }
+
+    #[test]
+    fn copy_zone_to_bg_persists_after_clear() {
+        // Draw a pixel, copy its zone to the saved-zones layer, then clear the layer.
+        // The pixel must survive in the composited frame (it lives in saved zones).
+        let mut code = Vec::new();
+        code.extend_from_slice(&op(0x2002)); // SET_COLORS fg=2 bg=0
+        for v in [2u16, 0] {
+            code.extend_from_slice(&v.to_le_bytes());
+        }
+        code.extend_from_slice(&op(0xA002)); // DRAW_PIXEL 5 5
+        for v in [5u16, 5] {
+            code.extend_from_slice(&v.to_le_bytes());
+        }
+        code.extend_from_slice(&op(0x4204)); // COPY_ZONE_TO_BG 4 4 4 4
+        for v in [4u16, 4, 4, 4] {
+            code.extend_from_slice(&v.to_le_bytes());
+        }
+        code.extend_from_slice(&op(0xA601)); // CLEAR_SCREEN (clears the layer)
+        code.extend_from_slice(&0u16.to_le_bytes());
+        code.extend_from_slice(&op(0x0FF0)); // UPDATE
+
+        let pal = palette_with_magenta();
+        let archive = Archive::default();
+        let mut vm = TtmVm::new(&ttm(code), 0, &pal, 16, 16).unwrap();
+        vm.step(&archive).unwrap();
+        // The layer was cleared, but the saved-zones layer keeps the pixel on top of bg.
+        assert_eq!(vm.layer().get(5, 5), Some(TRANSPARENT));
+        assert_eq!(vm.frame().get(5, 5), Some(2));
+    }
+
+    #[test]
+    fn restore_zone_releases_saved_zones() {
+        // COPY_ZONE_TO_BG then RESTORE_ZONE: the saved zone is released, so after
+        // clearing the layer the frame shows only the background again.
+        let mut code = Vec::new();
+        code.extend_from_slice(&op(0x2002));
+        for v in [2u16, 0] {
+            code.extend_from_slice(&v.to_le_bytes());
+        }
+        code.extend_from_slice(&op(0xA002));
+        for v in [5u16, 5] {
+            code.extend_from_slice(&v.to_le_bytes());
+        }
+        code.extend_from_slice(&op(0x4204));
+        for v in [4u16, 4, 4, 4] {
+            code.extend_from_slice(&v.to_le_bytes());
+        }
+        code.extend_from_slice(&op(0xA064)); // RESTORE_ZONE (releases saved zones)
+        for v in [0u16, 0, 0, 0] {
+            code.extend_from_slice(&v.to_le_bytes());
+        }
+        code.extend_from_slice(&op(0xA601));
+        code.extend_from_slice(&0u16.to_le_bytes());
+        code.extend_from_slice(&op(0x0FF0));
+
+        let pal = palette_with_magenta();
+        let archive = Archive::default();
+        let mut vm = TtmVm::new(&ttm(code), 0, &pal, 16, 16).unwrap();
+        vm.step(&archive).unwrap();
+        assert_eq!(vm.frame().get(5, 5), Some(0)); // background only
     }
 }
