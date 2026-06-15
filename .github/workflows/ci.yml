@@ -51,10 +51,20 @@ jobs:
         run: cargo test --workspace --all-features --verbose
 
       - name: Build macOS .saver bundle
-        # Verifies the ScreenSaverView compiles and links against the Rust staticlib.
-        # (Runtime is tested on a real Mac — CI only checks that it builds.)
+        # Verifies the ScreenSaverView compiles and links against the Rust staticlib,
+        # and publishes the bundle so it can be runtime-tested on a real Mac (CI only
+        # checks that it builds).
         if: matrix.os == 'macos-latest'
-        run: bash crates/wilson-saver/macos/build-saver.sh
+        run: |
+          bash crates/wilson-saver/macos/build-saver.sh
+          ditto -c -k --keepParent target/saver/WilsonReborn.saver WilsonReborn.saver.zip
+
+      - name: Upload .saver (for manual runtime testing)
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: WilsonReborn-saver
+          path: WilsonReborn.saver.zip
 
   # GitHub does not provide a "fedora-latest" runner, so we run the same checks
   # inside an official Fedora container on an Ubuntu host. The toolchain is
