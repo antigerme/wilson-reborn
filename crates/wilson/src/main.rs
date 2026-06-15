@@ -9,7 +9,8 @@
 //! - `wilson --data <dir>` — load the data from `<dir>`.
 //! - `wilson` — auto-detects the data in the working directory or next to the executable.
 //! - `wilson --windowed --mute --speed <pct> --scale fit|stretch|integer` — options.
-//! - Windows screensaver verbs `/s` (show), `/p` (preview), `/c` (config) are accepted.
+//! - Windows screensaver verbs: `/s` (show), `/c` (config), `/p <hwnd>` (preview embedded
+//!   in the configuration pane — Windows only).
 
 mod assets;
 mod audio;
@@ -40,14 +41,23 @@ fn main() {
     cfg.apply_args(&args);
 
     // Windows screensaver verbs.
-    match screensaver_verb(&args) {
-        Some('c') => {
+    let action = screensaver_action(&args);
+    match action {
+        Action::Configure => {
             print_config_info(&cfg);
             return;
         }
-        Some('p') => return, // preview window embedding is not supported yet
-        _ => {}              // 's' or none → show
+        Action::Preview(_) if !cfg!(windows) => {
+            eprintln!("Wilson Reborn: the /p preview is only supported on Windows.");
+            return;
+        }
+        _ => {}
     }
+    let preview_parent: Option<isize> = match action {
+        Action::Preview(hwnd) => Some(hwnd),
+        _ => None,
+    };
+    let is_preview = preview_parent.is_some();
 
     let data_arg = args
         .windows(2)
@@ -108,7 +118,9 @@ fn main() {
 
     let event_loop = EventLoop::new().expect("failed to create event loop");
     let mut builder = WindowBuilder::new().with_title("Wilson Reborn — Johnny Castaway");
-    builder = if cfg.windowed {
+    builder = if let Some(hwnd) = preview_parent {
+        apply_preview(builder, hwnd) // embedded preview pane (Windows /p)
+    } else if cfg.windowed {
         builder.with_inner_size(winit::dpi::LogicalSize::new(640.0, 480.0))
     } else {
         builder.with_fullscreen(Some(Fullscreen::Borderless(None)))
@@ -121,9 +133,12 @@ fn main() {
     event_loop
         .run(move |event, elwt| match event {
             Event::WindowEvent { event, .. } => match event {
-                WindowEvent::CloseRequested | WindowEvent::MouseInput { .. } => elwt.exit(),
+                // The preview pane must keep running on hover/keypress; only a real
+                // close ends it. In normal/fullscreen mode, any input quits.
+                WindowEvent::CloseRequested => elwt.exit(),
+                WindowEvent::MouseInput { .. } if !is_preview => elwt.exit(),
                 WindowEvent::KeyboardInput { event: key, .. }
-                    if key.state == ElementState::Pressed =>
+                    if !is_preview && key.state == ElementState::Pressed =>
                 {
                     elwt.exit();
                 }
@@ -184,24 +199,81 @@ fn main() {
         .expect("event loop error");
 }
 
-/// Detect a Windows screensaver verb in `args`: `/c` (configure), `/p` (preview) or
-/// `/s` (show). Verbs may use `/` or `-`, be upper/lower case, and carry an HWND
-/// suffix (`/p:1234`). Returns the verb letter, or `None` if absent.
-fn screensaver_verb(args: &[String]) -> Option<char> {
-    for a in args.iter().skip(1) {
-        let low = a.to_ascii_lowercase();
-        let body = low.strip_prefix('/').or_else(|| low.strip_prefix('-'));
-        if let Some(body) = body {
+/// What the screensaver was asked to do (from the Windows `/s` `/p` `/c` verbs).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Action {
+    /// Show the screensaver (default).
+    Show,
+    /// Print/show the configuration (`/c`).
+    Configure,
+    /// Render the small preview embedded in the parent window handle (`/p <hwnd>`).
+    Preview(isize),
+}
+
+/// Detect the screensaver action in `args`. Verbs may use `/` or `-`, be upper/lower
+/// case, and carry an HWND either after a colon (`/p:1234`) or as the next argument
+/// (`/p 1234`).
+fn screensaver_action(args: &[String]) -> Action {
+    let mut i = 1;
+    while i < args.len() {
+        let low = args[i].to_ascii_lowercase();
+        if let Some(body) = low.strip_prefix('/').or_else(|| low.strip_prefix('-')) {
             let mut chars = body.chars();
-            if let Some(c @ ('c' | 'p' | 's')) = chars.next() {
-                let rest = chars.as_str();
-                if rest.is_empty() || rest.starts_with(':') {
-                    return Some(c);
+            let verb = chars.next();
+            let rest = chars.as_str(); // text after the verb letter
+            let clean = rest.is_empty() || rest.starts_with(':');
+            match verb {
+                Some('c') if clean => return Action::Configure,
+                Some('s') if clean => return Action::Show,
+                Some('p') if clean => {
+                    let hwnd = rest
+                        .strip_prefix(':')
+                        .and_then(parse_hwnd)
+                        .or_else(|| args.get(i + 1).and_then(|n| parse_hwnd(n)))
+                        .unwrap_or(0);
+                    return Action::Preview(hwnd);
                 }
+                _ => {}
             }
         }
+        i += 1;
     }
-    None
+    Action::Show
+}
+
+/// Parse a window handle (decimal, or `0x`-prefixed hex), as Windows passes it.
+fn parse_hwnd(s: &str) -> Option<isize> {
+    let s = s.trim();
+    match s.strip_prefix("0x").or_else(|| s.strip_prefix("0X")) {
+        Some(hex) => isize::from_str_radix(hex, 16).ok(),
+        None => s.parse::<isize>().ok(),
+    }
+}
+
+/// Apply the Windows preview-window settings: make the window a borderless child of the
+/// preview pane (`hwnd`). A no-op on other platforms (where `/p` isn't used).
+fn apply_preview(builder: WindowBuilder, hwnd: isize) -> WindowBuilder {
+    #[cfg(windows)]
+    {
+        use std::num::NonZeroIsize;
+        use winit::raw_window_handle::{RawWindowHandle, Win32WindowHandle};
+        // The classic Windows preview pane is ~152×112 px.
+        let b = builder
+            .with_decorations(false)
+            .with_inner_size(winit::dpi::PhysicalSize::new(152u32, 112u32));
+        if let Some(nz) = NonZeroIsize::new(hwnd) {
+            let handle = RawWindowHandle::Win32(Win32WindowHandle::new(nz));
+            // SAFETY: `hwnd` is the preview window handle Windows passed on the command
+            // line; it is valid for the lifetime of the preview.
+            return unsafe { b.with_parent_window(Some(handle)) };
+        }
+        b
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = hwnd;
+        builder
+    }
 }
 
 /// Print the active configuration and where it lives (the textual `/c` dialog).
@@ -235,20 +307,44 @@ mod tests {
     }
 
     #[test]
-    fn verbs_are_detected() {
-        assert_eq!(screensaver_verb(&args(&["/c"])), Some('c'));
-        assert_eq!(screensaver_verb(&args(&["/P:1234"])), Some('p'));
-        assert_eq!(screensaver_verb(&args(&["-s"])), Some('s'));
-        assert_eq!(screensaver_verb(&args(&["/S:0"])), Some('s'));
+    fn actions_are_detected() {
+        assert_eq!(screensaver_action(&args(&["/c"])), Action::Configure);
+        assert_eq!(screensaver_action(&args(&["-s"])), Action::Show);
+        assert_eq!(screensaver_action(&args(&["/S:0"])), Action::Show);
+        assert_eq!(screensaver_action(&args(&[])), Action::Show);
+    }
+
+    #[test]
+    fn preview_action_captures_hwnd() {
+        // HWND as the next argument, or after a colon, or absent (0).
+        assert_eq!(
+            screensaver_action(&args(&["/p", "1234"])),
+            Action::Preview(1234)
+        );
+        assert_eq!(
+            screensaver_action(&args(&["/P:5678"])),
+            Action::Preview(5678)
+        );
+        assert_eq!(screensaver_action(&args(&["-p"])), Action::Preview(0));
     }
 
     #[test]
     fn non_verbs_are_ignored() {
-        assert_eq!(screensaver_verb(&args(&["--data", "/some/dir"])), None);
         assert_eq!(
-            screensaver_verb(&args(&["--windowed", "--scale", "fit"])),
-            None
+            screensaver_action(&args(&["--data", "/some/dir"])),
+            Action::Show
         );
-        assert_eq!(screensaver_verb(&args(&[])), None);
+        assert_eq!(
+            screensaver_action(&args(&["--windowed", "--scale", "fit"])),
+            Action::Show
+        );
+    }
+
+    #[test]
+    fn parse_hwnd_decimal_and_hex() {
+        assert_eq!(parse_hwnd("1234"), Some(1234));
+        assert_eq!(parse_hwnd("0x10"), Some(16));
+        assert_eq!(parse_hwnd(" 42 "), Some(42));
+        assert_eq!(parse_hwnd("nope"), None);
     }
 }

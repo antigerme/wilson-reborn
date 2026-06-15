@@ -33,8 +33,9 @@ Um screensaver do Windows é apenas o executável com a extensão `.scr`.
    caminho do `config.txt` (edite-o para ajustar tela cheia, escala, som, velocidade,
    ciclo dia/noite).
 
-> O *preview* na miniatura (verbo `/p`) ainda não é embutido — a miniatura fica em
-> branco, mas o screensaver funciona normalmente em tela cheia.
+> O *preview* na miniatura (verbo `/p <hwnd>`) é embutido na janelinha de pré-visualização
+> (janela-filha do HWND que o Windows passa). É um recurso só de Windows; em outros
+> sistemas o `/p` apenas informa e sai.
 
 ## Linux
 
