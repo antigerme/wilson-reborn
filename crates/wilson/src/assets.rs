@@ -51,6 +51,7 @@ const SKY_HI: u8 = 31; // day sky near the horizon (paler)
 const HAZE: u8 = 32; // hazy horizon band
 const NSKY: u8 = 33; // night sky (deep blue)
 const NSKY_HI: u8 = 34; // night sky near the horizon
+const PINK: u8 = 35; // Suzy's swimsuit / beach towel
 
 /// The recreated palette (index 15 is the magenta transparency key).
 pub fn demo_palette() -> Palette {
@@ -90,6 +91,7 @@ pub fn demo_palette() -> Palette {
     colors[HAZE as usize] = [150, 152, 140];
     colors[NSKY as usize] = [30, 42, 120];
     colors[NSKY_HI as usize] = [54, 70, 150];
+    colors[PINK as usize] = [235, 120, 170];
     Palette { colors }
 }
 
@@ -314,6 +316,60 @@ fn night_scr() -> Scr {
     Scr {
         width: c.w as u16,
         height: c.h as u16,
+        pixels: c.px,
+    }
+}
+
+/// A beach-resort backdrop (`BEACH.SCR`) for the cutaway scenes (Suzy): sky, sea, a
+/// sandy foreground, a colourful umbrella and a towel.
+fn beach_scr() -> Scr {
+    let (w, h) = (640i32, 480i32);
+    let beach_y = 300;
+    let sky = [SKY, SKY, SKY_HI];
+    let sea = [OCEAN_HI, OCEAN, OCEAN_LO];
+    let mut c = Canvas::solid(w, h, SAND);
+    for y in 0..h {
+        for x in 0..w {
+            let col = if y < HORIZON_Y - 10 {
+                ramp_at(&sky, y, HORIZON_Y - 10, x, y)
+            } else if y < HORIZON_Y {
+                if (x + y) & 1 == 0 {
+                    HAZE
+                } else {
+                    SKY_HI
+                }
+            } else if y < beach_y {
+                ramp_at(&sea, y - HORIZON_Y, beach_y - HORIZON_Y, x, y)
+            } else {
+                match hash2(x, y) % 23 {
+                    0 => SAND_DK,
+                    1 | 2 => SAND_MID,
+                    _ => SAND,
+                }
+            };
+            c.set(x, y, col);
+        }
+    }
+    // A beach umbrella on the right: pole + striped canopy.
+    c.rect(486, 250, 3, 120, TRUNK);
+    c.ellipse(487, 250, 64, 30, SHIRT);
+    for x in 423..=551 {
+        if (x / 10) % 2 == 0 {
+            for y in 220..=250 {
+                if (x - 487) * (x - 487) * 30 * 30 + (y - 250) * (y - 250) * 64 * 64
+                    <= 64 * 64 * 30 * 30
+                {
+                    c.set(x, y, FOAM);
+                }
+            }
+        }
+    }
+    c.rect(485, 220, 5, 4, TRUNK); // umbrella top
+                                   // A pink beach towel near the centre-foreground.
+    c.rect(250, 360, 90, 40, PINK);
+    Scr {
+        width: w as u16,
+        height: h as u16,
         pixels: c.px,
     }
 }
@@ -817,8 +873,69 @@ fn boat_sprite() -> BmpImage {
     c.into_image()
 }
 
+/// Suzy, the city girl (`JDEMO.BMP` frame 6): she sunbathes at the resort in a pink
+/// swimsuit. 16×64 bottom-anchored so she stands on the beach.
+fn suzy_sprite() -> BmpImage {
+    let mut c = Canvas::new(16, 64);
+    // Long hair + head (upper-mid of the sprite, feet at the bottom).
+    c.rect(5, 30, 7, 4, HAIR);
+    c.set(4, 31, HAIR);
+    c.set(12, 31, HAIR);
+    c.hspan(4, 5, 34, HAIR); // hair down the sides
+    c.hspan(11, 12, 34, HAIR);
+    c.rect(6, 33, 5, 4, SKIN); // face
+    c.set(7, 35, BLACK);
+    c.set(9, 35, BLACK);
+    // Torso (bikini top) + arms.
+    c.rect(6, 38, 5, 5, SKIN);
+    c.hspan(6, 10, 38, PINK); // top
+    c.rect(4, 38, 1, 5, SKIN);
+    c.rect(12, 38, 1, 5, SKIN);
+    // Hips (bikini bottom) + legs.
+    c.rect(5, 44, 7, 3, PINK);
+    c.rect(6, 47, 2, 9, SKIN);
+    c.rect(9, 47, 2, 9, SKIN);
+    c.hspan(5, 8, 56, SKIN); // feet
+    c.hspan(9, 12, 56, SKIN);
+    c.into_image()
+}
+
 fn op(c: u16) -> [u8; 2] {
     c.to_le_bytes()
+}
+
+/// A cutaway TTM for Suzy's scenes: a beach-resort backdrop with Suzy sunbathing
+/// (these scenes happen off the island, so the TTM loads its own background).
+fn suzy_ttm() -> Ttm {
+    let mut code = Vec::new();
+    code.extend_from_slice(&op(0x1111)); // TAG 1
+    code.extend_from_slice(&1u16.to_le_bytes());
+    code.extend_from_slice(&op(0x1051)); // SET_BMP_SLOT 0
+    code.extend_from_slice(&0u16.to_le_bytes());
+    code.extend_from_slice(&op(0xF02F)); // LOAD_IMAGE "JDEMO.BMP"
+    code.extend_from_slice(b"JDEMO.BMP\0");
+    code.extend_from_slice(&op(0xF01F)); // LOAD_SCREEN "BEACH.SCR" (cutaway backdrop)
+    code.extend_from_slice(b"BEACH.SCR\0");
+    code.extend_from_slice(&op(0x1021)); // SET_DELAY 8
+    code.extend_from_slice(&8u16.to_le_bytes());
+    for &y in &[330u16, 328, 330] {
+        code.extend_from_slice(&op(0xA601)); // CLEAR layer (backdrop persists)
+        code.extend_from_slice(&0u16.to_le_bytes());
+        code.extend_from_slice(&op(0xA504)); // DRAW Suzy (frame 6) on the sand
+        for v in [296u16, y, 6, 0] {
+            code.extend_from_slice(&v.to_le_bytes());
+        }
+        code.extend_from_slice(&op(0x0FF0)); // UPDATE
+    }
+    Ttm {
+        version: "1.20".into(),
+        num_pages: 1,
+        bytecode: code,
+        tags: vec![Tag {
+            id: 1,
+            description: "suzy".into(),
+        }],
+    }
 }
 
 /// A two-figure TTM for visitor scenes: Johnny waves on the island while a boat
@@ -954,6 +1071,7 @@ fn vignette_ttms() -> Vec<(String, Ttm)> {
         ),
         ("MARY.TTM".to_string(), mary_ttm()),
         ("VISIT.TTM".to_string(), visit_ttm()),
+        ("SUZY.TTM".to_string(), suzy_ttm()),
     ]
 }
 
@@ -964,6 +1082,7 @@ fn ttm_for_ads(ads_name: &str) -> &'static str {
         "ACTIVITY.ADS" => "READ.TTM",
         "MARY.ADS" => "MARY.TTM",     // the mermaid appears beside Johnny
         "VISITOR.ADS" => "VISIT.TTM", // a boat approaches the island
+        "SUZY.ADS" => "SUZY.TTM",     // cutaway: Suzy at the resort
         "STAND.ADS" | "WALKSTUF.ADS" | "BUILDING.ADS" => "STAND.TTM",
         // Story/character/visitor/gag scenes: a friendly wave.
         _ => "WAVE.TTM",
@@ -1018,7 +1137,7 @@ pub fn demo_archive() -> (Archive, Palette) {
                 Bmp {
                     width: 16,
                     height: 64,
-                    // Frames: 0=stand, 1=wave, 2=fish, 3=read, 4=Mary, 5=boat.
+                    // Frames: 0=stand,1=wave,2=fish,3=read,4=Mary,5=boat,6=Suzy.
                     images: vec![
                         johnny_action(Pose::Stand, 0),
                         johnny_action(Pose::Wave, 0),
@@ -1026,6 +1145,7 @@ pub fn demo_archive() -> (Archive, Palette) {
                         johnny_action(Pose::Read, 0),
                         mary_sprite(),
                         boat_sprite(),
+                        suzy_sprite(),
                     ],
                 },
             ),
@@ -1044,6 +1164,7 @@ pub fn demo_archive() -> (Archive, Palette) {
             ("OCEAN01.SCR".to_string(), ocean_scr(0x2BAD_F00D)),
             ("OCEAN02.SCR".to_string(), ocean_scr(0x0C0F_FEE1)),
             ("NIGHT.SCR".to_string(), night_scr()),
+            ("BEACH.SCR".to_string(), beach_scr()),
         ],
         ttms: vignette_ttms(),
         // Each scene category plays its fitting recreated action.
@@ -1099,9 +1220,10 @@ mod tests {
         assert_eq!(ttm_for_ads("STAND.ADS"), "STAND.TTM");
         assert_eq!(ttm_for_ads("MARY.ADS"), "MARY.TTM");
         assert_eq!(ttm_for_ads("VISITOR.ADS"), "VISIT.TTM");
+        assert_eq!(ttm_for_ads("SUZY.ADS"), "SUZY.TTM");
         assert_ne!(ttm_for_ads("FISHING.ADS"), ttm_for_ads("ACTIVITY.ADS"));
 
-        // Every referenced TTM exists in the pack.
+        // Every referenced TTM exists in the pack, and the cutaway backdrop is present.
         let (archive, _) = demo_archive();
         for name in [
             "STAND.TTM",
@@ -1110,9 +1232,11 @@ mod tests {
             "READ.TTM",
             "MARY.TTM",
             "VISIT.TTM",
+            "SUZY.TTM",
         ] {
             assert!(archive.ttm(name).is_some(), "missing {name}");
         }
+        assert!(archive.scr("BEACH.SCR").is_some(), "missing BEACH.SCR");
         // Each ADS references the action chosen for its category.
         for (name, ads) in &archive.ads {
             assert_eq!(ads.resources[0].name, ttm_for_ads(name));
@@ -1124,7 +1248,7 @@ mod tests {
         // JDEMO has the four action poses plus Mary, and they actually differ.
         let (archive, _) = demo_archive();
         let jdemo = archive.bmp("JDEMO.BMP").unwrap();
-        assert_eq!(jdemo.images.len(), 6);
+        assert_eq!(jdemo.images.len(), 7);
         let stand = &johnny_action(Pose::Stand, 0).pixels;
         let fish = &johnny_action(Pose::Fish, 0).pixels;
         let read = &johnny_action(Pose::Read, 0).pixels;

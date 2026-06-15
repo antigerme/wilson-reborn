@@ -6,6 +6,33 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-15 — Pack recriado: Suzy + cenário de cutaway (corrige fundo preto)
+
+**Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #24).
+
+Corrige um gap real: cenas **cutaway** (fora da ilha, sem `ISLAND`) renderizavam a figura
+sobre **fundo preto** (`AdsVm` começa com `Surface::new(_,0)`). Agora a `SUZY.ADS` traz a
+**Suzy num cenário de praia/resort**.
+
+- **`assets.rs`**: `beach_scr()` = `BEACH.SCR` (céu+mar+areia, guarda-sol listrado,
+  toalha rosa); `suzy_sprite()` = Suzy de maiô rosa (`JDEMO.BMP` frame 6); cor `PINK`.
+  `suzy_ttm()` faz **`LOAD_SCREEN "BEACH.SCR"`** (preenche o fundo da cena cutaway) +
+  desenha a Suzy na areia. `ttm_for_ads`: `SUZY.ADS → SUZY.TTM`.
+- `LOAD_SCREEN` (`0xF01F`) confirmado no decoder (string NUL-terminada par); nome de 9
+  chars (`BEACH.SCR`) → 10 bytes par.
+- Validado **visualmente** (cutaway: Suzy na toalha, guarda-sol, mar — sem mais preto).
+
+**109 testes** (39 wilson + 35 dgds + 35 engine). fmt, clippy `-D warnings` (com **e**
+sem `audio`), `build --release`.
+
+> Limitação: `JOHNNY.ADS` mistura cenas de ilha (#2/#3/#4/#5) e cutaway (#1 avião, #6
+> escritório) no mesmo arquivo; como o mapeamento recriado é por *arquivo* (não por tag),
+> esses dois cutaways do Johnny seguem sem cenário próprio por ora.
+
+**Próximo:** easter eggs recriados (SOS na garrafa, dança da chuva) e demais melhorias.
+
+---
+
 ## 2026-06-15 — Pack recriado: visitantes (barco se aproximando)
 
 **Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #23).
