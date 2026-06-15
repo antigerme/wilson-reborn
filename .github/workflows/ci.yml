@@ -13,6 +13,9 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+  # Node 20 is deprecated (GitHub forces Node 24 from 2026-06-16). Opt every JS action
+  # (checkout, upload-artifact, rust-cache, …) into Node 24 to drop the warnings.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   test:
