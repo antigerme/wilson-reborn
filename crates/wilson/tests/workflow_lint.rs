@@ -24,6 +24,21 @@ fn release_generates_notes_in_exactly_one_job() {
     );
 }
 
+/// Both workflows must opt JS actions into Node 24. Node 20 is deprecated — GitHub forces
+/// Node 24 from 2026-06-16 — so `actions/upload-artifact`, `softprops/action-gh-release`,
+/// `Swatinem/rust-cache`, etc. otherwise log a deprecation warning on every run.
+#[test]
+fn workflows_force_node24_for_js_actions() {
+    for name in ["ci.yml", "release.yml"] {
+        let yml = workflow(name);
+        assert!(
+            yml.contains("FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true"),
+            "{name} must set env `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true` \
+             (Node 20 actions are deprecated)"
+        );
+    }
+}
+
 /// The release artifacts must never bundle the copyright game data — only the binaries.
 #[test]
 fn release_does_not_ship_game_data() {
