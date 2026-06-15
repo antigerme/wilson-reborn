@@ -19,6 +19,7 @@ pub mod story;
 pub mod surface;
 pub mod ttm_exec;
 pub mod ttm_vm;
+pub mod upscale;
 pub mod walk;
 pub mod walk_data;
 
@@ -34,4 +35,5 @@ pub use story::{
 pub use surface::{Rect, Surface, TRANSPARENT};
 pub use ttm_exec::{TtmSlot, TtmThread, MAX_BMP_SLOTS};
 pub use ttm_vm::{TtmStep, TtmVm};
+pub use upscale::xbr2x;
 pub use walk::{WalkFrame, Walker};

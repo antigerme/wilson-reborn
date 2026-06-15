@@ -27,7 +27,8 @@ pub struct Config {
     pub speed: u32,
     /// How the frame is scaled into the window.
     pub scale: ScaleMode,
-    /// How upscaled pixels are sampled (nearest = crisp/retro, linear = smooth).
+    /// How upscaled pixels are sampled (nearest = crisp/retro, linear = smooth,
+    /// xbr = edge-directed "HD" — smooth and sharp).
     pub filter: Filter,
     /// How the day/night cycle is driven (original 8-hour vs real 24-hour).
     pub daynight: DayNight,
@@ -126,7 +127,7 @@ impl Config {
              speed={}\n\
              # scale: how the picture fills the window — fit | stretch | integer.\n\
              scale={}\n\
-             # filter: pixel sampling — nearest (crisp/retro) | linear (smooth).\n\
+             # filter: pixel sampling — nearest (crisp/retro) | linear (smooth) | xbr (HD).\n\
              filter={}\n\
              # daynight: day/night cycle — original (8h, as in 1992) | real24h (wall clock).\n\
              daynight={}\n",
@@ -140,7 +141,7 @@ impl Config {
     }
 
     /// Apply CLI overrides: `--windowed`, `--mute`, `--speed <pct>`, `--scale <mode>`,
-    /// `--filter <nearest|linear>`. Unknown flags are ignored (`--data` is elsewhere).
+    /// `--filter <nearest|linear|xbr>`. Unknown flags are ignored (`--data` is elsewhere).
     pub fn apply_args(&mut self, args: &[String]) {
         let mut i = 0;
         while i < args.len() {
@@ -208,7 +209,7 @@ mod tests {
         assert!(!c.mute);
         assert_eq!(c.speed, 100);
         assert_eq!(c.scale, ScaleMode::Fit);
-        assert_eq!(c.filter, Filter::Linear); // smooth by default
+        assert_eq!(c.filter, Filter::Xbr); // "HD" xBR by default
     }
 
     #[test]
