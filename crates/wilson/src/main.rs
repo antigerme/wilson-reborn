@@ -27,7 +27,7 @@ use std::rc::Rc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use wilson_engine::{clock, Director, Show};
-use winit::event::{ElementState, Event, WindowEvent};
+use winit::event::{ElementState, Event, StartCause, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::{Fullscreen, WindowBuilder};
 
@@ -200,7 +200,13 @@ fn main() {
                 }
                 _ => {}
             },
-            Event::AboutToWait => window.request_redraw(),
+            // Pace the animation: redraw only when the per-frame timer elapses (or on
+            // the initial start), not on every loop iteration. Requesting a redraw on
+            // every `AboutToWait` would preempt the `WaitUntil` deadline and run the
+            // engine as fast as the CPU spins (the screensaver played far too fast).
+            Event::NewEvents(StartCause::Init | StartCause::ResumeTimeReached { .. }) => {
+                window.request_redraw();
+            }
             Event::LoopExiting => {
                 stats.total_secs = base_secs + session_start.elapsed().as_secs();
                 stats.save();
