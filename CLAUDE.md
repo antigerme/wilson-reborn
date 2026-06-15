@@ -67,8 +67,9 @@ letterbox. **Som** (`audio.rs`): toca `soundN.wav` via `rodio` (feature opcional
 `audio`, ligada por padrão; degrada para silêncio sem dispositivo/arquivos), os efeitos
 vêm com `--data`. **Persistência do dia** (`state.rs` + `Show::day_state`): o arco de 11
 dias continua entre sessões (grava `current_day`/`stored_yday` no diretório de estado do
-usuário; zero deps; best-effort). **Props de feriado** compostos no cenário
-(`island.rs`) ⇒ aparecem com `--data`. **Polimento funcional** (`config.rs`): opções via `config.txt` +
+usuário; zero deps; best-effort). **Props de feriado** compostos **por cima** (Show
+`overlay_holiday`, igual ao `grUpdateDisplay` do jc_reborn) ⇒ aparecem com `--data`.
+**Polimento funcional** (`config.rs`): opções via `config.txt` +
 flags de CLI — **tela cheia por padrão** (`--windowed`), escala fit/stretch/integer
 (`scale.rs`), `--mute`, `--speed 25–400`; verbo `/c` imprime a config. **Engine completo
 + janela + validação real + som + persistência + config**. **Ciclo

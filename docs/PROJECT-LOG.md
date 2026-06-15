@@ -31,6 +31,40 @@ mostrar uma animação diferente por beat. Estreia com o **SOS na garrafa** (bea
 
 ---
 
+## 2026-06-15 — Fidelidade #2: auditoria de render/timing + fix de z-order do feriado
+
+**Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #29).
+
+Auditoria do pipeline contra o `jc_reborn` (referência em `repos/`), com correção de uma
+divergência real encontrada.
+
+**Confirmado idêntico ao original (com citações):**
+- **Paleta 6→8 bits:** `cor << 2` — igual a `jc_reborn/graphics.c:105-107` (e o nosso
+  `pal.rs`). ✓
+- **Tick = 20 ms:** `events.c:108` (`delay *= 20`); o app usa `ticks*20`. ✓
+- **`SET_DELAY` mínimo 4 ticks:** `ttm.c:204` (`args[0] > 4 ? args[0] : 4`); o nosso
+  `ttm_exec` faz `.max(4)`. ✓
+- **Escalonador "espera = menor delay" entre threads** (`ads.c` `mini`): estrutura
+  espelhada no `ads_vm` (`mini` sobre threads ativas). ✓
+
+**Divergência corrigida — z-order do prop de feriado:**
+- O `jc_reborn` (`graphics.c` `grUpdateDisplay`) compõe as camadas em: fundo → threads
+  (Johnny) → **feriado por último (em cima)**. A nossa implementação anterior **assava** o
+  prop no fundo (atrás do Johnny). Corrigido: `island.rs` volta a manter o feriado só na
+  `holiday` layer e o `Show` agora faz `overlay_holiday` (compõe **por cima** via
+  `Surface::compose_over`), idêntico ao original.
+- Teste novo `show::holiday_prop_is_composited_on_top` (com a mesma semente, uma data de
+  Natal adiciona pixels do prop vs uma data sem feriado). Validado **visualmente com os
+  dados reais** (a árvore aparece corretamente sobre a cena).
+
+**~106 testes** (engine +1). fmt, clippy `-D warnings` (com **e** sem `audio`),
+`build --release`, e `real_data` — verdes.
+
+**Próximo:** seguir a auditoria de fidelidade (timing fino do escalonador/maré) conforme
+necessário, e demais pedidos.
+
+---
+
 ## 2026-06-15 — Polimento #1: robustez do loader de dados
 
 **Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #28).
