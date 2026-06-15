@@ -42,12 +42,22 @@ WILSON_DATA_DIR=<dir> cargo test -p wilson-dgds --test real_data -- --nocapture 
 
 ## Regras de trabalho (combinadas com o usuário)
 - **Sempre 100% → 100%:** cada incremento compila, passa lint e testes (local **e** CI).
-- **CI do GitHub** roda em `ubuntu-latest`, `windows-latest` e `fedora-latest`
-  (container `fedora:latest`) — `.github/workflows/ci.yml`.
+- **CI do GitHub** roda em `ubuntu-latest`, `windows-latest`, `fedora-latest`
+  (container `fedora:latest`) e `macos-latest` — `.github/workflows/ci.yml`.
   Se o CI falhar, **resolver**.
-- **PRs:** acompanhar PRs (conflitos/CI) e resolver. O usuário faz squash merge e apaga a
-  branch. Posso abrir PR quando a branch estiver madura. Trabalhar em **branch nova**
-  por incremento (`claude/...`), nunca direto na `main`.
+- **⚠️ REGRA PERMANENTE — acompanhar SEMPRE o GitHub até o fim:** para todo PR que eu
+  abrir/tocar, **seguir e resolver** PR + CI + reviews + conflitos + **merge** **até o PR
+  estar MERGED ou CLOSED**. Inscrever no PR (`subscribe_pr_activity`); tratar cada evento
+  (CI vermelho → diagnosticar e corrigir; review → responder/aplicar; conflito → rebase).
+  Webhook **não** entrega sucesso de CI nem push/merge — então **re-checar** ativamente
+  (ex.: pingar a API; sem `send_later`, usar espera em background) e **confirmar o verde**.
+  Não considerar a tarefa encerrada enquanto houver PR pendente. (Pedido explícito do
+  usuário, 2026-06-15.)
+- **PRs:** o usuário faz squash merge e apaga a branch. Posso abrir PR quando a branch
+  estiver madura. Trabalhar em **branch nova** por incremento (`claude/...`), nunca direto
+  na `main`. **Releases:** o push de tag `v*` é bloqueado neste ambiente (403) — guiar o
+  usuário a dar o `git push origin vX.Y.Z` e depois **acompanhar o `release.yml`** e
+  conferir os artefatos.
 - **Documentar tudo** aqui, no PROJECT-LOG e na knowledge-base para preservar memória.
 
 ## Status atual
