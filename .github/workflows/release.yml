@@ -1,9 +1,9 @@
 name: Release
 
-# Build distributable binaries: the Windows screensaver (`wilson.scr`) and a Linux
-# binary. Runs on a version tag (`v*`) — attaching the files to a GitHub Release with
-# auto-generated notes (`generate_release_notes`) — and can be triggered manually
-# (`workflow_dispatch`) to download the artifacts for testing.
+# Build distributable binaries: the Windows screensaver (`wilson.scr`), a Linux binary
+# and a macOS binary. Runs on a version tag (`v*`) — attaching the files to a GitHub
+# Release with auto-generated notes (`generate_release_notes`) — and can be triggered
+# manually (`workflow_dispatch`) to download the artifacts for testing.
 on:
   push:
     tags: ["v*"]
@@ -83,10 +83,42 @@ jobs:
           path: wilson-linux-x86_64.tar.gz
 
       - name: Attach to release
-        # Single source of the auto-generated release notes — the windows job must NOT
+        # Single source of the auto-generated release notes — the other jobs must NOT
         # also set `generate_release_notes`, or the changelog gets duplicated.
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
           files: wilson-linux-x86_64.tar.gz
+
+  macos:
+    name: macOS binary
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build
+        run: cargo build --release -p wilson
+
+      - name: Package binary
+        # macos-latest is Apple Silicon, so this is an arm64 binary.
+        run: tar -czf wilson-macos-arm64.tar.gz -C target/release wilson
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wilson-macos
+          path: wilson-macos-arm64.tar.gz
+
+      - name: Attach to release
+        # No `generate_release_notes` here — the linux job is the sole notes generator.
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: wilson-macos-arm64.tar.gz
