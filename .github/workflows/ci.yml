@@ -50,6 +50,12 @@ jobs:
       - name: Test
         run: cargo test --workspace --all-features --verbose
 
+      - name: Build macOS .saver bundle
+        # Verifies the ScreenSaverView compiles and links against the Rust staticlib.
+        # (Runtime is tested on a real Mac — CI only checks that it builds.)
+        if: matrix.os == 'macos-latest'
+        run: bash crates/wilson-saver/macos/build-saver.sh
+
   # GitHub does not provide a "fedora-latest" runner, so we run the same checks
   # inside an official Fedora container on an Ubuntu host. The toolchain is
   # installed via rustup so it matches the `stable` used by the other jobs.
