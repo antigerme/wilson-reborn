@@ -30,6 +30,9 @@ pub struct Config {
     /// How upscaled pixels are sampled (nearest = crisp/retro, linear = smooth,
     /// xbr = edge-directed "HD" — smooth and sharp).
     pub filter: Filter,
+    /// Smooth the dithered backgrounds (sea/sky) before scaling — off by default, since
+    /// the dithering is the authentic 1992 look.
+    pub dedither: bool,
     /// How the day/night cycle is driven (original 8-hour vs real 24-hour).
     pub daynight: DayNight,
 }
@@ -42,6 +45,7 @@ impl Default for Config {
             speed: 100,
             scale: ScaleMode::Fit,
             filter: Filter::default(),
+            dedither: false,
             daynight: DayNight::Original,
         }
     }
@@ -105,6 +109,11 @@ impl Config {
                         c.filter = f;
                     }
                 }
+                "dedither" => {
+                    if let Some(b) = parse_bool(value) {
+                        c.dedither = b;
+                    }
+                }
                 "daynight" => {
                     if let Some(m) = DayNight::parse(value) {
                         c.daynight = m;
@@ -129,6 +138,8 @@ impl Config {
              scale={}\n\
              # filter: pixel sampling — nearest (crisp/retro) | linear (smooth) | xbr (HD).\n\
              filter={}\n\
+             # dedither: true smooths the dithered sea/sky (default false = authentic look).\n\
+             dedither={}\n\
              # daynight: day/night cycle — original (8h, as in 1992) | real24h (wall clock).\n\
              daynight={}\n",
             self.windowed,
@@ -136,18 +147,20 @@ impl Config {
             self.speed,
             self.scale.as_str(),
             self.filter.as_str(),
+            self.dedither,
             self.daynight.as_str(),
         )
     }
 
-    /// Apply CLI overrides: `--windowed`, `--mute`, `--speed <pct>`, `--scale <mode>`,
-    /// `--filter <nearest|linear|xbr>`. Unknown flags are ignored (`--data` is elsewhere).
+    /// Apply CLI overrides: `--windowed`, `--mute`, `--dedither`, `--speed <pct>`,
+    /// `--scale <mode>`, `--filter <nearest|linear|xbr>`. Unknown flags are ignored.
     pub fn apply_args(&mut self, args: &[String]) {
         let mut i = 0;
         while i < args.len() {
             match args[i].as_str() {
                 "--windowed" => self.windowed = true,
                 "--mute" => self.mute = true,
+                "--dedither" => self.dedither = true,
                 "--speed" => {
                     if let Some(n) = args.get(i + 1).and_then(|v| v.parse::<u32>().ok()) {
                         self.speed = n.clamp(SPEED_MIN, SPEED_MAX);
@@ -210,6 +223,7 @@ mod tests {
         assert_eq!(c.speed, 100);
         assert_eq!(c.scale, ScaleMode::Fit);
         assert_eq!(c.filter, Filter::Xbr); // "HD" xBR by default
+        assert!(!c.dedither); // keep the authentic dither by default
     }
 
     #[test]
@@ -220,6 +234,7 @@ mod tests {
             speed: 250,
             scale: ScaleMode::Integer,
             filter: Filter::Nearest,
+            dedither: true,
             daynight: DayNight::Real24h,
         };
         assert_eq!(Config::parse(&c.serialize()), c);
@@ -257,6 +272,7 @@ mod tests {
             "integer",
             "--filter",
             "nearest",
+            "--dedither",
             "--daynight",
             "real24h",
         ]
@@ -269,6 +285,7 @@ mod tests {
         assert_eq!(c.speed, 200);
         assert_eq!(c.scale, ScaleMode::Integer);
         assert_eq!(c.filter, Filter::Nearest);
+        assert!(c.dedither);
         assert_eq!(c.daynight, DayNight::Real24h);
     }
 

@@ -83,6 +83,55 @@ pub fn xbr2x(src: &[u8], w: usize, h: usize) -> Vec<u8> {
     out
 }
 
+/// "De-dither": collapse ordered-dither checkerboards to their intended blended tone,
+/// leaving everything else (flat areas, real edges, detail) untouched. Returns a new
+/// `w×h` RGBA buffer.
+///
+/// The 1992 art fakes extra colours by alternating two *high-contrast* shades in a
+/// checkerboard (most visible on the sea/sky). A pixel is detected as part of such a
+/// checkerboard when its four **diagonal** neighbours match it and its four
+/// **orthogonal** neighbours are a single, *different* colour; it is then replaced by the
+/// average of the two shades — so the dither melts into a smooth gradient while sprites
+/// and outlines (which don't have that exact alternating signature) stay crisp.
+///
+/// A plain blur would smooth the dither too, but also soften every sprite; this targets
+/// only the checkerboard pattern. Optional (off by default): the dithering is the
+/// authentic look, this just offers a smoother sea.
+pub fn dedither(src: &[u8], w: usize, h: usize) -> Vec<u8> {
+    let mut out = src.to_vec(); // unchanged unless a pixel is a detected checkerboard
+    if w == 0 || h == 0 {
+        return out;
+    }
+    let idx = |x: i32, y: i32| -> usize {
+        let xc = x.clamp(0, w as i32 - 1) as usize;
+        let yc = y.clamp(0, h as i32 - 1) as usize;
+        (yc * w + xc) * 4
+    };
+    let same = |i: usize, j: usize| dist(&src[i..], &src[j..]) <= TOLERANCE;
+    for y in 0..h as i32 {
+        for x in 0..w as i32 {
+            let c = idx(x, y);
+            let (up, dn, lf, rt) = (idx(x, y - 1), idx(x, y + 1), idx(x - 1, y), idx(x + 1, y));
+            let (ul, ur, dl, dr) = (
+                idx(x - 1, y - 1),
+                idx(x + 1, y - 1),
+                idx(x - 1, y + 1),
+                idx(x + 1, y + 1),
+            );
+            // Checkerboard signature: diagonals match the centre; orthogonals are one
+            // uniform, different colour.
+            let diagonals_match = same(c, ul) && same(c, ur) && same(c, dl) && same(c, dr);
+            let orthogonals_uniform = same(up, dn) && same(up, lf) && same(up, rt);
+            if diagonals_match && orthogonals_uniform && !same(c, up) {
+                out[c] = ((u16::from(src[c]) + u16::from(src[up])) / 2) as u8;
+                out[c + 1] = ((u16::from(src[c + 1]) + u16::from(src[up + 1])) / 2) as u8;
+                out[c + 2] = ((u16::from(src[c + 2]) + u16::from(src[up + 2])) / 2) as u8;
+            }
+        }
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -142,5 +191,55 @@ mod tests {
             .chunks_exact(4)
             .any(|p| (1..=254).contains(&p[0]) && p[0] == p[1] && p[1] == p[2]);
         assert!(grey, "expected a blended (grey) texel on the diagonal");
+    }
+
+    #[test]
+    fn dedither_leaves_flat_areas_untouched() {
+        let mut src = Vec::new();
+        for _ in 0..16 {
+            src.extend_from_slice(&[40, 80, 120, 255]);
+        }
+        let out = dedither(&src, 4, 4);
+        assert!(out.chunks_exact(4).all(|p| p == [40, 80, 120, 255]));
+    }
+
+    #[test]
+    fn dedither_smooths_a_dither_checkerboard() {
+        // Two high-contrast shades alternating (as the real art dithers) → every interior
+        // pixel collapses to their blend, so the checkerboard becomes a flat mid-tone.
+        let a = [0u8, 0, 255, 255];
+        let b = [120u8, 160, 255, 255];
+        let mut src = Vec::new();
+        for y in 0..6 {
+            for x in 0..6 {
+                src.extend_from_slice(if (x + y) % 2 == 0 { &a } else { &b });
+            }
+        }
+        let out = dedither(&src, 6, 6);
+        let i = (3 * 6 + 3) * 4;
+        assert_eq!(
+            &out[i..i + 3],
+            &[60, 80, 255],
+            "checkerboard should collapse to the blended mid-tone"
+        );
+    }
+
+    #[test]
+    fn dedither_preserves_a_hard_edge() {
+        // Black | white halves: across the boundary the far colour is excluded, so pixels
+        // stay pure black or white (no grey bleed).
+        let blk = [0u8, 0, 0, 255];
+        let wht = [255u8, 255, 255, 255];
+        let mut src = Vec::new();
+        for _y in 0..4 {
+            for x in 0..4 {
+                src.extend_from_slice(if x < 2 { &blk } else { &wht });
+            }
+        }
+        let out = dedither(&src, 4, 4);
+        assert!(
+            out.chunks_exact(4).all(|p| p == blk || p == wht),
+            "a hard edge must stay hard (no grey bleed)"
+        );
     }
 }
