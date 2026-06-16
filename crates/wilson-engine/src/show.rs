@@ -50,6 +50,29 @@ enum Stage {
     Play(Box<AdsVm>),
 }
 
+/// A snapshot of the runtime's current state, for the `--debug` log/overlay.
+#[derive(Debug, Clone)]
+pub struct DebugInfo {
+    /// Current story day (1–11).
+    pub day: u8,
+    /// Current scene `(ADS name, tag)`, if one is selected.
+    pub scene: Option<(&'static str, u16)>,
+    /// What the runtime is doing: `walk`, `play`, or `idle`.
+    pub stage: &'static str,
+    /// Island drift offset `(dx, dy)`, if on the island.
+    pub offset: Option<(i32, i32)>,
+    /// Whether the current run is on the island.
+    pub on_island: bool,
+    /// Whether it is night.
+    pub night: bool,
+    /// Whether the tide is low.
+    pub low_tide: bool,
+    /// Raft build stage (0–5).
+    pub raft: u8,
+    /// Active holiday, if any.
+    pub holiday: crate::story::Holiday,
+}
+
 /// The end-to-end Johnny Castaway runtime, as a frame generator.
 #[derive(Debug)]
 pub struct Show {
@@ -129,6 +152,29 @@ impl Show {
     #[cfg(test)]
     fn island_offset(&self) -> Option<(i32, i32)> {
         self.island.as_ref().map(Island::offset)
+    }
+
+    /// A snapshot of the current runtime state, for the `--debug` overlay/log.
+    pub fn debug_info(&self) -> DebugInfo {
+        DebugInfo {
+            day: self.director.current_day,
+            scene: self
+                .run
+                .scenes
+                .get(self.scene_idx)
+                .map(|s| (s.ads_name, s.ads_tag)),
+            stage: match self.stage {
+                Stage::Idle => "idle",
+                Stage::Walk(_) => "walk",
+                Stage::Play(_) => "play",
+            },
+            offset: self.island.as_ref().map(Island::offset),
+            on_island: self.run.on_island,
+            night: self.run.island.night,
+            low_tide: self.run.island.low_tide,
+            raft: self.run.island.raft,
+            holiday: self.run.island.holiday,
+        }
     }
 
     /// Produce the next composited frame (the runtime never ends).

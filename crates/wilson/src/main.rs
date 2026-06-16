@@ -19,6 +19,7 @@ mod audio;
 mod config;
 #[cfg(feature = "embed-data")]
 mod embedded;
+mod font;
 mod scale;
 mod state;
 mod stats;
@@ -135,6 +136,22 @@ fn main() {
     let session_start = Instant::now();
     let mut last_flush = Instant::now();
 
+    // --debug diagnostics: measured FPS over a rolling 1-second window.
+    let mut dbg_frames = 0u32;
+    let mut dbg_fps = 0u32;
+    let mut dbg_window = Instant::now();
+    if cfg.debug {
+        eprintln!(
+            "[wilson:debug] on — filter={} scale={} speed={}% dedither={} daynight={} windowed={}",
+            cfg.filter.as_str(),
+            cfg.scale.as_str(),
+            cfg.speed,
+            cfg.dedither,
+            cfg.daynight.as_str(),
+            cfg.windowed,
+        );
+    }
+
     let event_loop = EventLoop::new().expect("failed to create event loop");
     let mut builder = WindowBuilder::new().with_title("Wilson Reborn — Johnny Castaway");
     builder = if let Some(hwnd) = preview_parent {
@@ -215,6 +232,48 @@ fn main() {
                             cfg.scale,
                             cfg.filter,
                         );
+                        if cfg.debug {
+                            // Measure FPS over a 1s window; emit a stdout status line
+                            // each second and draw the on-screen HUD every frame.
+                            dbg_frames += 1;
+                            if dbg_window.elapsed() >= Duration::from_secs(1) {
+                                dbg_fps = dbg_frames;
+                                dbg_frames = 0;
+                                dbg_window = Instant::now();
+                                let d = show.debug_info();
+                                let scene = d
+                                    .scene
+                                    .map(|(n, t)| format!("{n}#{t}"))
+                                    .unwrap_or_else(|| "-".into());
+                                let off = d
+                                    .offset
+                                    .map(|(x, y)| format!("{x},{y}"))
+                                    .unwrap_or_else(|| "-".into());
+                                eprintln!(
+                                    "[wilson:debug] fps={} delay={}t stage={} day={}/11 \
+                                     scene={} drift=({}) night={} tide={} raft={} holiday={:?}",
+                                    dbg_fps,
+                                    frame.delay_ticks,
+                                    d.stage,
+                                    d.day,
+                                    scene,
+                                    off,
+                                    d.night as u8,
+                                    d.low_tide as u8,
+                                    d.raft,
+                                    d.holiday,
+                                );
+                            }
+                            draw_debug_hud(
+                                &mut buffer,
+                                size.width as usize,
+                                size.height as usize,
+                                dbg_fps,
+                                frame.delay_ticks,
+                                &show.debug_info(),
+                                &cfg,
+                            );
+                        }
                         buffer.present().expect("present");
                         let delay = Duration::from_millis(cfg.frame_delay_ms(frame.delay_ticks));
                         // Deadline measured from the frame's due time, so compute time is
@@ -332,9 +391,10 @@ fn print_config_info(cfg: &config::Config) {
     println!("  filter:   {}", cfg.filter.as_str());
     println!("  dedither: {}", cfg.dedither);
     println!("  daynight: {}", cfg.daynight.as_str());
+    println!("  debug:    {}", cfg.debug);
     println!("  stats:    {}", stats::Stats::load().summary());
     println!(
-        "Edit the file above, or pass --windowed/--mute/--dedither/--speed <pct>/\
+        "Edit the file above, or pass --windowed/--mute/--dedither/--debug/--speed <pct>/\
          --scale <mode>/--filter <nearest|linear|xbr>/--daynight <original|real24h>."
     );
 }
@@ -385,6 +445,7 @@ fn print_help() {
     println!("                                     linear  = smooth (bilinear),");
     println!("                                     xbr     = smooth + sharp (\"HD\")");
     println!("  --dedither                       smooth the dithered sea/sky (default: off)");
+    println!("  --debug                          diagnostics: stdout status + on-screen HUD");
     println!("  --daynight <original|real24h>    day/night cycle (default: original 8h)");
     println!("  --data <DIR>                     game data folder (default: auto-detect)");
     if cfg!(windows) {
@@ -405,6 +466,58 @@ fn print_help() {
         println!("  wilson --windowed --speed 200 --scale integer");
     }
     println!("\nFree software under GPL-3.0-or-later. Plays only your own original game data.");
+}
+
+/// Draw the `--debug` HUD (top-left) into the window buffer: a dark panel with the live
+/// runtime state, so a single screenshot captures everything needed to diagnose a report.
+fn draw_debug_hud(
+    buf: &mut [u32],
+    dw: usize,
+    dh: usize,
+    fps: u32,
+    delay_ticks: u16,
+    info: &wilson_engine::DebugInfo,
+    cfg: &config::Config,
+) {
+    let scene = info
+        .scene
+        .map(|(n, t)| format!("{n}#{t}"))
+        .unwrap_or_else(|| "-".into());
+    let off = info
+        .offset
+        .map(|(x, y)| format!("{x},{y}"))
+        .unwrap_or_else(|| "-".into());
+    let lines = [
+        "WILSON DEBUG".to_string(),
+        format!("FPS {fps}  FRAME {delay_ticks}T"),
+        format!("DAY {}/11  STAGE {}", info.day, info.stage.to_uppercase()),
+        format!("SCENE {scene}"),
+        format!("DRIFT {off}  ISLAND {}", info.on_island as u8),
+        format!(
+            "NIGHT {} TIDE {} RAFT {}",
+            info.night as u8, info.low_tide as u8, info.raft
+        ),
+        format!(
+            "FILTER {}  SCALE {}",
+            cfg.filter.as_str().to_uppercase(),
+            cfg.scale.as_str().to_uppercase()
+        ),
+    ];
+    let scale = 2usize;
+    let pad = 4usize;
+    let lh = font::line_height(scale) + 2;
+    let w = lines
+        .iter()
+        .map(|l| font::text_width(l, scale))
+        .max()
+        .unwrap_or(0)
+        + pad * 2;
+    let h = lines.len() * lh + pad * 2;
+    font::fill_rect(buf, dw, dh, 0, 0, w, h, 0x0000_0000); // black panel
+    for (i, line) in lines.iter().enumerate() {
+        font::draw_text(buf, dw, dh, pad, pad + i * lh, line, scale, 0x0000_FF00);
+        // green
+    }
 }
 
 #[cfg(test)]

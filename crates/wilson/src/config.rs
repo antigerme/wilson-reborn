@@ -35,6 +35,8 @@ pub struct Config {
     pub dedither: bool,
     /// How the day/night cycle is driven (original 8-hour vs real 24-hour).
     pub daynight: DayNight,
+    /// Show diagnostics: a per-second status line on stdout and an on-screen HUD overlay.
+    pub debug: bool,
 }
 
 impl Default for Config {
@@ -47,6 +49,7 @@ impl Default for Config {
             filter: Filter::default(),
             dedither: false,
             daynight: DayNight::Original,
+            debug: false,
         }
     }
 }
@@ -114,6 +117,11 @@ impl Config {
                         c.dedither = b;
                     }
                 }
+                "debug" => {
+                    if let Some(b) = parse_bool(value) {
+                        c.debug = b;
+                    }
+                }
                 "daynight" => {
                     if let Some(m) = DayNight::parse(value) {
                         c.daynight = m;
@@ -141,7 +149,9 @@ impl Config {
              # dedither: true smooths the dithered sea/sky (default false = authentic look).\n\
              dedither={}\n\
              # daynight: day/night cycle — original (8h, as in 1992) | real24h (wall clock).\n\
-             daynight={}\n",
+             daynight={}\n\
+             # debug: true shows diagnostics (stdout status line + on-screen HUD overlay).\n\
+             debug={}\n",
             self.windowed,
             self.mute,
             self.speed,
@@ -149,11 +159,13 @@ impl Config {
             self.filter.as_str(),
             self.dedither,
             self.daynight.as_str(),
+            self.debug,
         )
     }
 
-    /// Apply CLI overrides: `--windowed`, `--mute`, `--dedither`, `--speed <pct>`,
-    /// `--scale <mode>`, `--filter <nearest|linear|xbr>`. Unknown flags are ignored.
+    /// Apply CLI overrides: `--windowed`, `--mute`, `--dedither`, `--debug`,
+    /// `--speed <pct>`, `--scale <mode>`, `--filter <nearest|linear|xbr>`. Unknown flags
+    /// are ignored.
     pub fn apply_args(&mut self, args: &[String]) {
         let mut i = 0;
         while i < args.len() {
@@ -161,6 +173,7 @@ impl Config {
                 "--windowed" => self.windowed = true,
                 "--mute" => self.mute = true,
                 "--dedither" => self.dedither = true,
+                "--debug" => self.debug = true,
                 "--speed" => {
                     if let Some(n) = args.get(i + 1).and_then(|v| v.parse::<u32>().ok()) {
                         self.speed = n.clamp(SPEED_MIN, SPEED_MAX);
@@ -224,6 +237,7 @@ mod tests {
         assert_eq!(c.scale, ScaleMode::Fit);
         assert_eq!(c.filter, Filter::Xbr); // "HD" xBR by default
         assert!(!c.dedither); // keep the authentic dither by default
+        assert!(!c.debug); // no diagnostics by default
     }
 
     #[test]
@@ -236,6 +250,7 @@ mod tests {
             filter: Filter::Nearest,
             dedither: true,
             daynight: DayNight::Real24h,
+            debug: true,
         };
         assert_eq!(Config::parse(&c.serialize()), c);
     }
@@ -273,6 +288,7 @@ mod tests {
             "--filter",
             "nearest",
             "--dedither",
+            "--debug",
             "--daynight",
             "real24h",
         ]
@@ -286,6 +302,7 @@ mod tests {
         assert_eq!(c.scale, ScaleMode::Integer);
         assert_eq!(c.filter, Filter::Nearest);
         assert!(c.dedither);
+        assert!(c.debug);
         assert_eq!(c.daynight, DayNight::Real24h);
     }
 
