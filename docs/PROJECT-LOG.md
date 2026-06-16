@@ -6,6 +6,24 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-16 — xBRZ: fidelidade **byte-a-byte** cravada vs binário de referência
+
+O usuário autorizou rodar o xBRZ de referência (antes bloqueado pelo sandbox). Compilei o
+fonte de Zenju num CLI e comparei com o nosso port Rust:
+
+- 1ª comparação: **PSNR ~44,5 dB** (visualmente idêntico, mas não byte-exato). Causa: o port
+  usava a distância YCbCr **exata**, mas o build padrão do xBRZ usa uma **LUT** que
+  **quantiza** os diffs (índice `(d+255)/2`) e guarda a distância em **f32**.
+- Ajuste no `dist` (`xbrz.rs`) replicando a quantização + arredondamento f32 ⇒ agora
+  **byte-idêntico** ao binário de referência no golden 8×8 **e nos 15 frames reais** 640×480.
+- **Teste de regressão** `xbrz_matches_reference_golden` com fixtures sintéticas
+  (`src/testdata/xbrz_golden_{in,out}.bin`, via `include_bytes!`) trava a fidelidade no CI
+  (que não tem o binário xBRZ). Agora **ambos** os filtros são byte-verificados (xBR vs
+  ffmpeg, xBRZ vs referência).
+- `fmt` + `clippy -D warnings` + workspace (155) verdes.
+
+---
+
 ## 2026-06-16 — `--filter xbrz`: xBRZ portado p/ Rust, como opção (xBR segue padrão)
 
 Depois de mostrar ao usuário uma amostra visual xBR vs xBRZ, ele escolheu **manter o xBR
