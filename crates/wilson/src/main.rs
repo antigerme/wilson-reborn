@@ -440,9 +440,9 @@ fn print_help() {
     println!("  --speed <PCT>                    playback speed 25-400; 100 = original (default)");
     println!("  --scale <MODE>                   fit | stretch | integer | extend (default: fit)");
     println!("                                     extend = fill widescreen, no bars/distortion");
-    println!("  --filter <nearest|linear|xbr|xbrz> pixel sampling (default: xbr):");
+    println!("  --filter <nearest|linear|xbr|xbrz> pixel sampling (default: linear):");
     println!("                                     nearest = crisp/retro,");
-    println!("                                     linear  = smooth (bilinear),");
+    println!("                                     linear  = smooth (bilinear, default),");
     println!(
         "                                     xbr     = smooth + sharp, dissolves dither (\"HD\"),"
     );
