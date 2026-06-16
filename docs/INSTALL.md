@@ -106,19 +106,35 @@ binários **embedded** do seu Linux:
 scripts/build-embedded.sh <pasta-dos-dados> [pasta-de-saida]
 ```
 
-- **Linux** `x86_64` (nativo) → `wilson-linux-x86_64`.
+Ele começa por um **diagnóstico (preflight)** que mostra `[ok]`/`[--]` para cada
+pré-requisito (dados, `cargo`, `rustup`, ALSA, alvo Windows, linker mingw) com o comando
+exato pra corrigir o que faltar. Use `--check` para **só** ver o diagnóstico, sem compilar:
+
+```bash
+scripts/build-embedded.sh --check <pasta-dos-dados>
+```
+
+Alvos:
+
+- **Linux** `x86_64` (nativo) → `wilson-linux-x86_64`. Precisa das deps de build do Linux
+  (ALSA etc. — ver "Compilar do código-fonte" acima).
 - **Windows** `x86_64` (cross via mingw-w64) → `wilson.exe` + `wilson.scr` (runtime mingw
-  estático, então é um arquivo só). Precisa do alvo e do mingw:
+  estático, então é um arquivo só). Precisa do **rustup** (para adicionar o alvo), do alvo
+  e do mingw:
   ```bash
+  # rustup (o cargo do dnf NÃO traz rustup, necessário p/ adicionar alvos):
+  sudo dnf install -y rustup && rustup-init -y && source "$HOME/.cargo/env"
   rustup target add x86_64-pc-windows-gnu
   sudo dnf install -y mingw64-gcc        # Fedora  (Debian/Ubuntu: gcc-mingw-w64-x86-64)
   ```
+  O alvo Windows usa o áudio nativo do Windows (WASAPI) — **não** precisa de ALSA.
 - **macOS**: não dá para gerar a partir do Linux (precisa do SDK da Apple/osxcross). Faça
   **num Mac**: `WILSON_EMBED_DATA=<dir> cargo build --release -p wilson --features embed-data`
   e, para o screensaver, `crates/wilson-saver/macos/build-saver.sh`.
 
-Saída em `target/embedded/` por padrão. Os binários contêm os dados copyright — **uso
-pessoal**.
+Se um alvo estiver sem pré-requisitos, o script **pula** aquele alvo (com a dica de
+correção) em vez de falhar no meio. Saída em `target/embedded/` por padrão. Os binários
+contêm os dados copyright — **uso pessoal**.
 
 ## Publicar uma release (mantenedor)
 
