@@ -51,10 +51,34 @@ ociosidade).
 
 ## Compilar do código-fonte
 
+No **Linux**, instale primeiro as dependências de sistema. O `wilson` linka contra o
+**ALSA** em tempo de build (feature `audio`, ligada por padrão) e usa **Wayland/X11** em
+runtime. Use a mesma lista do CI:
+
+```bash
+# Fedora
+sudo dnf install -y alsa-lib-devel pkgconf-pkg-config wayland-devel libxkbcommon-devel libX11-devel gcc
+
+# Debian/Ubuntu
+sudo apt-get install -y libasound2-dev libwayland-dev libxkbcommon-dev libx11-dev pkg-config build-essential
+```
+
+Depois, compile:
+
 ```bash
 cargo build --release -p wilson
 # binário em target/release/wilson (ou wilson.exe no Windows)
 ```
+
+> Sem o pacote de desenvolvimento do ALSA (`alsa-lib-devel`/`libasound2-dev`) o build
+> falha em `alsa-sys` com `Package 'alsa' not found`. Se **não** quiser som, compile sem a
+> feature de áudio — aí o ALSA não é necessário (o app degrada para silêncio):
+>
+> ```bash
+> cargo build --release -p wilson --no-default-features
+> # com dados embutidos: --no-default-features --features embed-data
+> ```
+
 
 ## Build autossuficiente (dados embutidos)
 
