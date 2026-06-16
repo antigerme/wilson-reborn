@@ -20,6 +20,15 @@ baixar os artefatos sem criar uma release.
 
 Um screensaver do Windows é apenas o executável com a extensão `.scr`.
 
+> **Primeira execução — aviso do SmartScreen.** Como o binário **não é assinado**
+> ("Fornecedor desconhecido"), o Windows mostra *"O Windows protegeu o computador"*. É
+> **esperado** para um app não assinado (até os artefatos do `release.yml` seriam assim) —
+> não é vírus nem defeito. Para rodar: **Mais informações → Executar assim mesmo**. Para
+> não ver o aviso, **desbloqueie** o arquivo antes: botão direito no `.scr`/`.exe` →
+> **Propriedades** → marque **"Desbloquear"** (Unblock) → **OK**. Eliminar de vez exigiria
+> **assinatura de código** (certificado pago de uma autoridade) — desnecessário para uso
+> pessoal.
+
 1. Baixe `wilson.scr`.
 2. **Coloque os dados originais** (`RESOURCE.MAP` + `RESOURCE.001`) **na mesma pasta** do
    `wilson.scr` (ou aponte com `--data <dir>`). Sem eles, o screensaver não tem o que
@@ -29,7 +38,7 @@ Um screensaver do Windows é apenas o executável com a extensão `.scr`.
    janela de configuração de proteção de tela com o Wilson selecionado). Ou copie o
    arquivo para `C:\Windows\System32\` e escolha **Wilson** em *Configurações → Tela de
    bloqueio → Proteção de tela*.
-3. **Configurar:** o botão *Configurações* (verbo `/c`) imprime as opções atuais e o
+4. **Configurar:** o botão *Configurações* (verbo `/c`) imprime as opções atuais e o
    caminho do `config.txt` (edite-o para ajustar tela cheia, escala, som, velocidade,
    ciclo dia/noite).
 

@@ -140,6 +140,7 @@ fn main() {
     let mut dbg_frames = 0u32;
     let mut dbg_fps = 0u32;
     let mut dbg_window = Instant::now();
+    let mut dbg_first_frame = true; // log the first successful frame once
     if cfg.debug {
         eprintln!(
             "[wilson:debug] on — filter={} scale={} speed={}% dedither={} daynight={} windowed={}",
@@ -162,136 +163,200 @@ fn main() {
         builder.with_fullscreen(Some(Fullscreen::Borderless(None)))
     };
     let window = Rc::new(builder.build(&event_loop).expect("failed to create window"));
+    if cfg.debug {
+        let s = window.inner_size();
+        let mode = if is_preview {
+            "preview"
+        } else if cfg.windowed {
+            "windowed"
+        } else {
+            "fullscreen"
+        };
+        eprintln!(
+            "[wilson:debug] window built ({mode}) {}x{}; entering event loop",
+            s.width, s.height
+        );
+    }
     let context = softbuffer::Context::new(window.clone()).expect("softbuffer context");
     let mut surface =
         softbuffer::Surface::new(&context, window.clone()).expect("softbuffer surface");
 
     event_loop
         .run(move |event, elwt| match event {
-            Event::WindowEvent { event, .. } => match event {
-                // The preview pane must keep running on hover/keypress; only a real
-                // close ends it. In normal/fullscreen mode, any input quits.
-                WindowEvent::CloseRequested => elwt.exit(),
-                WindowEvent::MouseInput { .. } if !is_preview => elwt.exit(),
-                WindowEvent::KeyboardInput { event: key, .. }
-                    if !is_preview && key.state == ElementState::Pressed =>
+            Event::WindowEvent { event, .. } => {
+                // --debug: trace window events (skip the per-frame/noisy ones) so a quick
+                // exit shows *which* event caused it (e.g. an input event closing it).
+                if cfg.debug
+                    && !matches!(
+                        event,
+                        WindowEvent::RedrawRequested
+                            | WindowEvent::CursorMoved { .. }
+                            | WindowEvent::AxisMotion { .. }
+                            | WindowEvent::Moved(_)
+                    )
                 {
-                    elwt.exit();
+                    eprintln!("[wilson:debug] window event: {event:?}");
                 }
-                WindowEvent::RedrawRequested => {
-                    let size = window.inner_size();
-                    if let (Some(w), Some(h)) =
-                        (NonZeroU32::new(size.width), NonZeroU32::new(size.height))
-                    {
-                        // Pace from when the frame became due (≈ when the timer fired),
-                        // not from after we finish computing it: this absorbs the per-frame
-                        // work (engine + xBR/scale/present) into the delay instead of adding
-                        // it on top, matching jc_reborn's `lastTicks` pacing. Without this,
-                        // heavier filters (xBR) make the animation run slower than the
-                        // original.
-                        let frame_start = Instant::now();
-                        surface.resize(w, h).expect("resize surface");
-                        // Refresh the wall clock so the story day rolls over at midnight
-                        // even within a single long-running session.
-                        show.set_clock(clock::now());
-                        let frame = show.next_frame(&archive);
-                        for &id in &frame.sounds {
-                            audio.play(id);
-                        }
-                        let (day, yday) = show.day_state();
-                        if last_saved != Some((day, yday)) {
-                            state::DayState {
-                                current_day: day,
-                                stored_yday: yday,
-                            }
-                            .save();
-                            last_saved = Some((day, yday));
-                        }
-                        // Update lifetime stats, flushing to disk occasionally.
-                        stats.note_day(day);
-                        if last_flush.elapsed() >= Duration::from_secs(30) {
-                            stats.total_secs = base_secs + session_start.elapsed().as_secs();
-                            stats.save();
-                            last_flush = Instant::now();
-                        }
-                        let rgba = frame.surface.to_rgba(&palette);
-                        // Optional: smooth the dithered sea/sky before scaling.
-                        let rgba = if cfg.dedither {
-                            wilson_engine::dedither(&rgba, 640, 480)
-                        } else {
-                            rgba
-                        };
-                        let mut buffer = surface.buffer_mut().expect("surface buffer");
-                        scale::scale_rgba_to_argb(
-                            &rgba,
-                            640,
-                            480,
-                            &mut buffer,
-                            size.width as usize,
-                            size.height as usize,
-                            cfg.scale,
-                            cfg.filter,
-                        );
+                match event {
+                    // The preview pane must keep running on hover/keypress; only a real
+                    // close ends it. In normal/fullscreen mode, any input quits.
+                    WindowEvent::CloseRequested => {
                         if cfg.debug {
-                            // Measure FPS over a 1s window; emit a stdout status line
-                            // each second and draw the on-screen HUD every frame.
-                            dbg_frames += 1;
-                            if dbg_window.elapsed() >= Duration::from_secs(1) {
-                                dbg_fps = dbg_frames;
-                                dbg_frames = 0;
-                                dbg_window = Instant::now();
-                                let d = show.debug_info();
-                                let scene = d
-                                    .scene
-                                    .map(|(n, t)| format!("{n}#{t}"))
-                                    .unwrap_or_else(|| "-".into());
-                                let off = d
-                                    .offset
-                                    .map(|(x, y)| format!("{x},{y}"))
-                                    .unwrap_or_else(|| "-".into());
-                                eprintln!(
-                                    "[wilson:debug] fps={} delay={}t stage={} day={}/11 \
-                                     scene={} drift=({}) night={} tide={} raft={} holiday={:?}",
-                                    dbg_fps,
-                                    frame.delay_ticks,
-                                    d.stage,
-                                    d.day,
-                                    scene,
-                                    off,
-                                    d.night as u8,
-                                    d.low_tide as u8,
-                                    d.raft,
-                                    d.holiday,
-                                );
+                            eprintln!("[wilson:debug] exit: CloseRequested");
+                        }
+                        elwt.exit();
+                    }
+                    WindowEvent::MouseInput { button, state, .. } if !is_preview => {
+                        if cfg.debug {
+                            eprintln!("[wilson:debug] exit: MouseInput {button:?} {state:?}");
+                        }
+                        elwt.exit();
+                    }
+                    WindowEvent::KeyboardInput { event: key, .. }
+                        if !is_preview && key.state == ElementState::Pressed =>
+                    {
+                        if cfg.debug {
+                            eprintln!("[wilson:debug] exit: KeyboardInput {:?}", key.logical_key);
+                        }
+                        elwt.exit();
+                    }
+                    WindowEvent::RedrawRequested => {
+                        let size = window.inner_size();
+                        if let (Some(w), Some(h)) =
+                            (NonZeroU32::new(size.width), NonZeroU32::new(size.height))
+                        {
+                            // Pace from when the frame became due (≈ when the timer fired),
+                            // not from after we finish computing it: this absorbs the per-frame
+                            // work (engine + xBR/scale/present) into the delay instead of adding
+                            // it on top, matching jc_reborn's `lastTicks` pacing. Without this,
+                            // heavier filters (xBR) make the animation run slower than the
+                            // original.
+                            let frame_start = Instant::now();
+                            surface.resize(w, h).expect("resize surface");
+                            // Refresh the wall clock so the story day rolls over at midnight
+                            // even within a single long-running session.
+                            show.set_clock(clock::now());
+                            let frame = show.next_frame(&archive);
+                            for &id in &frame.sounds {
+                                audio.play(id);
                             }
-                            draw_debug_hud(
+                            let (day, yday) = show.day_state();
+                            if last_saved != Some((day, yday)) {
+                                state::DayState {
+                                    current_day: day,
+                                    stored_yday: yday,
+                                }
+                                .save();
+                                last_saved = Some((day, yday));
+                            }
+                            // Update lifetime stats, flushing to disk occasionally.
+                            stats.note_day(day);
+                            if last_flush.elapsed() >= Duration::from_secs(30) {
+                                stats.total_secs = base_secs + session_start.elapsed().as_secs();
+                                stats.save();
+                                last_flush = Instant::now();
+                            }
+                            let rgba = frame.surface.to_rgba(&palette);
+                            // Optional: smooth the dithered sea/sky before scaling.
+                            let rgba = if cfg.dedither {
+                                wilson_engine::dedither(&rgba, 640, 480)
+                            } else {
+                                rgba
+                            };
+                            let mut buffer = surface.buffer_mut().expect("surface buffer");
+                            scale::scale_rgba_to_argb(
+                                &rgba,
+                                640,
+                                480,
                                 &mut buffer,
                                 size.width as usize,
                                 size.height as usize,
-                                dbg_fps,
-                                frame.delay_ticks,
-                                &show.debug_info(),
-                                &cfg,
+                                cfg.scale,
+                                cfg.filter,
+                            );
+                            if cfg.debug {
+                                // Measure FPS over a 1s window; emit a stdout status line
+                                // each second and draw the on-screen HUD every frame.
+                                dbg_frames += 1;
+                                if dbg_window.elapsed() >= Duration::from_secs(1) {
+                                    dbg_fps = dbg_frames;
+                                    dbg_frames = 0;
+                                    dbg_window = Instant::now();
+                                    let d = show.debug_info();
+                                    let scene = d
+                                        .scene
+                                        .map(|(n, t)| format!("{n}#{t}"))
+                                        .unwrap_or_else(|| "-".into());
+                                    let off = d
+                                        .offset
+                                        .map(|(x, y)| format!("{x},{y}"))
+                                        .unwrap_or_else(|| "-".into());
+                                    eprintln!(
+                                        "[wilson:debug] fps={} delay={}t stage={} day={}/11 \
+                                     scene={} drift=({}) night={} tide={} raft={} holiday={:?}",
+                                        dbg_fps,
+                                        frame.delay_ticks,
+                                        d.stage,
+                                        d.day,
+                                        scene,
+                                        off,
+                                        d.night as u8,
+                                        d.low_tide as u8,
+                                        d.raft,
+                                        d.holiday,
+                                    );
+                                }
+                                draw_debug_hud(
+                                    &mut buffer,
+                                    size.width as usize,
+                                    size.height as usize,
+                                    dbg_fps,
+                                    frame.delay_ticks,
+                                    &show.debug_info(),
+                                    &cfg,
+                                );
+                            }
+                            buffer.present().expect("present");
+                            if cfg.debug && dbg_first_frame {
+                                dbg_first_frame = false;
+                                eprintln!("[wilson:debug] first frame presented {w}x{h}");
+                            }
+                            let delay =
+                                Duration::from_millis(cfg.frame_delay_ms(frame.delay_ticks));
+                            // Deadline measured from the frame's due time, so compute time is
+                            // absorbed (period ≈ delay); if compute overran, this is already in
+                            // the past and the next frame runs immediately.
+                            elwt.set_control_flow(ControlFlow::WaitUntil(frame_start + delay));
+                        } else if cfg.debug && dbg_first_frame {
+                            dbg_first_frame = false;
+                            eprintln!(
+                                "[wilson:debug] redraw skipped: window size {}x{} (zero)",
+                                size.width, size.height
                             );
                         }
-                        buffer.present().expect("present");
-                        let delay = Duration::from_millis(cfg.frame_delay_ms(frame.delay_ticks));
-                        // Deadline measured from the frame's due time, so compute time is
-                        // absorbed (period ≈ delay); if compute overran, this is already in
-                        // the past and the next frame runs immediately.
-                        elwt.set_control_flow(ControlFlow::WaitUntil(frame_start + delay));
                     }
+                    _ => {}
                 }
-                _ => {}
-            },
+            }
             // Pace the animation: redraw only when the per-frame timer elapses (or on
             // the initial start), not on every loop iteration. Requesting a redraw on
             // every `AboutToWait` would preempt the `WaitUntil` deadline and run the
             // engine as fast as the CPU spins (the screensaver played far too fast).
-            Event::NewEvents(StartCause::Init | StartCause::ResumeTimeReached { .. }) => {
+            Event::NewEvents(cause @ (StartCause::Init | StartCause::ResumeTimeReached { .. })) => {
+                if cfg.debug && matches!(cause, StartCause::Init) {
+                    eprintln!("[wilson:debug] event loop started (NewEvents::Init)");
+                }
                 window.request_redraw();
             }
+            Event::Resumed => {
+                if cfg.debug {
+                    eprintln!("[wilson:debug] resumed");
+                }
+            }
             Event::LoopExiting => {
+                if cfg.debug {
+                    eprintln!("[wilson:debug] loop exiting (process will end)");
+                }
                 stats.total_secs = base_secs + session_start.elapsed().as_secs();
                 stats.save();
             }
