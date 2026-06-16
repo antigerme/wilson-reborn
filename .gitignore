@@ -11,6 +11,9 @@ RESOURCE.*
 SCRANTIC.*
 data/
 assets-original/
+# Encrypted test bundle lives only under repos/ (password-protected); never at the
+# repo root, where it was a redundant copy of repos/dist.zip.
+/dist.zip
 
 # Editors / OS
 .DS_Store
