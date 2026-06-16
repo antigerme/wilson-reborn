@@ -28,7 +28,7 @@ pub struct Config {
     /// How the frame is scaled into the window.
     pub scale: ScaleMode,
     /// How upscaled pixels are sampled (nearest = crisp/retro, linear = smooth,
-    /// xbr = edge-directed "HD" — smooth and sharp).
+    /// xbr = edge-directed "HD" (dissolves dither), xbrz = edge-directed, keeps dither).
     pub filter: Filter,
     /// Smooth the dithered backgrounds (sea/sky) before scaling — off by default, since
     /// the dithering is the authentic 1992 look.
@@ -144,7 +144,8 @@ impl Config {
              speed={}\n\
              # scale: window fit — fit | stretch | integer | extend (extend fills widescreen).\n\
              scale={}\n\
-             # filter: pixel sampling — nearest (crisp/retro) | linear (smooth) | xbr (HD).\n\
+             # filter: pixel sampling — nearest (crisp/retro) | linear (smooth) | xbr (HD,\n\
+             # dissolves dither) | xbrz (smooth edges, keeps dither).\n\
              filter={}\n\
              # dedither: true smooths the dithered sea/sky (default false = authentic look).\n\
              dedither={}\n\
@@ -164,7 +165,7 @@ impl Config {
     }
 
     /// Apply CLI overrides: `--windowed`, `--mute`, `--dedither`, `--debug`,
-    /// `--speed <pct>`, `--scale <mode>`, `--filter <nearest|linear|xbr>`. Unknown flags
+    /// `--speed <pct>`, `--scale <mode>`, `--filter <nearest|linear|xbr|xbrz>`. Unknown flags
     /// are ignored.
     pub fn apply_args(&mut self, args: &[String]) {
         let mut i = 0;

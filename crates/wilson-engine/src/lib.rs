@@ -22,6 +22,7 @@ pub mod ttm_vm;
 pub mod upscale;
 pub mod walk;
 pub mod walk_data;
+pub mod xbrz;
 
 pub use ads_vm::{AdsFrame, AdsVm, MAX_TTM_SLOTS, MAX_TTM_THREADS};
 pub use error::{EngineError, Result};
@@ -37,3 +38,4 @@ pub use ttm_exec::{TtmSlot, TtmThread, MAX_BMP_SLOTS};
 pub use ttm_vm::{TtmStep, TtmVm};
 pub use upscale::{dedither, xbr2x};
 pub use walk::{WalkFrame, Walker};
+pub use xbrz::xbrz2x;
