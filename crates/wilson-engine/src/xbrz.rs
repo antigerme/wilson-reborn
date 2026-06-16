@@ -9,38 +9,47 @@
 //! `dominantDirectionThreshold=3.6`, `steepDirectionThreshold=2.2`) and the ITU-R BT.2020
 //! YCbCr colour metric are reproduced faithfully.
 //!
-//! Note: fidelity here is *by construction* (a faithful port) plus the property tests
-//! below — it is **not** byte-verified against the reference binary (running external code
-//! is sandboxed off), unlike [`crate::xbr2x`], which we proved byte-identical to ffmpeg.
+//! Fidelity is **byte-verified**: our output matches Zenju's reference xBRZ binary
+//! bit-for-bit on an 8×8 golden (see `xbrz_matches_reference_golden`) and on every real
+//! 640×480 frame tested (2026-06-16). Matching the reference required reproducing its
+//! lookup-table colour metric exactly (quantised diffs + f32 rounding — see [`dist`]).
 
 /// xBRZ blend strength for one corner (fits in 2 bits).
 const BLEND_NONE: u8 = 0;
 const BLEND_NORMAL: u8 = 1;
 const BLEND_DOMINANT: u8 = 2;
 
-// ScalerCfg defaults (config.h).
-const LUMA_WEIGHT: f64 = 1.0;
+// ScalerCfg defaults (config.h). luminanceWeight (=1) is unused by the LUT colour metric.
 const EQUAL_COLOR_TOLERANCE: f64 = 30.0;
 const DOMINANT_DIRECTION_THRESHOLD: f64 = 3.6;
 const STEEP_DIRECTION_THRESHOLD: f64 = 2.2;
 
-/// ITU-R BT.2020 YCbCr colour distance (the reference's `distYCbCr`, `lumaWeight=1`). The
-/// reference's default build routes through a 64 MB lookup table that mildly quantises the
-/// diffs; we compute the exact value instead (what the table approximates).
+/// ITU-R BT.2020 YCbCr colour distance — byte-exact with xBRZ's default `ColorDistanceRGB`.
+///
+/// The reference ships a 64 MB lookup table (`DistYCbCrBuffer`): it quantises each channel
+/// diff `d` to the table index `(d+255)/2` (so the stored diff is `2·idx-255`), computes
+/// the YCbCr magnitude from those quantised diffs, and stores the result as an **f32**. We
+/// reproduce that exactly (quantise → f64 math → round to f32) so our output matches the
+/// reference binary bit-for-bit, rather than using the (commented-out) exact `distYCbCr`.
 #[inline]
 fn dist(p1: [u8; 3], p2: [u8; 3]) -> f64 {
-    let r = f64::from(p1[0]) - f64::from(p2[0]);
-    let g = f64::from(p1[1]) - f64::from(p2[1]);
-    let b = f64::from(p1[2]) - f64::from(p2[2]);
+    let q = |a: u8, b: u8| -> f64 {
+        let d = i32::from(a) - i32::from(b);
+        f64::from(2 * ((d + 255) / 2) - 255) // LUT index (d+255)/2 → stored diff 2·idx-255
+    };
+    let r = q(p1[0], p2[0]);
+    let g = q(p1[1], p2[1]);
+    let b = q(p1[2], p2[2]);
     const K_B: f64 = 0.0593;
     const K_R: f64 = 0.2627;
     const K_G: f64 = 1.0 - K_B - K_R;
     const SCALE_B: f64 = 0.5 / (1.0 - K_B);
     const SCALE_R: f64 = 0.5 / (1.0 - K_R);
-    let y = K_R * r + K_G * g + K_B * b;
+    let y = K_R * r + K_G * g + K_B * b; // the LUT applies no lumaWeight (== our default 1)
     let c_b = SCALE_B * (b - y);
     let c_r = SCALE_R * (r - y);
-    ((LUMA_WEIGHT * y).powi(2) + c_b * c_b + c_r * c_r).sqrt()
+    let d = (y * y + c_b * c_b + c_r * c_r).sqrt();
+    f64::from(d as f32) // the table stores f32; match that precision
 }
 
 #[inline]
@@ -292,6 +301,35 @@ pub fn xbrz2x(src: &[u8], w: usize, h: usize) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn xbrz_matches_reference_golden() {
+        // A synthetic 8×8 RGB fixture and the EXACT 16×16 output of Zenju's reference xBRZ
+        // binary (factor 2), stored as raw bytes. Our port must reproduce it byte-for-byte
+        // — this locks fidelity in CI (which has no xBRZ binary). Generated and verified
+        // 2026-06-16 by compiling and running the reference; that day all 15 real 640×480
+        // frames were also byte-identical. Both fixtures are synthetic (no game data).
+        const GOLDEN_IN: &[u8] = include_bytes!("testdata/xbrz_golden_in.bin"); // 8×8×3
+        const GOLDEN_OUT: &[u8] = include_bytes!("testdata/xbrz_golden_out.bin"); // 16×16×3
+        let mut rgba = Vec::with_capacity(GOLDEN_IN.len() / 3 * 4);
+        for px in GOLDEN_IN.chunks_exact(3) {
+            rgba.extend_from_slice(&[px[0], px[1], px[2], 255]);
+        }
+        let out = xbrz2x(&rgba, 8, 8);
+        let out_rgb: Vec<u8> = out
+            .chunks_exact(4)
+            .flat_map(|p| [p[0], p[1], p[2]])
+            .collect();
+        assert_eq!(
+            out_rgb.len(),
+            GOLDEN_OUT.len(),
+            "16×16×3 expected from an 8×8 input"
+        );
+        assert!(
+            out_rgb == GOLDEN_OUT,
+            "xBRZ output must match the reference binary byte-for-byte"
+        );
+    }
 
     #[test]
     fn doubles_the_dimensions() {
