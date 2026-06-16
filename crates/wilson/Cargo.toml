@@ -21,8 +21,14 @@ wilson-engine = { path = "../wilson-engine" }
 winit = { version = "0.29", features = ["rwh_06"] }
 softbuffer = "0.4"
 rodio = { version = "0.17", default-features = false, features = ["wav"], optional = true }
+# Read-only zip support so `--data` can take the Internet Archive scrantic-run.zip directly.
+zip = { version = "2", default-features = false, features = ["deflate"] }
 
 # Used by build.rs (embed-data) to extract the original sounds from SCRANTIC.EXE when no
 # soundN.wav are supplied.
 [build-dependencies]
 wilson-dgds = { path = "../wilson-dgds" }
+
+[dev-dependencies]
+# Full zip (with writer) to build fixtures for the --data zip tests.
+zip = "2"

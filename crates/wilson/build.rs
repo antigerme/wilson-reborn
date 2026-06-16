@@ -4,7 +4,10 @@
 //! self-contained build. The data is read only at build time from the local path — it
 //! is never written into the repository.
 
-use std::{env, fs, path::Path};
+use std::{
+    env, fs,
+    path::{Path, PathBuf},
+};
 
 fn main() {
     println!("cargo:rerun-if-env-changed=WILSON_EMBED_DATA");
@@ -51,39 +54,56 @@ fn main() {
         })
         .filter(|s: &String| !s.is_empty())
         .unwrap_or_else(|| "RESOURCE.001".to_string());
-    let data_path = dir.join(&data_name);
-    assert!(
-        data_path.is_file(),
-        "WILSON_EMBED_DATA: data file {} (named by RESOURCE.MAP) not found",
-        data_path.display()
-    );
+    let out_parent = Path::new(&out).parent().unwrap().to_path_buf();
+
+    // Resolve the data file. Normally RESOURCE.001 next to the MAP — but the original
+    // *installer* stores it compressed as RESOURCE.00$; decompress that on the fly.
+    let named = dir.join(&data_name);
+    let data_path: PathBuf =
+        if named.is_file() && fs::metadata(&named).map(|m| m.len()).unwrap_or(0) > 1000 {
+            named
+        } else if let Ok(comp) = fs::read(dir.join("RESOURCE.00$")) {
+            let data = wilson_dgds::decompress_installer(&comp)
+                .expect("WILSON_EMBED_DATA: RESOURCE.00$ present but could not be decompressed");
+            let p = out_parent.join("RESOURCE.001");
+            fs::write(&p, &data).expect("write decompressed RESOURCE.001");
+            p
+        } else {
+            panic!(
+                "WILSON_EMBED_DATA: data file {} not found (and no RESOURCE.00$ installer file)",
+                named.display()
+            );
+        };
 
     // Embed whichever soundN.wav are present (0..=24; the originals skip 11 and 13).
-    let mut entries: Vec<(u16, std::path::PathBuf)> = Vec::new();
+    let mut entries: Vec<(u16, PathBuf)> = Vec::new();
     for id in 0u16..25 {
         let wav = dir.join(format!("sound{id}.wav"));
         if wav.is_file() {
             entries.push((id, wav));
         }
     }
-    // Fallback: no soundN.wav supplied (e.g. the original scrantic-run distribution) — the
-    // effects are embedded as WAVs in SCRANTIC.EXE/.SCR. Extract them to OUT_DIR and embed.
+    // Fallback: no soundN.wav — the effects are WAVs inside SCRANTIC.EXE/.SCR (or the
+    // installer's compressed SCRANTIC.SC$). Extract them to OUT_DIR and embed.
     if entries.is_empty() {
-        let out_parent = Path::new(&out).parent().unwrap().to_path_buf();
-        for exe in ["SCRANTIC.EXE", "SCRANTIC.SCR"] {
-            let Ok(bytes) = fs::read(dir.join(exe)) else {
-                continue;
-            };
-            let sounds = wilson_dgds::sounds_from_scrantic_exe(&bytes);
-            if sounds.iter().any(Option::is_some) {
-                for (id, slot) in sounds.iter().enumerate() {
-                    if let Some(wav) = slot {
-                        let path = out_parent.join(format!("sound{id}.wav"));
-                        fs::write(&path, wav).expect("write extracted soundN.wav");
-                        entries.push((id as u16, path));
-                    }
+        let exe_bytes = ["SCRANTIC.EXE", "SCRANTIC.SCR"]
+            .iter()
+            .find_map(|n| fs::read(dir.join(n)).ok())
+            .or_else(|| {
+                fs::read(dir.join("SCRANTIC.SC$"))
+                    .ok()
+                    .and_then(|c| wilson_dgds::decompress_installer(&c))
+            });
+        if let Some(bytes) = exe_bytes {
+            for (id, slot) in wilson_dgds::sounds_from_scrantic_exe(&bytes)
+                .iter()
+                .enumerate()
+            {
+                if let Some(wav) = slot {
+                    let path = out_parent.join(format!("sound{id}.wav"));
+                    fs::write(&path, wav).expect("write extracted soundN.wav");
+                    entries.push((id as u16, path));
                 }
-                break;
             }
         }
     }

@@ -1,34 +1,38 @@
 # Instalação e empacotamento
 
 O app **`wilson`** usa os **arquivos originais** do Johnny Castaway
-(`RESOURCE.MAP` + `RESOURCE.001`) — não há arte embutida. Coloque esses arquivos **no
-mesmo diretório do executável** (ou no diretório de trabalho), ou aponte com
-`--data <dir>`. Sem eles, o app explica o que falta e sai.
+(`RESOURCE.MAP` + `RESOURCE.001`) — não há arte embutida. Aponte com `--data <pasta-ou-zip>`,
+ou deixe os arquivos (ou o zip) no diretório de trabalho / ao lado do executável (são
+auto-detectados). Sem eles, o app explica o que falta e sai.
 
 ## Onde conseguir os arquivos originais
 
 O screensaver original (Sierra/Dynamix, 1992) está **preservado no Internet Archive**:
 
 - Página do item: <https://archive.org/details/johnny-castaway-screensaver>
-- Download direto (dados + executável original DOS):
+- `scrantic-run.zip` — os arquivos prontos:
   <https://archive.org/download/johnny-castaway-screensaver/scrantic-run.zip>
+- `scrantic-installer.zip` — o instalador original (dados comprimidos):
+  <https://archive.org/download/johnny-castaway-screensaver/scrantic-installer.zip>
+
+**Não precisa descompactar nem instalar nada** — passe o **`.zip` direto** (qualquer um dos
+dois), uma pasta já extraída, ou deixe o zip ao lado do executável:
 
 ```bash
-# Linux/macOS (Windows: extraia o zip e use --data na pasta)
-unzip scrantic-run.zip -d jc-original
-wilson --data jc-original          # roda com os dados originais
+wilson --data scrantic-run.zip         # ou: --data scrantic-installer.zip, ou --data <pasta>
 ```
 
-O `scrantic-run.zip` contém `RESOURCE.MAP` + `RESOURCE.001` (os gráficos/animações) e o
-executável original (`SCRANTIC.EXE`/`.SCR`). **Validado:** o `wilson` decodifica e roda
-essa cópia (testada além da cópia de teste do projeto).
+O `wilson` aceita: uma **pasta** com os dados; o **`scrantic-run.zip`**; ou o
+**`scrantic-installer.zip`** — neste último ele **descomprime** o `RESOURCE.00$`
+(formato PKWARE DCL do instalador) automaticamente, em memória/temp. Auto-detecta
+`scrantic-run.zip`/`scrantic-installer.zip` no diretório atual e ao lado do executável.
 
-> **Som — automático:** os 23 efeitos de som originais ficam embutidos como WAVs **dentro
-> do `SCRANTIC.EXE`** (não há `soundN.wav` no zip). O `wilson` **extrai os sons do próprio
-> `SCRANTIC.EXE`/`.SCR`** que estiver na pasta de dados — então `scrantic-run.zip` já roda
-> **com som**, sem arquivos extras. (Se quiser, `soundN.wav` na pasta têm prioridade.)
-> **Copyright:** os dados são da Sierra/Dynamix; o Internet Archive os preserva como
-> software histórico — use sua própria cópia.
+> **Som — automático:** os 23 efeitos originais ficam embutidos como WAVs **dentro do
+> `SCRANTIC.EXE`/`.SCR`** (no instalador, dentro do `SCRANTIC.SC$` comprimido). O `wilson`
+> **extrai os sons sozinho** — então qualquer um dos zips já roda **com som**, sem arquivos
+> extras. (`soundN.wav` na pasta, se houver, têm prioridade.) **Copyright:** os dados são
+> da Sierra/Dynamix; o Internet Archive os preserva como software histórico — use sua
+> própria cópia.
 
 ## Baixar os binários
 
@@ -118,11 +122,14 @@ cargo build --release -p wilson
 
 Para um **único arquivo** que roda **sem** os dados ao lado (nada de `--data`), compile
 com a feature `embed-data` apontando `WILSON_EMBED_DATA` para uma pasta com os dados
-originais (`RESOURCE.MAP` + `RESOURCE.001` e, se quiser som, os `soundN.wav`):
+originais. A pasta pode ser uma cópia já extraída do `scrantic-run.zip` **ou** do
+`scrantic-installer.zip` — no caso do instalador, o build **descomprime** o `RESOURCE.00$`
+e tira o som do `SCRANTIC.SC$` automaticamente. O som também sai do `SCRANTIC.EXE`/`.SCR`
+quando não há `soundN.wav`.
 
 ```bash
-WILSON_EMBED_DATA=<dir-com-os-dados> cargo build --release -p wilson --features embed-data
-# o binário resultante (~5 MB) embute RESOURCE.* + soundN.wav e roda de qualquer pasta
+WILSON_EMBED_DATA=<pasta-extraída-do-zip-ou-instalador> cargo build --release -p wilson --features embed-data
+# o binário resultante (~5 MB) embute RESOURCE.* + os 23 sons e roda de qualquer pasta
 ```
 
 Os bytes são lidos **só em tempo de compilação** pela [`build.rs`](../crates/wilson/build.rs)

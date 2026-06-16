@@ -6,6 +6,25 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-16 — `--data` aceita `.zip` (run **e** instalador); DCL do instalador revertido
+
+Pra "facilitar ao máximo": `--data` agora aceita uma **pasta**, o **`scrantic-run.zip`**, ou
+o **`scrantic-installer.zip`** (e auto-detecta os zips no cwd / ao lado do exe).
+
+- O instalador guarda os dados numa compressão proprietária (magic `65 5d 13 8c`). Um
+  subagente, com **ground truth** (run.zip = saída esperada), identificou: é **PKWARE DCL
+  implode** num wrapper Dynamix de 42 bytes. Portei o `blast.c` (Mark Adler, domínio
+  público/zlib) pra Rust seguro: **`wilson_dgds::decompress_installer`** — verificado
+  **byte-a-byte** (`RESOURCE.00$`→`RESOURCE.001`, `SCRANTIC.SC$`→`SCRANTIC.SCR`).
+- **`crates/wilson/src/assets.rs`**: `resolve_data_dir` — pasta usável direto; `.zip`
+  extraído p/ temp (dep `zip`, só leitura/deflate); instalador descomprimido p/ temp
+  (RESOURCE.001 + SCRANTIC.SCR p/ som). **`build.rs`** faz o mesmo no embed.
+- Validado: gated end-to-end (run.zip / pasta instalador / installer.zip → load) + embed a
+  partir do instalador (RESOURCE.001 + 23 sons). `fmt`/`clippy`(default/no-audio/embed)/
+  workspace (166) verdes. Docs em `INSTALL.md`.
+
+---
+
 ## 2026-06-16 — som extraído do `SCRANTIC.EXE` original (dispensa `soundN.wav`)
 
 Investigação a pedido do usuário ("extrair o som dos originais") + correção importante:

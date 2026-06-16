@@ -55,10 +55,15 @@ cargo run -p wilson-engine --example render_run -- <dir> /tmp/out 27000 225 1
 > tamanho do `data`, verificado byte-a-byte vs os `soundN.wav` do JCOS/jc_reborn). O app e o
 > build `embed-data` caem nisso quando não há `soundN.wav`. **jc_reborn/JCOS NÃO são o
 > original** — são reimplementações; os `soundN.wav` deles são os mesmos PCM re-embalados.
+> **`--data` aceita pasta OU `.zip`** (o `scrantic-run.zip` e o `scrantic-installer.zip`),
+> auto-detectados no cwd / ao lado do exe (`assets.rs::resolve_data_dir`, dep `zip`). O
+> instalador usa compressão **PKWARE DCL** num wrapper Dynamix (magic `65 5d 13 8c`);
+> `wilson_dgds::decompress_installer` (porte do `blast.c`) descomprime `RESOURCE.00$`→`.001`
+> e `SCRANTIC.SC$`→`.SCR` (verificado byte-a-byte). `build.rs` faz o mesmo no embed.
 > Os dados originais (`RESOURCE.*`) são **copyright** e **não** ficam no repo. Os testes
 > usam fixtures sintéticas — rodam sem os dados originais (essencial para o CI).
-> O app `wilson` **exige** os dados originais (`--data <dir>` ou auto-detecção no diretório
-> atual / ao lado do executável); sem eles, explica o que falta e sai.
+> O app `wilson` **exige** os dados originais (`--data <dir-ou-zip>` ou auto-detecção no
+> diretório atual / ao lado do executável); sem eles, explica o que falta e sai.
 
 ## Regras de trabalho (combinadas com o usuário)
 - **Sempre 100% → 100%:** cada incremento compila, passa lint e testes (local **e** CI).

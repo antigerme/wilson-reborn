@@ -115,17 +115,14 @@ fn main() {
             .windows(2)
             .find(|w| w[0] == "--data")
             .map(|w| w[1].clone());
-        let Some(data_dir) = assets::find_data_dir(data_arg.as_deref()) else {
-            eprintln!(
-                "Wilson Reborn needs the original Johnny Castaway data files \
-                 (RESOURCE.MAP + RESOURCE.001).\n\
-                 Pass --data <dir>, set WILSON_DATA_DIR, or place the files in the current \
-                 directory or next to the executable.\nSearched:"
-            );
-            for c in assets::data_candidates(data_arg.as_deref()) {
-                eprintln!("  {}", c.display());
+        // Accept a folder OR a .zip (e.g. the Internet Archive scrantic-run.zip), and
+        // auto-detect either next to the executable / in the working directory.
+        let data_dir = match assets::resolve_data_dir(data_arg.as_deref()) {
+            Ok(dir) => dir,
+            Err(e) => {
+                eprintln!("{e}");
+                return;
             }
-            return;
         };
         let (archive, palette) = match assets::load(&data_dir) {
             Ok(loaded) => loaded,
@@ -134,8 +131,8 @@ fn main() {
                 return;
             }
         };
-        // Sound effects come from the data dir (originals carry `soundN.wav`); the player
-        // degrades to silence without the `audio` feature, a device, the files, or mute.
+        // Sound effects: soundN.wav in the data dir, else extracted from SCRANTIC.EXE/.SCR
+        // there. Degrades to silence without the `audio` feature, a device, or mute.
         let audio = audio::Audio::new(Some(data_dir.as_path()), cfg.mute);
         (archive, palette, audio)
     };
