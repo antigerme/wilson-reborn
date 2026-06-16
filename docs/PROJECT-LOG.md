@@ -6,6 +6,28 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-16 — `--filter xbr`: xBR real (Hyllian) substitui o EPX
+
+Em resposta ao usuário ("o xBR realmente tá funcionando? quero o xBR mais forte e
+marcante"): auditei o filtro, comprovei que o `xbr2x` antigo era da família **EPX/Scale2x**
+(efeito fraco, quase igual ao `nearest`) e **portei o xBR real (Hyllian) nível 2**.
+
+- **`crates/wilson-engine/src/upscale.rs`** — `xbr2x` reescrito como porte fiel de
+  `libavfilter/vf_xbr.c` do ffmpeg (LGPL-2.1-or-later, compatível com nosso GPL-3.0):
+  diferença de pixel em **Y'UV** (BT.601) com limiar 155, macro `FILT2` (4 rotações) e os
+  blends `ALPHA_BLEND_{64,128,192,224}_W`. Y'UV pré-computado por pixel (df é chamado ~80×).
+  Mesma assinatura ⇒ `scale.rs` e o exemplo `xbr_one` seguem iguais. `dist`/`TOLERANCE`
+  ficam só para o `dedither`.
+- **Validação:** saída **byte-idêntica** ao `xbr=2` do ffmpeg num frame real
+  (`PSNR ∞`); dissolve o dither de 1992, suaviza diagonais, mantém bordas H/V e áreas
+  chapadas nítidas. 8 testes de unidade (flat inalterado, borda reta dura, diagonal
+  antialiasada, saída 100% opaca + 3 do dedither). `fmt`/`clippy -D warnings`/`test`
+  (152) verdes.
+- **TODO(xBRZ):** comparar com **xBRZ** assim que este estiver validado nos originais
+  (pedido do usuário 2026-06-16) — anotado também no topo de `upscale.rs`.
+
+---
+
 ## 2026-06-15 — Build autossuficiente: dados originais embutidos (feature `embed-data`)
 
 **Branch `claude/affectionate-gates-6oc4we`** (a partir da `main` pós-merge do PR #34).
