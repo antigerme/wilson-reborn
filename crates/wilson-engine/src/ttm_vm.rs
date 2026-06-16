@@ -226,6 +226,38 @@ mod tests {
     }
 
     #[test]
+    fn set_delay_and_timer_reset_the_timer() {
+        // Regression: jc_reborn sets `timer = delay` on SET_DELAY (ttm.c:204) and TIMER
+        // (ttm.c:253), so a mid-scene delay change lands on the current frame. Before the
+        // fix we only set `delay`, leaving `timer` stale (this assertion would fail).
+        let pal = palette_with_magenta();
+        let archive = Archive::default();
+
+        // SET_DELAY 10
+        let mut code = Vec::new();
+        code.extend_from_slice(&op(0x1021));
+        code.extend_from_slice(&10u16.to_le_bytes());
+        code.extend_from_slice(&op(0x0FF0));
+        let mut vm = TtmVm::new(&ttm(code), 0, &pal, 2, 2).unwrap();
+        vm.thread.timer = 4; // stale value that the opcode must overwrite
+        vm.step(&archive).unwrap();
+        assert_eq!(vm.thread.delay, 10);
+        assert_eq!(vm.thread.timer, 10, "SET_DELAY must reset timer = delay");
+
+        // TIMER 8 12 -> delay = (8+12)/2 = 10
+        let mut code = Vec::new();
+        code.extend_from_slice(&op(0x2022));
+        code.extend_from_slice(&8u16.to_le_bytes());
+        code.extend_from_slice(&12u16.to_le_bytes());
+        code.extend_from_slice(&op(0x0FF0));
+        let mut vm = TtmVm::new(&ttm(code), 0, &pal, 2, 2).unwrap();
+        vm.thread.timer = 4;
+        vm.step(&archive).unwrap();
+        assert_eq!(vm.thread.delay, 10);
+        assert_eq!(vm.thread.timer, 10, "TIMER must reset timer = delay");
+    }
+
+    #[test]
     fn missing_resource_errors() {
         let mut code = Vec::new();
         code.extend_from_slice(&op(0xF01F));

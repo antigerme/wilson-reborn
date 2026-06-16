@@ -8,8 +8,8 @@
 //! It needs the original Johnny Castaway data (`RESOURCE.MAP` + `RESOURCE.001`):
 //! - `wilson --data <dir>` — load the data from `<dir>`.
 //! - `wilson` — auto-detects the data in the working directory or next to the executable.
-//! - `wilson --windowed --mute --speed <pct> --scale fit|stretch|integer
-//!   --filter nearest|linear|xbr` — options (`linear`/`xbr` smooth; `nearest` = crisp).
+//! - `wilson --windowed --mute --speed <pct> --scale fit|stretch|integer|extend
+//!   --filter nearest|linear|xbr --dedither` — options (`extend` fills widescreen).
 //! - Windows screensaver verbs: `/s` (show), `/c` (config), `/p <hwnd>` (preview embedded
 //!   in the configuration pane — Windows only).
 
@@ -368,7 +368,8 @@ fn print_help() {
     println!("  --windowed                       run in a 640x480 window (default: fullscreen)");
     println!("  --mute                           disable sound effects (default: sound on)");
     println!("  --speed <PCT>                    playback speed 25-400; 100 = original (default)");
-    println!("  --scale <fit|stretch|integer>    how the picture fills the window (default: fit)");
+    println!("  --scale <MODE>                   fit | stretch | integer | extend (default: fit)");
+    println!("                                     extend = fill widescreen, no bars/distortion");
     println!("  --filter <nearest|linear|xbr>    pixel sampling (default: xbr):");
     println!("                                     nearest = crisp/retro,");
     println!("                                     linear  = smooth (bilinear),");

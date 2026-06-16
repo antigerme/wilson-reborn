@@ -195,9 +195,16 @@ pub fn run_frame(
                 thread.running = 2;
                 return Ok(FrameOutcome::Finished);
             }
-            0x1021 => thread.delay = word(a, 0).max(4),
+            0x1021 => {
+                // SET_DELAY: jc_reborn sets timer = delay too (ttm.c:204), so a delay
+                // change takes effect on the current frame, not one frame late.
+                thread.delay = word(a, 0).max(4);
+                thread.timer = thread.delay;
+            }
             0x2022 => {
+                // TIMER: likewise resets timer = delay (jc_reborn ttm.c:253).
                 thread.delay = ((u32::from(word(a, 0)) + u32::from(word(a, 1))) / 2) as u16;
+                thread.timer = thread.delay;
             }
             0x1051 => thread.selected_bmp_slot = word(a, 0) as usize,
             0x1201 => thread.next_goto = Some(slot.find_tag(word(a, 0))),

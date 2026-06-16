@@ -1026,7 +1026,6 @@ impl Director {
         let mut prev: Option<(u8, u8)> = None;
 
         if final_scene.flags & FIRST == 0 {
-            let count = 6 + rng.below(14);
             let mut wanted = 0u8;
             if island.low_tide {
                 wanted |= LOWTIDE_OK;
@@ -1035,7 +1034,11 @@ impl Director {
                 wanted |= VARPOS_OK;
             }
             let mut unwanted = FINAL;
-            for _ in 0..count {
+            // jc_reborn re-evaluates `6 + rand() % 14` on every loop check (story.c:233):
+            // the bound is redrawn each iteration, which front-loads the ambient count
+            // (mean ~9) rather than a single uniform 6..19 draw. Mirror that for parity.
+            let mut i = 0u32;
+            while i < 6 + rng.below(14) {
                 let Some(scene) = pick_scene(self.current_day, wanted, unwanted, rng) else {
                     break;
                 };
@@ -1049,6 +1052,7 @@ impl Director {
                 });
                 unwanted |= FIRST;
                 prev = Some((scene.spot_end, scene.hdg_end));
+                i += 1;
             }
         }
 
@@ -1177,6 +1181,30 @@ mod tests {
         d.current_day = 11;
         assert!(d.advance_day(102)); // 11 -> 12 -> wraps to 1
         assert_eq!(d.current_day, 1);
+    }
+
+    #[test]
+    fn ambient_count_is_front_loaded_like_jc_reborn() {
+        // jc_reborn re-draws `6 + rand() % 14` on every loop check (story.c:233), which
+        // front-loads the ambient lead-in (mean ~9). A single up-front `6 + rng.below(14)`
+        // would be uniform 6..19 (mean ~12.5). Average the lead-in over many fixed seeds
+        // and require the front-loaded mean. (Fails with the single-draw form.)
+        let mut total = 0u64;
+        let mut runs = 0u64;
+        for seed in 0..4000u64 {
+            let mut d = Director::new(5, 0);
+            let run = d.plan_run(0, 12, 6, 14, &mut Rng::new(seed));
+            if run.scenes.len() > 1 {
+                total += (run.scenes.len() - 1) as u64; // ambient = all but the FINAL
+                runs += 1;
+            }
+        }
+        let mean = total as f64 / runs as f64;
+        assert!(
+            mean < 11.0,
+            "ambient mean {mean:.2} too high — expected jc_reborn's front-loaded ~9, \
+             not a single uniform 6..19 draw (~12.5)"
+        );
     }
 
     #[test]
