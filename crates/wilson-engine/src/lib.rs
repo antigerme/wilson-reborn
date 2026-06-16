@@ -28,7 +28,7 @@ pub use error::{EngineError, Result};
 pub use island::Island;
 pub use path::{calc_path, calc_paths, NUM_OF_NODES};
 pub use rng::Rng;
-pub use show::{Clock, Frame, Show};
+pub use show::{Clock, DebugInfo, Frame, Show};
 pub use story::{
     DayNight, Director, Holiday, IslandState, ScenePlay, StoryRun, StoryScene, STORY_SCENES,
 };
