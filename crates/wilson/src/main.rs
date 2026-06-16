@@ -9,7 +9,7 @@
 //! - `wilson --data <dir>` — load the data from `<dir>`.
 //! - `wilson` — auto-detects the data in the working directory or next to the executable.
 //! - `wilson --windowed --mute --speed <pct> --scale fit|stretch|integer|extend
-//!   --filter nearest|linear|xbr --dedither` — options (`extend` fills widescreen).
+//!   --filter nearest|linear|xbr|xbrz --dedither` — options (`extend` fills widescreen).
 //! - Windows screensaver verbs: `/s` (show), `/c` (config), `/p <hwnd>` (preview embedded
 //!   in the configuration pane — Windows only).
 
@@ -395,7 +395,7 @@ fn print_config_info(cfg: &config::Config) {
     println!("  stats:    {}", stats::Stats::load().summary());
     println!(
         "Edit the file above, or pass --windowed/--mute/--dedither/--debug/--speed <pct>/\
-         --scale <mode>/--filter <nearest|linear|xbr>/--daynight <original|real24h>."
+         --scale <mode>/--filter <nearest|linear|xbr|xbrz>/--daynight <original|real24h>."
     );
 }
 
@@ -440,10 +440,13 @@ fn print_help() {
     println!("  --speed <PCT>                    playback speed 25-400; 100 = original (default)");
     println!("  --scale <MODE>                   fit | stretch | integer | extend (default: fit)");
     println!("                                     extend = fill widescreen, no bars/distortion");
-    println!("  --filter <nearest|linear|xbr>    pixel sampling (default: xbr):");
+    println!("  --filter <nearest|linear|xbr|xbrz> pixel sampling (default: xbr):");
     println!("                                     nearest = crisp/retro,");
     println!("                                     linear  = smooth (bilinear),");
-    println!("                                     xbr     = smooth + sharp (\"HD\")");
+    println!(
+        "                                     xbr     = smooth + sharp, dissolves dither (\"HD\"),"
+    );
+    println!("                                     xbrz    = smooth edges, keeps dither texture");
     println!("  --dedither                       smooth the dithered sea/sky (default: off)");
     println!("  --debug                          diagnostics: stdout status + on-screen HUD");
     println!("  --daynight <original|real24h>    day/night cycle (default: original 8h)");

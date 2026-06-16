@@ -7,8 +7,9 @@
 //!   extending the scene's edges — fills a widescreen with no black bars, no distortion).
 //! * [`Filter`] — how source pixels are sampled into that rectangle: `Nearest` (crisp,
 //!   the original 1992 blocky look), `Linear` (bilinear, smooths the upscaled pixels so
-//!   it looks less "80s/90s"), or `Xbr` (an edge-directed pixel-art 2× upscale then a
-//!   bilinear fit — smooth *and* sharp on sprites/edges, the "HD remaster" look).
+//!   it looks less "80s/90s"), `Xbr` (edge-directed pixel-art 2× upscale then a bilinear
+//!   fit — smooth *and* sharp, dissolves the dither, the "HD remaster" look), or `Xbrz`
+//!   (edge-directed too, but keeps the dither texture — cleaner, closer to the 1992 feel).
 
 /// How a frame is scaled into the window (the destination rectangle).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
@@ -63,6 +64,10 @@ pub enum Filter {
     /// the **default**. A bit heavier per frame (negligible for a screensaver).
     #[default]
     Xbr,
+    /// **xBRZ** edge-directed 2× upscale, then bilinear fit: like `xbr` it rounds edges,
+    /// but it keeps the original dither texture instead of dissolving it (cleaner, less
+    /// "plastic" — closer to the 1992 feel).
+    Xbrz,
 }
 
 impl Filter {
@@ -73,6 +78,7 @@ impl Filter {
             "nearest" | "crisp" | "pixel" | "none" => Some(Filter::Nearest),
             "linear" | "smooth" | "bilinear" => Some(Filter::Linear),
             "xbr" | "hd" => Some(Filter::Xbr),
+            "xbrz" => Some(Filter::Xbrz),
             _ => None,
         }
     }
@@ -83,6 +89,7 @@ impl Filter {
             Filter::Nearest => "nearest",
             Filter::Linear => "linear",
             Filter::Xbr => "xbr",
+            Filter::Xbrz => "xbrz",
         }
     }
 }
@@ -101,11 +108,18 @@ pub fn scale_rgba_to_argb(
     mode: ScaleMode,
     filter: Filter,
 ) {
-    // xBR is an edge-directed 2× prescale done once, then a bilinear fit into the window.
-    if filter == Filter::Xbr && sw > 0 && sh > 0 {
-        let up = wilson_engine::xbr2x(src, sw, sh);
-        scale_rgba_to_argb(&up, sw * 2, sh * 2, dst, dw, dh, mode, Filter::Linear);
-        return;
+    // xBR/xBRZ are edge-directed 2× prescales done once, then a bilinear fit into the
+    // window.
+    if sw > 0 && sh > 0 {
+        let up = match filter {
+            Filter::Xbr => Some(wilson_engine::xbr2x(src, sw, sh)),
+            Filter::Xbrz => Some(wilson_engine::xbrz2x(src, sw, sh)),
+            _ => None,
+        };
+        if let Some(up) = up {
+            scale_rgba_to_argb(&up, sw * 2, sh * 2, dst, dw, dh, mode, Filter::Linear);
+            return;
+        }
     }
     match mode {
         ScaleMode::Fit => scale_rgba_to_argb_fit(src, sw, sh, dst, dw, dh, filter),
@@ -218,9 +232,9 @@ fn blit_scaled(
                     dst[drow + tx] = argb(src, (srow + tx * sw / tw) * 4);
                 }
             }
-            // `Xbr` is intercepted in `scale_rgba_to_argb` (it prescales then recurses
-            // with `Linear`), so here it only ever fits the already-upscaled image.
-            Filter::Linear | Filter::Xbr => {
+            // `Xbr`/`Xbrz` are intercepted in `scale_rgba_to_argb` (they prescale then
+            // recurse with `Linear`), so here they only fit the already-upscaled image.
+            Filter::Linear | Filter::Xbr | Filter::Xbrz => {
                 // Map the destination pixel centre back to source space, then blend the
                 // four surrounding source texels. `-0.5` centres the sample so the image
                 // is not shifted half a pixel.
@@ -437,7 +451,7 @@ mod tests {
 
     #[test]
     fn filter_parse_round_trips() {
-        for f in [Filter::Nearest, Filter::Linear, Filter::Xbr] {
+        for f in [Filter::Nearest, Filter::Linear, Filter::Xbr, Filter::Xbrz] {
             assert_eq!(Filter::parse(f.as_str()), Some(f));
         }
         assert_eq!(Filter::parse("NEAREST"), Some(Filter::Nearest));
@@ -446,20 +460,23 @@ mod tests {
         assert_eq!(Filter::parse("bilinear"), Some(Filter::Linear));
         assert_eq!(Filter::parse("xbr"), Some(Filter::Xbr));
         assert_eq!(Filter::parse("HD"), Some(Filter::Xbr));
+        assert_eq!(Filter::parse("xbrz"), Some(Filter::Xbrz));
         assert_eq!(Filter::parse("nope"), None);
         assert_eq!(Filter::default(), Filter::Xbr); // xBR ("HD") by default
     }
 
     #[test]
-    fn xbr_filter_path_fills_without_panic() {
-        // Exercises the xBR prescale (wilson_engine::xbr2x) + bilinear fit end to end.
+    fn xbr_and_xbrz_filter_paths_fill_without_panic() {
+        // Exercises the xBR/xBRZ prescale (wilson_engine::xbr2x / xbrz2x) + bilinear fit.
         let src = [
             255, 0, 0, 255, 0, 255, 0, 255, // red, green
             0, 0, 255, 255, 255, 255, 0, 255, // blue, yellow
         ];
-        let mut dst = [0u32; 64];
-        scale_rgba_to_argb(&src, 2, 2, &mut dst, 8, 8, ScaleMode::Stretch, Filter::Xbr);
-        assert!(dst.iter().any(|&p| p != 0), "xBR path rendered nothing");
+        for f in [Filter::Xbr, Filter::Xbrz] {
+            let mut dst = [0u32; 64];
+            scale_rgba_to_argb(&src, 2, 2, &mut dst, 8, 8, ScaleMode::Stretch, f);
+            assert!(dst.iter().any(|&p| p != 0), "{f:?} path rendered nothing");
+        }
     }
 
     #[test]

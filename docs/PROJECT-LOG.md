@@ -6,6 +6,28 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-16 — `--filter xbrz`: xBRZ portado p/ Rust, como opção (xBR segue padrão)
+
+Depois de mostrar ao usuário uma amostra visual xBR vs xBRZ, ele escolheu **manter o xBR
+como padrão** e **adicionar o xBRZ como opção**.
+
+- **`crates/wilson-engine/src/xbrz.rs`** (novo): porte fiel do **xBRZ 2×** de Zenju
+  (projeto HqMAME, **GPL-3.0**, compatível com nosso GPL-3.0-or-later) — `preProcessCorners`,
+  o kernel `blendPixel`/`FILT2` nas 4 rotações, os pesos do `Scaler2x`, os defaults do
+  `ScalerCfg` (lumaWeight=1, equalColorTolerance=30, dominantDirectionThreshold=3.6,
+  steepDirectionThreshold=2.2) e a métrica YCbCr BT.2020. Mesma assinatura `xbrz2x`.
+  Exemplo `xbrz_one`.
+- **Integração:** `scale.rs` ganha `Filter::Xbrz` (parse `xbrz`, dispatch = `xbrz2x` + fit
+  bilinear, igual ao xBR); `config.rs`/`main.rs` (help) atualizados. **Padrão segue `xbr`.**
+- **Diferença prática:** o xBR dissolve o dither de 1992 (visual remaster liso); o xBRZ
+  limpa as bordas mas **preserva** a textura do dither (mais perto do original).
+- **Fidelidade:** *por construção* (porte fiel) + testes de propriedade — **não**
+  byte-verificada contra o binário de referência (rodar código externo é bloqueado no
+  sandbox), ao contrário do xBR (que cravamos vs ffmpeg, PSNR ∞).
+- `fmt` + `clippy -D warnings` + workspace (154) verdes.
+
+---
+
 ## 2026-06-16 — `--filter xbr`: xBR real (Hyllian) substitui o EPX
 
 Em resposta ao usuário ("o xBR realmente tá funcionando? quero o xBR mais forte e
