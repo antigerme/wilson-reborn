@@ -1,19 +1,24 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-//! xBR-style **edge-directed 2× upscaler** for the indexed art once it's been turned
-//! into RGBA.
+//! **xBR (Hyllian)** edge-directed 2× upscaler for the indexed art once it's been turned
+//! into RGBA, plus an optional dither smoother.
 //!
-//! It is the Scale2x/EPX family with two additions that make it smooth *and* sharp:
-//! pixels are compared by **colour distance with a tolerance** (so it works on the
-//! game's near-colour gradients, not only exact matches), and detected diagonal edges
-//! are **blended** (anti-aliased) instead of hard-stepped. Flat regions and dithered
-//! fields (where opposite neighbours are similar) are left untouched, so the original
-//! look is preserved while jagged sprite/edge staircases are rounded off.
+//! [`xbr2x`] is a faithful CPU port of the real **xBR level-2** algorithm from ffmpeg's
+//! `libavfilter/vf_xbr.c` (Hyllian's xBR). ffmpeg's file is LGPL-2.1-or-later, which is
+//! compatible with this crate's GPL-3.0-or-later. Unlike the simpler Scale2x/EPX family it
+//! replaced, real xBR detects edges in **luma+chroma** space, dissolves the 1992 ordered
+//! dithering into solid colour, and anti-aliases diagonal/curved edges into smooth ramps —
+//! the "HD remaster" look — while leaving flat areas and straight horizontal/vertical
+//! edges crisp. The app runs it once per frame (cheap at the screensaver's frame rate),
+//! then does a bilinear fit into the window.
 //!
-//! This is the runtime cousin of ffmpeg's `xbr` filter (which we use only to eyeball the
-//! result offline); it is a faithful *style*, not a byte-exact port of Hyllian's xBR.
+//! TODO(xBRZ): once this is validated against the originals, add **xBRZ** (the refined xBR
+//! fork) as an alternative `--filter` and compare it head-to-head with this (per the
+//! 2026-06-16 plan with the user). xBRZ tends to give even cleaner gradients on sprites,
+//! but its upstream licence needs checking — prefer a clean MIT/Apache/GPL Rust port.
 
 /// Squared, luma-weighted RGB distance between two pixels (slices starting at an RGBA
 /// pixel; alpha is ignored). Green is weighted highest, matching human luma sensitivity.
+/// Used by [`dedither`] (xBR itself uses the YUV [`Px::df`] metric below).
 #[inline]
 fn dist(a: &[u8], b: &[u8]) -> i32 {
     let dr = i32::from(a[0]) - i32::from(b[0]);
@@ -22,61 +27,203 @@ fn dist(a: &[u8], b: &[u8]) -> i32 {
     2 * dr * dr + 4 * dg * dg + 3 * db * db
 }
 
-/// Two pixels count as "the same colour" when within this squared-distance tolerance.
-/// ~`2·dr²+4·dg²+3·db²`; chosen so close shades merge but distinct colours (sprite vs
-/// background) stay separate. Tuned by eye on the original Johnny Castaway frames.
+/// Two pixels count as "the same colour" for [`dedither`] when within this squared-distance
+/// tolerance (`~2·dr²+4·dg²+3·db²`); chosen so close shades merge but distinct colours stay
+/// separate. Tuned by eye on the original Johnny Castaway frames.
 const TOLERANCE: i32 = 12_000;
 
-/// Upscale an RGBA image by 2× using the edge-directed rule. Returns the `2w × 2h` RGBA
-/// buffer. `src` must be `w*h*4` bytes.
+/// A source pixel carried with its precomputed Y'UV (so xBR's distance metric is a few
+/// integer subtractions instead of re-deriving Y'UV on every one of the ~80 comparisons a
+/// pixel takes part in).
+#[derive(Clone, Copy)]
+struct Px {
+    rgb: [u8; 3],
+    yuv: [i32; 3],
+}
+
+impl Px {
+    /// xBR's pixel difference: sum of absolute Y'UV component differences (ffmpeg's `df`).
+    #[inline]
+    fn df(self, o: Px) -> i32 {
+        (self.yuv[0] - o.yuv[0]).abs()
+            + (self.yuv[1] - o.yuv[1]).abs()
+            + (self.yuv[2] - o.yuv[2]).abs()
+    }
+    /// "Close enough to be the same colour" (ffmpeg's `eq`, threshold 155 in Y'UV units).
+    #[inline]
+    fn eq(self, o: Px) -> bool {
+        self.df(o) < 155
+    }
+    /// Exact-colour inequality (ffmpeg compares the packed RGB, not the Y'UV).
+    #[inline]
+    fn ne_rgb(self, o: Px) -> bool {
+        self.rgb != o.rgb
+    }
+}
+
+/// BT.601 RGB→Y'UV (integer), matching the weights ffmpeg's xBR builds its lookup from.
+#[inline]
+fn rgb_to_yuv(p: [u8; 3]) -> [i32; 3] {
+    let (r, g, b) = (i32::from(p[0]), i32::from(p[1]), i32::from(p[2]));
+    let y = (299 * r + 587 * g + 114 * b) / 1000;
+    let u = (-169 * r - 331 * g + 500 * b) / 1000 + 128;
+    let v = (500 * r - 419 * g - 81 * b) / 1000 + 128;
+    [y, u, v]
+}
+
+/// Per-channel linear interpolation `a + (b-a)·m/2^s` — the integer form of ffmpeg's
+/// `ALPHA_BLEND_*_W` macros (e.g. `64_W` = m=1,s=2 → ¼ of `b`; `192_W` = m=3,s=2 → ¾;
+/// `224_W` = m=7,s=3 → ⅞; `128_W` = m=1,s=1 → ½).
+#[inline]
+fn blend(a: [u8; 3], b: [u8; 3], m: i32, s: u32) -> [u8; 3] {
+    let mix = |av: u8, bv: u8| (i32::from(av) + (((i32::from(bv) - i32::from(av)) * m) >> s)) as u8;
+    [mix(a[0], b[0]), mix(a[1], b[1]), mix(a[2], b[2])]
+}
+
+/// One quadrant of the xBR kernel — a direct port of ffmpeg's `FILT2` macro. Writes up to
+/// three of the four output sub-pixels in `e` (`[TL, TR, BL, BR]`); the caller invokes it
+/// four times with rotated neighbourhoods to cover all corners. `n1`/`n2`/`n3` select which
+/// sub-pixels this rotation may touch.
+// A faithful port of a 25-argument C macro; the neighbourhood pixels are irreducible.
+#[allow(clippy::too_many_arguments)]
+#[inline]
+fn filt2(
+    e: &mut [[u8; 3]; 4],
+    pe: Px,
+    pi: Px,
+    ph: Px,
+    pf: Px,
+    pg: Px,
+    pc: Px,
+    pd: Px,
+    pb: Px,
+    f4: Px,
+    i4: Px,
+    h5: Px,
+    i5: Px,
+    n1: usize,
+    n2: usize,
+    n3: usize,
+) {
+    if !pe.ne_rgb(ph) || !pe.ne_rgb(pf) {
+        return; // PE == PH or PE == PF → no edge to round here.
+    }
+    let e_ = pe.df(pc) + pe.df(pg) + pi.df(h5) + pi.df(f4) + (ph.df(pf) << 2);
+    let i_ = ph.df(pd) + ph.df(i5) + pf.df(i4) + pf.df(pb) + (pe.df(pi) << 2);
+    if e_ > i_ {
+        return;
+    }
+    // Choose the nearer edge colour to bleed in.
+    let px = if pe.df(pf) <= pe.df(ph) {
+        pf.rgb
+    } else {
+        ph.rgb
+    };
+    let strong = e_ < i_
+        && ((!pf.eq(pb) && !ph.eq(pd))
+            || (pe.eq(pi) && !pf.eq(i4) && !ph.eq(i5))
+            || pe.eq(pg)
+            || pe.eq(pc));
+    if !strong {
+        // Weak edge: a plain 50/50 on the outer corner.
+        e[n3] = blend(e[n3], px, 1, 1);
+        return;
+    }
+    let ke = pf.df(pg);
+    let ki = ph.df(pc);
+    let left = ke << 1 <= ki && pe.ne_rgb(pg) && pd.ne_rgb(pg);
+    let up = ke >= ki << 1 && pe.ne_rgb(pc) && pb.ne_rgb(pc);
+    if left && up {
+        e[n3] = blend(e[n3], px, 7, 3); // 224/256
+        e[n2] = blend(e[n2], px, 1, 2); // 64/256
+        e[n1] = e[n2];
+    } else if left {
+        e[n3] = blend(e[n3], px, 3, 2); // 192/256
+        e[n2] = blend(e[n2], px, 1, 2); // 64/256
+    } else if up {
+        e[n3] = blend(e[n3], px, 3, 2);
+        e[n1] = blend(e[n1], px, 1, 2);
+    } else {
+        e[n3] = blend(e[n3], px, 1, 1); // diagonal: 128/256
+    }
+}
+
+/// Upscale an RGBA image by 2× with real xBR (Hyllian, level 2). Returns the `2w × 2h`
+/// RGBA buffer (always fully opaque). `src` must be `w*h*4` bytes.
 pub fn xbr2x(src: &[u8], w: usize, h: usize) -> Vec<u8> {
     let (dw, dh) = (w * 2, h * 2);
     let mut out = vec![0u8; dw * dh * 4];
     if w == 0 || h == 0 {
         return out;
     }
-    let idx = |x: i32, y: i32| -> usize {
+    // Precompute Y'UV once per source pixel (each is compared ~80× across the 4 rotations).
+    let yuv: Vec<[i32; 3]> = src
+        .chunks_exact(4)
+        .map(|p| rgb_to_yuv([p[0], p[1], p[2]]))
+        .collect();
+    let at = |x: i32, y: i32| -> Px {
         let xc = x.clamp(0, w as i32 - 1) as usize;
         let yc = y.clamp(0, h as i32 - 1) as usize;
-        (yc * w + xc) * 4
+        let i = yc * w + xc;
+        let o = i * 4;
+        Px {
+            rgb: [src[o], src[o + 1], src[o + 2]],
+            yuv: yuv[i],
+        }
     };
 
     for y in 0..h as i32 {
         for x in 0..w as i32 {
-            let e = idx(x, y);
-            let b = idx(x, y - 1); // up
-            let d = idx(x - 1, y); // left
-            let f = idx(x + 1, y); // right
-            let hh = idx(x, y + 1); // down
+            // The 5×5 neighbourhood (minus far corners), named as in ffmpeg/Hyllian.
+            let pe = at(x, y);
+            let pb = at(x, y - 1);
+            let pd = at(x - 1, y);
+            let pf = at(x + 1, y);
+            let ph = at(x, y + 1);
+            let pa = at(x - 1, y - 1);
+            let pc = at(x + 1, y - 1);
+            let pg = at(x - 1, y + 1);
+            let pi = at(x + 1, y + 1);
+            let a0 = at(x - 2, y - 1);
+            let a1 = at(x - 1, y - 2);
+            let b1 = at(x, y - 2);
+            let c1 = at(x + 1, y - 2);
+            let c4 = at(x + 2, y - 1);
+            let d0 = at(x - 2, y);
+            let f4 = at(x + 2, y);
+            let g0 = at(x - 2, y + 1);
+            let g5 = at(x - 1, y + 2);
+            let h5 = at(x, y + 2);
+            let i4 = at(x + 2, y + 1);
+            let i5 = at(x + 1, y + 2);
 
-            // The four 2×2 output texels for this source pixel.
-            let o_tl = ((2 * y as usize) * dw + 2 * x as usize) * 4;
-            let o_tr = o_tl + 4;
-            let o_bl = o_tl + dw * 4;
-            let o_br = o_bl + 4;
+            // Four output sub-pixels [TL, TR, BL, BR], each starting as the centre colour.
+            let mut e = [pe.rgb; 4];
+            // Four rotations of the same rule (NW, NE, SW, SE).
+            filt2(
+                &mut e, pe, pi, ph, pf, pg, pc, pd, pb, f4, i4, h5, i5, 1, 2, 3,
+            );
+            filt2(
+                &mut e, pe, pc, pf, pb, pi, pa, ph, pd, b1, c1, f4, c4, 0, 3, 1,
+            );
+            filt2(
+                &mut e, pe, pa, pb, pd, pc, pg, pf, ph, d0, a0, b1, a1, 2, 1, 0,
+            );
+            filt2(
+                &mut e, pe, pg, pd, ph, pa, pi, pb, pf, h5, g5, d0, g0, 3, 0, 2,
+            );
 
-            let same = |i: usize, j: usize| dist(&src[i..], &src[j..]) <= TOLERANCE;
-
-            // Only round corners at a genuine edge: opposite neighbours must differ
-            // (otherwise we're inside a flat area or an even dither field — leave it).
-            let is_edge = !same(b, hh) && !same(d, f);
-            let corners = [
-                (o_tl, is_edge && same(d, b), d),  // top-left  ← left/up diagonal
-                (o_tr, is_edge && same(b, f), f),  // top-right ← up/right diagonal
-                (o_bl, is_edge && same(d, hh), d), // bottom-left  ← left/down diagonal
-                (o_br, is_edge && same(hh, f), f), // bottom-right ← down/right diagonal
-            ];
-            for (o, blend, n) in corners {
-                if blend {
-                    // 50/50 blend of the centre with the matching edge colour: softens
-                    // the staircase into an anti-aliased diagonal.
-                    out[o] = ((u16::from(src[e]) + u16::from(src[n])) / 2) as u8;
-                    out[o + 1] = ((u16::from(src[e + 1]) + u16::from(src[n + 1])) / 2) as u8;
-                    out[o + 2] = ((u16::from(src[e + 2]) + u16::from(src[n + 2])) / 2) as u8;
-                    out[o + 3] = 255;
-                } else {
-                    out[o..o + 4].copy_from_slice(&src[e..e + 4]);
-                }
+            let tl = ((2 * y as usize) * dw + 2 * x as usize) * 4;
+            for (o, c) in [
+                (tl, e[0]),
+                (tl + 4, e[1]),
+                (tl + dw * 4, e[2]),
+                (tl + dw * 4 + 4, e[3]),
+            ] {
+                out[o] = c[0];
+                out[o + 1] = c[1];
+                out[o + 2] = c[2];
+                out[o + 3] = 255;
             }
         }
     }
@@ -96,7 +243,8 @@ pub fn xbr2x(src: &[u8], w: usize, h: usize) -> Vec<u8> {
 ///
 /// A plain blur would smooth the dither too, but also soften every sprite; this targets
 /// only the checkerboard pattern. Optional (off by default): the dithering is the
-/// authentic look, this just offers a smoother sea.
+/// authentic look, this just offers a smoother sea. xBR already dissolves most dithering;
+/// this remains for use with `--filter nearest`/`linear`.
 pub fn dedither(src: &[u8], w: usize, h: usize) -> Vec<u8> {
     let mut out = src.to_vec(); // unchanged unless a pixel is a detected checkerboard
     if w == 0 || h == 0 {
@@ -145,7 +293,8 @@ mod tests {
 
     #[test]
     fn flat_image_is_unchanged() {
-        // A uniform field has no edges, so every output texel is the source colour.
+        // A uniform field has no edges (PE == PH == PF everywhere), so every output texel
+        // is the source colour — opaque.
         let mut src = Vec::new();
         for _ in 0..(4 * 4) {
             src.extend_from_slice(&[40, 80, 120, 255]);
@@ -155,42 +304,156 @@ mod tests {
     }
 
     #[test]
-    fn dither_field_is_preserved_not_blurred() {
-        // A 2-colour checkerboard (like the water dither): opposite neighbours are equal,
-        // so `is_edge` is false everywhere → no blending, the texture survives.
-        let a = [10u8, 10, 200, 255];
-        let c = [10u8, 10, 230, 255]; // a close shade (within tolerance)
+    fn straight_edge_stays_hard() {
+        // A vertical two-colour split: on a straight H/V edge either PH or PF equals PE, so
+        // the kernel never fires — no intermediate colours are invented (xBR only rounds
+        // diagonals/corners, not straight edges).
+        let a = [10u8, 10, 200];
+        let b = [220u8, 30, 30];
+        let (w, h) = (6usize, 6usize);
         let mut src = Vec::new();
-        for y in 0..4 {
-            for x in 0..4 {
-                src.extend_from_slice(if (x + y) % 2 == 0 { &a } else { &c });
+        for _y in 0..h {
+            for x in 0..w {
+                let c = if x < w / 2 { a } else { b };
+                src.extend_from_slice(&[c[0], c[1], c[2], 255]);
             }
         }
-        let out = xbr2x(&src, 4, 4);
-        // Every output texel is one of the two original shades (no blended midtone).
-        assert!(out.chunks_exact(4).all(|p| p == a || p == c));
+        let out = xbr2x(&src, w, h);
+        assert!(
+            out.chunks_exact(4).all(|p| p[0..3] == a || p[0..3] == b),
+            "a straight edge must stay hard (no blended colours)"
+        );
     }
 
     #[test]
-    fn diagonal_edge_gets_blended() {
-        // Black above a diagonal, white below — the staircase corner should be blended to
-        // a midtone (grey) rather than a hard black/white step.
-        let blk = [0u8, 0, 0, 255];
-        let wht = [255u8, 255, 255, 255];
-        // 3x3 with a clear corner at the centre: top row black, bottom rows white.
-        let rows = [[blk, blk, blk], [wht, blk, blk], [wht, wht, blk]];
+    fn diagonal_edge_is_antialiased() {
+        // Black/white diagonal split → xBR must blend the staircase into intermediate greys.
+        let (w, h) = (8usize, 8usize);
         let mut src = Vec::new();
-        for r in rows {
-            for c in r {
-                src.extend_from_slice(&c);
+        for y in 0..h {
+            for x in 0..w {
+                let c = if x as i32 > y as i32 { 255u8 } else { 0u8 };
+                src.extend_from_slice(&[c, c, c, 255]);
             }
         }
-        let out = xbr2x(&src, 3, 3);
-        // Somewhere a grey (blended) texel must appear — proof of anti-aliasing.
-        let grey = out
+        let out = xbr2x(&src, w, h);
+        let has_grey = out
             .chunks_exact(4)
             .any(|p| (1..=254).contains(&p[0]) && p[0] == p[1] && p[1] == p[2]);
-        assert!(grey, "expected a blended (grey) texel on the diagonal");
+        assert!(
+            has_grey,
+            "xBR must anti-alias the diagonal into grey midtones"
+        );
+    }
+
+    #[test]
+    fn output_is_fully_opaque() {
+        // Whatever the content, every output pixel's alpha is 255.
+        let mut src = Vec::new();
+        for i in 0..(5 * 5) {
+            let v = (i * 9) as u8;
+            src.extend_from_slice(&[v, 255 - v, v / 2, 200]);
+        }
+        let out = xbr2x(&src, 5, 5);
+        assert!(out.chunks_exact(4).all(|p| p[3] == 255));
+    }
+
+    #[test]
+    fn xbr_matches_ffmpeg_golden() {
+        // An 8×8 fixture (flat runs, a diagonal, a 2-colour dither, colour edges) and the
+        // EXACT 16×16 output of ffmpeg's `xbr=2` (Hyllian xBR-lv2). Our port must reproduce
+        // it byte-for-byte — this locks fidelity in CI, which has no ffmpeg. Generated and
+        // verified 2026-06-16; on that day every real 640×480 frame also matched ffmpeg
+        // exactly (PSNR ∞).
+        #[rustfmt::skip]
+        const GOLDEN_IN: [u8; 192] = [
+            255,255,255,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,
+            40,180,60,255,255,255,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,
+            10,10,200,40,180,60,255,255,255,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,
+            40,180,60,10,10,200,40,180,60,255,255,255,220,30,30,220,30,30,220,30,30,220,30,30,
+            10,10,200,40,180,60,10,10,200,40,180,60,255,255,255,220,30,30,220,30,30,220,30,30,
+            40,180,60,10,10,200,40,180,60,10,10,200,40,180,60,255,255,255,220,30,30,220,30,30,
+            10,10,200,40,180,60,10,10,200,40,180,60,10,10,200,40,180,60,255,255,255,220,30,30,
+            40,180,60,10,10,200,40,180,60,10,10,200,40,180,60,10,10,200,40,180,60,255,255,255,
+        ];
+        #[rustfmt::skip]
+        const GOLDEN_OUT: [u8; 768] = [
+            255,255,255,255,255,255,228,86,86,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,
+            220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,
+            255,255,255,255,255,255,246,198,198,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,
+            220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,
+            93,198,108,201,236,206,255,255,255,237,142,142,220,30,30,220,30,30,220,30,30,220,30,30,
+            220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,
+            40,180,60,40,180,60,147,217,157,255,255,255,237,142,142,220,30,30,220,30,30,220,30,30,
+            220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,
+            17,52,165,32,137,95,40,180,60,147,217,157,255,255,255,237,142,142,220,30,30,220,30,30,
+            220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,
+            10,10,200,10,10,200,25,95,130,40,180,60,147,217,157,255,255,255,237,142,142,220,30,30,
+            220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,
+            32,137,95,17,52,165,10,10,200,25,95,130,40,180,60,147,217,157,255,255,255,237,142,142,
+            220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,
+            40,180,60,25,95,130,25,95,130,10,10,200,25,95,130,40,180,60,147,217,157,255,255,255,
+            237,142,142,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,
+            10,10,200,25,95,130,25,95,130,25,95,130,10,10,200,25,95,130,40,180,60,147,217,157,
+            255,255,255,237,142,142,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,
+            10,10,200,25,95,130,25,95,130,25,95,130,25,95,130,10,10,200,25,95,130,40,180,60,
+            147,217,157,255,255,255,237,142,142,220,30,30,220,30,30,220,30,30,220,30,30,220,30,30,
+            40,180,60,25,95,130,25,95,130,25,95,130,25,95,130,25,95,130,10,10,200,25,95,130,
+            40,180,60,147,217,157,255,255,255,237,142,142,220,30,30,220,30,30,220,30,30,220,30,30,
+            40,180,60,25,95,130,25,95,130,25,95,130,25,95,130,25,95,130,25,95,130,10,10,200,
+            25,95,130,40,180,60,147,217,157,255,255,255,237,142,142,220,30,30,220,30,30,220,30,30,
+            10,10,200,25,95,130,25,95,130,25,95,130,25,95,130,25,95,130,25,95,130,25,95,130,
+            10,10,200,25,95,130,40,180,60,147,217,157,255,255,255,237,142,142,220,30,30,220,30,30,
+            10,10,200,25,95,130,25,95,130,25,95,130,25,95,130,25,95,130,25,95,130,25,95,130,
+            25,95,130,10,10,200,25,95,130,40,180,60,147,217,157,255,255,255,246,198,198,228,86,86,
+            40,180,60,25,95,130,25,95,130,25,95,130,25,95,130,25,95,130,25,95,130,25,95,130,
+            25,95,130,17,52,165,10,10,200,32,137,95,40,180,60,201,236,206,255,255,255,255,255,255,
+            40,180,60,40,180,60,10,10,200,10,10,200,40,180,60,40,180,60,10,10,200,10,10,200,
+            40,180,60,32,137,95,10,10,200,17,52,165,40,180,60,93,198,108,255,255,255,255,255,255,
+        ];
+        let mut rgba = Vec::with_capacity(8 * 8 * 4);
+        for px in GOLDEN_IN.chunks_exact(3) {
+            rgba.extend_from_slice(&[px[0], px[1], px[2], 255]);
+        }
+        let out = xbr2x(&rgba, 8, 8);
+        let out_rgb: Vec<u8> = out
+            .chunks_exact(4)
+            .flat_map(|p| [p[0], p[1], p[2]])
+            .collect();
+        assert_eq!(
+            out_rgb.len(),
+            GOLDEN_OUT.len(),
+            "16×16×3 expected from an 8×8 input"
+        );
+        assert!(
+            out_rgb == GOLDEN_OUT,
+            "xBR output must match ffmpeg's xbr=2 byte-for-byte"
+        );
+    }
+
+    #[test]
+    #[ignore = "prints xBR throughput; run with --ignored --nocapture"]
+    fn xbr2x_speed() {
+        // Worst case: every pixel a distinct colour (max edges → max work and writes).
+        let (w, h) = (640usize, 480usize);
+        let mut src = vec![0u8; w * h * 4];
+        for (i, px) in src.chunks_exact_mut(4).enumerate() {
+            px[0] = (i % 251) as u8;
+            px[1] = ((i / 3) % 253) as u8;
+            px[2] = ((i / 7) % 249) as u8;
+            px[3] = 255;
+        }
+        let iters = 20;
+        let t = std::time::Instant::now();
+        let mut acc = 0u8;
+        for _ in 0..iters {
+            acc = acc.wrapping_add(xbr2x(&src, w, h)[0]);
+        }
+        let ms = t.elapsed().as_secs_f64() * 1000.0 / f64::from(iters);
+        println!(
+            "xbr2x 640x480 worst-case: {ms:.1} ms/frame (~{:.0} fps) [acc={acc}]",
+            1000.0 / ms
+        );
     }
 
     #[test]

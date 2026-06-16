@@ -58,9 +58,9 @@ pub enum Filter {
     Nearest,
     /// Bilinear: smooths the upscaled pixels (softer, less "retro grid").
     Linear,
-    /// xBR-style edge-directed 2× upscale, then bilinear fit: smooth *and* sharp on
-    /// sprites and edges (the "HD remaster" look) — the **default**. A bit heavier per
-    /// frame (negligible for a screensaver).
+    /// Real **xBR (Hyllian)** edge-directed 2× upscale, then bilinear fit: smooth *and*
+    /// sharp on sprites and edges, dissolving the 1992 dither (the "HD remaster" look) —
+    /// the **default**. A bit heavier per frame (negligible for a screensaver).
     #[default]
     Xbr,
 }
