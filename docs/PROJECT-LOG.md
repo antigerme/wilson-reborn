@@ -6,6 +6,20 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-16 — `--filter` padrão passa a ser `linear`; deps de build do Linux no INSTALL
+
+A pedido do usuário, o **padrão** do `--filter` passou de `xbr` para **`linear`** (mais leve
+e consistente em qualquer tamanho de janela). `xbr`/`xbrz` seguem disponíveis por
+`--filter`. Mudança: `#[default]` no `Filter::Linear` (`scale.rs`); help/`/c` e testes de
+default ajustados.
+
+No mesmo lote, `docs/INSTALL.md` ganhou a seção de **dependências de sistema (Linux)** para
+compilar do fonte (Fedora + Debian/Ubuntu, batendo com o CI) — o build linka contra o ALSA
+(feature `audio`, padrão) e sem o `alsa-lib-devel`/`libasound2-dev` falha em `alsa-sys`.
+Inclui a alternativa sem áudio (`--no-default-features`).
+
+---
+
 ## 2026-06-16 — xBRZ: fidelidade **byte-a-byte** cravada vs binário de referência
 
 O usuário autorizou rodar o xBRZ de referência (antes bloqueado pelo sandbox). Compilei o

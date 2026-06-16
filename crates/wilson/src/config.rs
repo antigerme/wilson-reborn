@@ -236,7 +236,7 @@ mod tests {
         assert!(!c.mute);
         assert_eq!(c.speed, 100);
         assert_eq!(c.scale, ScaleMode::Fit);
-        assert_eq!(c.filter, Filter::Xbr); // "HD" xBR by default
+        assert_eq!(c.filter, Filter::Linear); // linear by default
         assert!(!c.dedither); // keep the authentic dither by default
         assert!(!c.debug); // no diagnostics by default
     }
