@@ -19,14 +19,16 @@ unzip scrantic-run.zip -d jc-original
 wilson --data jc-original          # roda com os dados originais
 ```
 
-O `scrantic-run.zip` contém `RESOURCE.MAP` + `RESOURCE.001` (os gráficos/animações — é o
-que o `wilson` precisa) e o executável original (`SCRANTIC.EXE`/`.SCR`). **Validado:** o
-`wilson` decodifica e roda essa cópia (testada além da cópia de teste do projeto).
+O `scrantic-run.zip` contém `RESOURCE.MAP` + `RESOURCE.001` (os gráficos/animações) e o
+executável original (`SCRANTIC.EXE`/`.SCR`). **Validado:** o `wilson` decodifica e roda
+essa cópia (testada além da cópia de teste do projeto).
 
-> **Som:** esse zip **não** traz os efeitos de som (`sound0.wav`..`sound24.wav`); sem eles
-> o app roda **mudo** (degrada para silêncio). Para ter som, coloque os `soundN.wav` no
-> mesmo diretório dos dados. **Copyright:** os dados são da Sierra/Dynamix; o Internet
-> Archive os preserva como software histórico — use sua própria cópia.
+> **Som — automático:** os 23 efeitos de som originais ficam embutidos como WAVs **dentro
+> do `SCRANTIC.EXE`** (não há `soundN.wav` no zip). O `wilson` **extrai os sons do próprio
+> `SCRANTIC.EXE`/`.SCR`** que estiver na pasta de dados — então `scrantic-run.zip` já roda
+> **com som**, sem arquivos extras. (Se quiser, `soundN.wav` na pasta têm prioridade.)
+> **Copyright:** os dados são da Sierra/Dynamix; o Internet Archive os preserva como
+> software histórico — use sua própria cópia.
 
 ## Baixar os binários
 

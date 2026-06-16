@@ -55,6 +55,21 @@ impl Audio {
                             *slot = Some(bytes);
                         }
                     }
+                    // Fallback: the original distribution (e.g. scrantic-run.zip) ships no
+                    // soundN.wav — the effects are embedded as WAVs in SCRANTIC.EXE/.SCR.
+                    if sounds.iter().all(Option::is_none) {
+                        for exe in ["SCRANTIC.EXE", "SCRANTIC.SCR"] {
+                            let extracted = wilson_dgds::find_ci(dir, exe)
+                                .and_then(|p| std::fs::read(p).ok())
+                                .map(|b| wilson_dgds::sounds_from_scrantic_exe(&b));
+                            if let Some(ex) = extracted {
+                                if ex.iter().any(Option::is_some) {
+                                    sounds = ex;
+                                    break;
+                                }
+                            }
+                        }
+                    }
                 }
             }
             Audio::assemble(sounds, muted)

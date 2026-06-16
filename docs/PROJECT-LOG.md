@@ -6,6 +6,26 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-16 — som extraído do `SCRANTIC.EXE` original (dispensa `soundN.wav`)
+
+Investigação a pedido do usuário ("extrair o som dos originais") + correção importante:
+**jc_reborn/JCOS são reimplementações, não o original**. Descobri onde o original guarda os
+sons: **não** em `RESOURCE.001`, mas como **23 chunks WAV/RIFF embutidos no `SCRANTIC.EXE`**
+(mono, 11025 Hz, 8-bit). Provei que o PCM (`data`) é **byte-idêntico** aos `soundN.wav` que
+o JCOS/jc_reborn redistribuem — eles só re-embalaram o WAV.
+
+- **`crates/wilson-dgds/src/exe_sound.rs`** (novo): `sounds_from_scrantic_exe(exe)` varre os
+  RIFF/WAVE e mapeia cada um ao id pelo **tamanho do `data`** (único por efeito; robusto à
+  ordem). Testes: sintético + **gated** no `SCRANTIC.EXE` real (extrai 23, pula 11 e 13).
+- **Runtime** (`audio.rs`): sem `soundN.wav` na pasta, extrai do `SCRANTIC.EXE`/`.SCR`.
+- **Embed** (`build.rs` + build-dep `wilson-dgds`): idem — escreve os WAVs no `OUT_DIR` e
+  embute. `soundN.wav` explícitos têm prioridade nos dois casos.
+- Resultado: o `scrantic-run.zip` do Internet Archive roda **com som** sozinho. Validado
+  contra `/tmp/scrantic/data` (runtime + embed = 23 sons). `fmt`/`clippy`(default/no-audio/
+  embed-data)/testes (88) verdes. Docs em `INSTALL.md`/`CLAUDE.md`.
+
+---
+
 ## 2026-06-16 — fix: screensaver fechava na hora no Windows (AltGr fantasma)
 
 Bug relatado: no Windows o app abria e **fechava instantaneamente** em tela cheia (em

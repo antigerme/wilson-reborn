@@ -59,12 +59,40 @@ fn main() {
     );
 
     // Embed whichever soundN.wav are present (0..=24; the originals skip 11 and 13).
-    let mut sounds = String::from("&[");
+    let mut entries: Vec<(u16, std::path::PathBuf)> = Vec::new();
     for id in 0u16..25 {
         let wav = dir.join(format!("sound{id}.wav"));
         if wav.is_file() {
-            sounds.push_str(&format!("({id}, include_bytes!(r\"{}\")), ", wav.display()));
+            entries.push((id, wav));
         }
+    }
+    // Fallback: no soundN.wav supplied (e.g. the original scrantic-run distribution) — the
+    // effects are embedded as WAVs in SCRANTIC.EXE/.SCR. Extract them to OUT_DIR and embed.
+    if entries.is_empty() {
+        let out_parent = Path::new(&out).parent().unwrap().to_path_buf();
+        for exe in ["SCRANTIC.EXE", "SCRANTIC.SCR"] {
+            let Ok(bytes) = fs::read(dir.join(exe)) else {
+                continue;
+            };
+            let sounds = wilson_dgds::sounds_from_scrantic_exe(&bytes);
+            if sounds.iter().any(Option::is_some) {
+                for (id, slot) in sounds.iter().enumerate() {
+                    if let Some(wav) = slot {
+                        let path = out_parent.join(format!("sound{id}.wav"));
+                        fs::write(&path, wav).expect("write extracted soundN.wav");
+                        entries.push((id as u16, path));
+                    }
+                }
+                break;
+            }
+        }
+    }
+    let mut sounds = String::from("&[");
+    for (id, path) in &entries {
+        sounds.push_str(&format!(
+            "({id}, include_bytes!(r\"{}\")), ",
+            path.display()
+        ));
     }
     sounds.push(']');
 

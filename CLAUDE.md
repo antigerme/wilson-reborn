@@ -47,9 +47,14 @@ cargo run -p wilson-engine --example render_run -- <dir> /tmp/out 27000 225 1
 > (extrair com `7z x`). Extraia para fora do repo (ex.: `/tmp`) — são **copyright**.
 > **Fonte legal/pública dos originais:** o screensaver está preservado no Internet Archive
 > — <https://archive.org/details/johnny-castaway-screensaver> (`scrantic-run.zip` traz
-> `RESOURCE.MAP` + `RESOURCE.001`; **sem** os `soundN.wav`). Validado: o engine decodifica
-> e roda essa cópia também (≠ md5 da `repos/dist`). Documentado em `docs/INSTALL.md`.
-> (decodifica: 116 bmp / 10 scr / 41 ttm / 10 ads; invariantes + holidays OK.)
+> `RESOURCE.MAP` + `RESOURCE.001` + `SCRANTIC.EXE`). Validado: o engine decodifica e roda
+> essa cópia também (≠ md5 da `repos/dist`; 116 bmp/10 scr/41 ttm/10 ads; invariantes +
+> holidays OK). Documentado em `docs/INSTALL.md`.
+> **Som dos originais:** os 23 efeitos ficam embutidos como WAVs **dentro do `SCRANTIC.EXE`**
+> (não em `RESOURCE.001`); `wilson_dgds::sounds_from_scrantic_exe` os extrai (mapeados por
+> tamanho do `data`, verificado byte-a-byte vs os `soundN.wav` do JCOS/jc_reborn). O app e o
+> build `embed-data` caem nisso quando não há `soundN.wav`. **jc_reborn/JCOS NÃO são o
+> original** — são reimplementações; os `soundN.wav` deles são os mesmos PCM re-embalados.
 > Os dados originais (`RESOURCE.*`) são **copyright** e **não** ficam no repo. Os testes
 > usam fixtures sintéticas — rodam sem os dados originais (essencial para o CI).
 > O app `wilson` **exige** os dados originais (`--data <dir>` ou auto-detecção no diretório
