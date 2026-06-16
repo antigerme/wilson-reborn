@@ -166,6 +166,13 @@ fn main() {
                     if let (Some(w), Some(h)) =
                         (NonZeroU32::new(size.width), NonZeroU32::new(size.height))
                     {
+                        // Pace from when the frame became due (≈ when the timer fired),
+                        // not from after we finish computing it: this absorbs the per-frame
+                        // work (engine + xBR/scale/present) into the delay instead of adding
+                        // it on top, matching jc_reborn's `lastTicks` pacing. Without this,
+                        // heavier filters (xBR) make the animation run slower than the
+                        // original.
+                        let frame_start = Instant::now();
                         surface.resize(w, h).expect("resize surface");
                         // Refresh the wall clock so the story day rolls over at midnight
                         // even within a single long-running session.
@@ -210,7 +217,10 @@ fn main() {
                         );
                         buffer.present().expect("present");
                         let delay = Duration::from_millis(cfg.frame_delay_ms(frame.delay_ticks));
-                        elwt.set_control_flow(ControlFlow::WaitUntil(Instant::now() + delay));
+                        // Deadline measured from the frame's due time, so compute time is
+                        // absorbed (period ≈ delay); if compute overran, this is already in
+                        // the past and the next frame runs immediately.
+                        elwt.set_control_flow(ControlFlow::WaitUntil(frame_start + delay));
                     }
                 }
                 _ => {}
