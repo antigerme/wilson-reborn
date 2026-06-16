@@ -2,8 +2,9 @@
 //! Wilson Reborn — the Johnny Castaway screensaver, as a live window.
 //!
 //! Runs the [`wilson_engine`] runtime on the **original** game data and presents each
-//! composited frame with `softbuffer` in a `winit` window. Any key or mouse input quits,
-//! like a real screensaver. Runs fullscreen by default (use `--windowed` for dev).
+//! composited frame with `softbuffer` in a `winit` window. Any real key press or mouse
+//! input quits, like a real screensaver (lone modifier keys are ignored — see
+//! [`key_dismisses`]). Runs fullscreen by default (use `--windowed` for dev).
 //!
 //! It needs the original Johnny Castaway data (`RESOURCE.MAP` + `RESOURCE.001`):
 //! - `wilson --data <dir>` — load the data from `<dir>`.
@@ -31,7 +32,37 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use wilson_engine::{clock, Director, Show};
 use winit::event::{ElementState, Event, StartCause, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
+use winit::keyboard::{Key, NamedKey};
 use winit::window::{Fullscreen, WindowBuilder};
+
+/// Whether a keyboard event should dismiss the screensaver (like a real one: any real key
+/// press quits). Ignores key *releases*, the **synthetic** key events the OS delivers when
+/// a window gains/loses focus, and lone **modifier** keys (Alt/AltGr/Ctrl/Shift/Super/Meta/
+/// locks/Fn). This matters on Windows: a borderless-fullscreen window receives a spurious
+/// `AltGraph` press the instant it grabs focus, which would otherwise close it immediately.
+fn key_dismisses(logical_key: &Key, state: ElementState, is_synthetic: bool) -> bool {
+    if state != ElementState::Pressed || is_synthetic {
+        return false;
+    }
+    !matches!(
+        logical_key,
+        Key::Named(
+            NamedKey::Alt
+                | NamedKey::AltGraph
+                | NamedKey::Control
+                | NamedKey::Shift
+                | NamedKey::Super
+                | NamedKey::Meta
+                | NamedKey::Hyper
+                | NamedKey::Symbol
+                | NamedKey::Fn
+                | NamedKey::FnLock
+                | NamedKey::CapsLock
+                | NamedKey::NumLock
+                | NamedKey::ScrollLock
+        )
+    )
+}
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -212,8 +243,12 @@ fn main() {
                         }
                         elwt.exit();
                     }
-                    WindowEvent::KeyboardInput { event: key, .. }
-                        if !is_preview && key.state == ElementState::Pressed =>
+                    WindowEvent::KeyboardInput {
+                        event: key,
+                        is_synthetic,
+                        ..
+                    } if !is_preview
+                        && key_dismisses(&key.logical_key, key.state, is_synthetic) =>
                     {
                         if cfg.debug {
                             eprintln!("[wilson:debug] exit: KeyboardInput {:?}", key.logical_key);
@@ -597,6 +632,60 @@ mod tests {
             .chain(list.iter().copied())
             .map(String::from)
             .collect()
+    }
+
+    #[test]
+    fn modifier_and_synthetic_keys_do_not_dismiss() {
+        // The bug: a fullscreen window on Windows gets a spurious AltGraph press on focus,
+        // closing the screensaver instantly. Modifier keys (and synthetic focus events)
+        // must NOT dismiss.
+        for m in [
+            NamedKey::AltGraph,
+            NamedKey::Alt,
+            NamedKey::Control,
+            NamedKey::Shift,
+            NamedKey::Super,
+            NamedKey::CapsLock,
+            NamedKey::NumLock,
+        ] {
+            assert!(
+                !key_dismisses(&Key::Named(m), ElementState::Pressed, false),
+                "modifier {m:?} must not dismiss"
+            );
+        }
+        // Synthetic events (delivered for keys held when focus changes) never dismiss.
+        assert!(!key_dismisses(
+            &Key::Named(NamedKey::Escape),
+            ElementState::Pressed,
+            true
+        ));
+        // Key releases never dismiss.
+        assert!(!key_dismisses(
+            &Key::Named(NamedKey::Space),
+            ElementState::Released,
+            false
+        ));
+    }
+
+    #[test]
+    fn real_key_presses_dismiss() {
+        for k in [
+            NamedKey::Escape,
+            NamedKey::Space,
+            NamedKey::Enter,
+            NamedKey::ArrowLeft,
+        ] {
+            assert!(
+                key_dismisses(&Key::Named(k), ElementState::Pressed, false),
+                "real key {k:?} should dismiss"
+            );
+        }
+        // A character key dismisses too.
+        assert!(key_dismisses(
+            &Key::Character("a".into()),
+            ElementState::Pressed,
+            false
+        ));
     }
 
     #[test]

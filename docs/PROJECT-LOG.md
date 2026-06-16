@@ -6,6 +6,24 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-16 — fix: screensaver fechava na hora no Windows (AltGr fantasma)
+
+Bug relatado: no Windows o app abria e **fechava instantaneamente** em tela cheia (em
+janela funcionava). O `--debug` (que ganhou trilha de ciclo de vida + causa de saída no
+PR #58) mostrou a causa exata: ao ganhar foco, a janela *borderless fullscreen* recebe um
+`KeyboardInput` **`AltGraph` (Pressed)** fantasma do Windows — e a regra "qualquer tecla
+encerra" fechava na hora.
+
+- **Fix** (`main.rs`): `key_dismisses(logical_key, state, is_synthetic)` — só encerra em
+  **tecla real**; ignora *releases*, eventos **sintéticos** (entregues no foco) e teclas
+  **modificadoras** (Alt/AltGr/Ctrl/Shift/Super/Meta/locks/Fn). Como manda o comportamento
+  de screensaver de verdade.
+- **Teste de regressão**: `modifier_and_synthetic_keys_do_not_dismiss` (falha com a regra
+  antiga) + `real_key_presses_dismiss`.
+- `fmt`/`clippy -D warnings`/wilson (49) verdes.
+
+---
+
 ## 2026-06-16 — `--filter` padrão passa a ser `linear`; deps de build do Linux no INSTALL
 
 A pedido do usuário, o **padrão** do `--filter` passou de `xbr` para **`linear`** (mais leve
