@@ -182,6 +182,7 @@ fn main() {
             cfg.daynight.as_str(),
             cfg.windowed,
         );
+        eprintln!("[wilson:debug] audio: {}", audio.debug_summary());
     }
 
     let event_loop = EventLoop::new().expect("failed to create event loop");
@@ -273,7 +274,10 @@ fn main() {
                             show.set_clock(clock::now());
                             let frame = show.next_frame(&archive);
                             for &id in &frame.sounds {
-                                audio.play(id);
+                                let outcome = audio.play(id);
+                                if cfg.debug {
+                                    eprintln!("[wilson:debug] sound cue {id}: {outcome:?}");
+                                }
                             }
                             let (day, yday) = show.day_state();
                             if last_saved != Some((day, yday)) {
