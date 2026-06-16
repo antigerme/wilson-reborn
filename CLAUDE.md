@@ -45,6 +45,11 @@ cargo run -p wilson-engine --example render_run -- <dir> /tmp/out 27000 225 1
 ```
 > Assets originais para teste: `repos/dist.zip` (senha: `felicio`) e `repos/jc_reborn.msi`
 > (extrair com `7z x`). Extraia para fora do repo (ex.: `/tmp`) — são **copyright**.
+> **Fonte legal/pública dos originais:** o screensaver está preservado no Internet Archive
+> — <https://archive.org/details/johnny-castaway-screensaver> (`scrantic-run.zip` traz
+> `RESOURCE.MAP` + `RESOURCE.001`; **sem** os `soundN.wav`). Validado: o engine decodifica
+> e roda essa cópia também (≠ md5 da `repos/dist`). Documentado em `docs/INSTALL.md`.
+> (decodifica: 116 bmp / 10 scr / 41 ttm / 10 ads; invariantes + holidays OK.)
 > Os dados originais (`RESOURCE.*`) são **copyright** e **não** ficam no repo. Os testes
 > usam fixtures sintéticas — rodam sem os dados originais (essencial para o CI).
 > O app `wilson` **exige** os dados originais (`--data <dir>` ou auto-detecção no diretório

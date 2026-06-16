@@ -5,6 +5,29 @@ O app **`wilson`** usa os **arquivos originais** do Johnny Castaway
 mesmo diretório do executável** (ou no diretório de trabalho), ou aponte com
 `--data <dir>`. Sem eles, o app explica o que falta e sai.
 
+## Onde conseguir os arquivos originais
+
+O screensaver original (Sierra/Dynamix, 1992) está **preservado no Internet Archive**:
+
+- Página do item: <https://archive.org/details/johnny-castaway-screensaver>
+- Download direto (dados + executável original DOS):
+  <https://archive.org/download/johnny-castaway-screensaver/scrantic-run.zip>
+
+```bash
+# Linux/macOS (Windows: extraia o zip e use --data na pasta)
+unzip scrantic-run.zip -d jc-original
+wilson --data jc-original          # roda com os dados originais
+```
+
+O `scrantic-run.zip` contém `RESOURCE.MAP` + `RESOURCE.001` (os gráficos/animações — é o
+que o `wilson` precisa) e o executável original (`SCRANTIC.EXE`/`.SCR`). **Validado:** o
+`wilson` decodifica e roda essa cópia (testada além da cópia de teste do projeto).
+
+> **Som:** esse zip **não** traz os efeitos de som (`sound0.wav`..`sound24.wav`); sem eles
+> o app roda **mudo** (degrada para silêncio). Para ter som, coloque os `soundN.wav` no
+> mesmo diretório dos dados. **Copyright:** os dados são da Sierra/Dynamix; o Internet
+> Archive os preserva como software histórico — use sua própria cópia.
+
 ## Baixar os binários
 
 A cada **tag de versão** (`vX.Y.Z`) o workflow [`release.yml`](../.github/workflows/release.yml)
