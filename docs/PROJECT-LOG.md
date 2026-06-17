@@ -6,6 +6,22 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-17 — ícone do Windows nos binários
+
+- **Ícone próprio** (arte original nossa — ilha + palmeira, `crates/wilson/assets/wilson.ico`,
+  gerado por `assets/make_icon.py` com Pillow) embutido em **todos** os binários Windows pela
+  `build.rs` — via `winres` no alvo MSVC e via `windres` direto (objeto COFF no link, pra não
+  ser podado) no alvo mingw-gnu. No-op em Linux/macOS.
+- **Build pessoal `embed-data`:** usa o **ícone original** do Johnny Castaway, **extraído do
+  NE `SCRANTIC.EXE`/`.SCR`** do usuário em tempo de build (`extract_ne_icon`; fallback p/
+  `SCRANTIC.ICO` na pasta, depois p/ o nosso). Copyright → nunca commitado nem nas releases
+  públicas (que levam só o ícone novo).
+- Validado: cross-build gnu gera `.rsrc` com RT_ICON+RT_GROUP_ICON; a extração NE bate
+  **byte-a-byte** com a referência; `fmt`/`clippy --all-features`/`test -p wilson` verdes;
+  teste-guarda do `.ico` (`tests/icon.rs`).
+
+---
+
 ## 2026-06-17 — demo (screenshot + GIF) + revisão geral dos `.md`
 
 - **Demo no README:** screenshot (`docs/screenshot.png`) + GIF animado (`docs/demo.gif`) do
