@@ -6,6 +6,20 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-17 — `--fetch-ia`: build-embedded baixa os originais do Internet Archive (opt-in)
+
+`scripts/build-embedded.sh` ganhou **`--fetch-ia`** (opt-in): em vez de passar
+`<pasta-dos-dados>`, baixa o `scrantic-run.zip` do Internet Archive (verificado por
+**SHA-256 fixo**), descompacta num temp (removido na saída) e embute. **Dados copyright** ⇒
+o binário é **uso pessoal**; o script imprime um **aviso legal escandaloso** (EN+PT) e exige
+digitar `I ACCEPT` (ou `--i-accept-legal-responsibility` pra não-interativo). **Bloqueado em
+CI** (`$CI`/`GITHUB_ACTIONS`) e o CI não chama o script. Todo o resto (builds
+Linux/Windows/macOS, `--check`, preflight, `<data-dir>` manual) **inalterado**. Validado:
+`bash -n`, `--help`, `--check`, `--check --fetch-ia` (não baixa), gate sem aceitar (aborta,
+não baixa), guard de CI (recusa), e **embed real** do dir extraído do IA (`build.rs`, rc=0).
+
+---
+
 ## 2026-06-17 — repositório público: histórico em 1 commit, `repos/` removido
 
 Housekeeping pós-publicação (repo agora **público**):

@@ -155,6 +155,21 @@ exato pra corrigir o que faltar. Use `--check` para **só** ver o diagnóstico, 
 scripts/build-embedded.sh --check <pasta-dos-dados>
 ```
 
+> **⚠️ `--fetch-ia` — baixar os originais do Internet Archive (opt-in, uso pessoal).** Em vez
+> de passar `<pasta-dos-dados>`, você pode usar **`--fetch-ia`** pra o script **baixar os dados
+> originais** do Internet Archive (`scrantic-run.zip`, verificado por **SHA-256** fixo),
+> descompactar num diretório temporário e embutir. **São dados COPYRIGHT** (Sierra/Dynamix →
+> Activision/Microsoft): o binário gerado **contém o jogo** e é **só para uso pessoal — não
+> redistribua**. O script imprime um **aviso legal explícito** (EN+PT) e exige você digitar
+> `I ACCEPT` (ou passar `--i-accept-legal-responsibility` pra rodar sem interação). É
+> **bloqueado em CI** de propósito. Use **somente** se você tem direito a uma cópia — **toda a
+> responsabilidade legal é sua**.
+>
+> ```bash
+> scripts/build-embedded.sh --fetch-ia            # baixa (após aceitar o aviso) e compila
+> scripts/build-embedded.sh --check --fetch-ia    # só diagnóstico — não baixa nada
+> ```
+
 Alvos:
 
 - **Linux** `x86_64` (nativo) → `wilson-linux-x86_64`. Precisa das deps de build do Linux
