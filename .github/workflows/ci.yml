@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+
+# Cancel superseded runs on the same ref.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  # Node 20 is deprecated (GitHub forces Node 24 from 2026-06-16). Opt every JS action
+  # (checkout, upload-artifact, rust-cache, …) into Node 24 to drop the warnings.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  test:
+    name: Build & Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Linux audio dependencies
+        # ALSA dev headers for the optional `audio` feature (rodio/cpal) on Linux.
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev pkg-config
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Clippy (deny warnings)
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+      - name: Build
+        run: cargo build --workspace --all-targets --verbose
+
+      - name: Test
+        run: cargo test --workspace --all-features --verbose
+
+      - name: Build macOS .saver bundle
+        # Verifies the ScreenSaverView compiles and links against the Rust staticlib,
+        # and publishes the bundle so it can be runtime-tested on a real Mac (CI only
+        # checks that it builds).
+        if: matrix.os == 'macos-latest'
+        run: |
+          bash crates/wilson-saver/macos/build-saver.sh
+          ditto -c -k --keepParent target/saver/WilsonReborn.saver WilsonReborn.saver.zip
+
+      - name: Upload .saver (for manual runtime testing)
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: WilsonReborn-saver
+          path: WilsonReborn.saver.zip
+
+  # GitHub does not provide a "fedora-latest" runner, so we run the same checks
+  # inside an official Fedora container on an Ubuntu host. The toolchain is
+  # installed via rustup so it matches the `stable` used by the other jobs.
+  test-fedora:
+    name: Build & Test (fedora-latest)
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    steps:
+      - name: Install system dependencies
+        # gcc/git for the toolchain; the rest are link-time deps the GUI app may
+        # need on Linux (winit/softbuffer dlopen most of these, but be safe).
+        # alsa-lib-devel + pkgconf for the optional `audio` feature (rodio/cpal).
+        run: dnf -y install gcc git wayland-devel libxkbcommon-devel libX11-devel alsa-lib-devel pkgconf-pkg-config
+
+      - uses: actions/checkout@v5
+
+      - name: Install Rust toolchain (rustup)
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal
+          . "$HOME/.cargo/env"
+          rustup component add clippy rustfmt
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Clippy (deny warnings)
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+      - name: Build
+        run: cargo build --workspace --all-targets --verbose
+
+      - name: Test
+        run: cargo test --workspace --all-features --verbose

@@ -1,0 +1,24 @@
+# Rust
+/target
+**/*.rs.bk
+Cargo.lock.orig
+
+# Original (copyrighted) game data — never commit
+*.MAP
+*.001
+*.SCR
+RESOURCE.*
+SCRANTIC.*
+data/
+assets-original/
+# Reference implementations (third-party) are kept only locally, never committed —
+# clone the upstreams yourself (see docs/knowledge-base/06-projetos-de-referencia.md).
+# dist.zip (the encrypted test bundle) is copyrighted game data — never commit it.
+/repos/
+/dist.zip
+
+# Editors / OS
+.DS_Store
+*.swp
+.idea/
+.vscode/

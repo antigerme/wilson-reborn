@@ -1,0 +1,138 @@
+name: Release
+
+# Build distributable binaries: the Windows screensaver (`wilson.scr`), a Linux binary
+# and a macOS binary. Runs on a version tag (`v*`) — attaching the files to a GitHub
+# Release with auto-generated notes (`generate_release_notes`) — and can be triggered
+# manually (`workflow_dispatch`) to download the artifacts for testing.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write # needed to create/update the GitHub Release on a tag
+
+env:
+  CARGO_TERM_COLOR: always
+  # Node 20 is deprecated (GitHub forces Node 24 from 2026-06-16). Opt every JS action
+  # (upload-artifact, action-gh-release, rust-cache, …) into Node 24 to drop the warnings.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  windows:
+    name: Windows screensaver (.scr)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build
+        run: cargo build --release -p wilson
+
+      - name: Package screensaver
+        # A Windows screensaver is just the executable with a .scr extension.
+        shell: bash
+        run: cp target/release/wilson.exe wilson.scr
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wilson-windows
+          path: |
+            wilson.scr
+            target/release/wilson.exe
+
+      - name: Attach to release
+        # Only the linux job generates the release notes (see below). If both parallel
+        # jobs set `generate_release_notes`, action-gh-release appends the changelog
+        # twice. This job just adds its files to the (shared, tag-keyed) release.
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            wilson.scr
+            target/release/wilson.exe
+
+  linux:
+    name: Linux binary
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Linux audio dependencies
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev pkg-config
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build
+        run: cargo build --release -p wilson
+
+      - name: Package binary
+        run: tar -czf wilson-linux-x86_64.tar.gz -C target/release wilson
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wilson-linux
+          path: wilson-linux-x86_64.tar.gz
+
+      - name: Attach to release
+        # Single source of the auto-generated release notes — the other jobs must NOT
+        # also set `generate_release_notes`, or the changelog gets duplicated.
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: wilson-linux-x86_64.tar.gz
+
+  macos:
+    name: macOS binary
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build
+        run: cargo build --release -p wilson
+
+      - name: Package binary
+        # macos-latest is Apple Silicon, so this is an arm64 binary.
+        run: tar -czf wilson-macos-arm64.tar.gz -C target/release wilson
+
+      - name: Build .saver bundle
+        run: bash crates/wilson-saver/macos/build-saver.sh
+
+      - name: Package .saver
+        # `ditto` preserves the bundle structure inside the zip.
+        run: ditto -c -k --keepParent target/saver/WilsonReborn.saver WilsonReborn.saver.zip
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wilson-macos
+          path: |
+            wilson-macos-arm64.tar.gz
+            WilsonReborn.saver.zip
+
+      - name: Attach to release
+        # No `generate_release_notes` here — the linux job is the sole notes generator.
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            wilson-macos-arm64.tar.gz
+            WilsonReborn.saver.zip

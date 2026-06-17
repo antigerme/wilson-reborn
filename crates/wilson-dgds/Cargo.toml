@@ -1,0 +1,10 @@
+[package]
+name = "wilson-dgds"
+description = "Parser and decompression for the Dynamix DGDS / SCRANTIC resource format (Johnny Castaway)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
