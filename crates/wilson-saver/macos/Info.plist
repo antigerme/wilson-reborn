@@ -6,6 +6,8 @@
     <string>en</string>
     <key>CFBundleExecutable</key>
     <string>WilsonReborn</string>
+    <key>CFBundleIconFile</key>
+    <string>wilson</string>
     <key>CFBundleIdentifier</key>
     <string>com.felicio.wilson-reborn</string>
     <key>CFBundleInfoDictionaryVersion</key>

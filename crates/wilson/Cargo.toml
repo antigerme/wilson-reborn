@@ -24,10 +24,12 @@ rodio = { version = "0.17", default-features = false, features = ["wav"], option
 # Read-only zip support so `--data` can take the Internet Archive scrantic-run.zip directly.
 zip = { version = "2", default-features = false, features = ["deflate"] }
 
-# Used by build.rs (embed-data) to extract the original sounds from SCRANTIC.EXE when no
-# soundN.wav are supplied.
+# Used by build.rs: wilson-dgds to extract the original sounds (embed-data) and decompress
+# the installer; winres to embed the Windows app icon (build.rs gates on the target OS, so
+# it is needed even when cross-compiling to Windows from a non-Windows host).
 [build-dependencies]
 wilson-dgds = { path = "../wilson-dgds" }
+winres = "0.1"
 
 [dev-dependencies]
 # Full zip (with writer) to build fixtures for the --data zip tests.

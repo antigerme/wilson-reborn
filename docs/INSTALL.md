@@ -138,6 +138,27 @@ distribua publicamente o binário com dados embutidos — esse build é para uso
 já tem o jogo original. (Sem `WILSON_EMBED_DATA`, a feature compila um *stub* com um aviso e
 o binário não roda — útil só para o CI checar a compilação.)
 
+## Ícone (Windows e macOS)
+
+Os binários Windows (`wilson.exe`/`wilson.scr`) já vêm com um **ícone próprio do Wilson
+Reborn** — arte original (ilha + palmeira) em `crates/wilson/assets/wilson.ico` (gerada por
+`assets/make_icon.py`), embutida pela [`build.rs`](../crates/wilson/build.rs). É um ícone
+**nosso**, distribuível sem problema.
+
+No build pessoal **`embed-data`**, em vez do nosso, é usado o **ícone original** do Johnny
+Castaway, extraído do **seu** `SCRANTIC.EXE`/`.SCR` (ou de um `SCRANTIC.ICO` na pasta de
+dados) em tempo de compilação — é **copyright**, então **nunca** é commitado nem entra nos
+binários públicos das releases.
+
+> Na cross-compilação Linux→Windows (`scripts/build-embedded.sh`) o ícone precisa do
+> `windres` do mingw (`x86_64-w64-mingw32-windres`, do binutils do mingw). Sem ele o build
+> segue **sem** o ícone (só um aviso, não falha). No build nativo Windows (MSVC) é automático.
+
+No **macOS**, o `.saver` (`crates/wilson-saver/macos/build-saver.sh`) inclui o **mesmo ícone
+nosso** como `wilson.icns` no bundle (`Contents/Resources/`, referenciado por
+`CFBundleIconFile` no `Info.plist`), gerado pelo mesmo `make_icon.py`. (O ícone original de
+1992 é 32×32/16 cores — fica ruim nos tamanhos do macOS, então no macOS usamos sempre o nosso.)
+
 ### Gerar embedded para várias plataformas (a partir do Linux)
 
 O script [`scripts/build-embedded.sh`](../scripts/build-embedded.sh) gera, de uma vez, os
