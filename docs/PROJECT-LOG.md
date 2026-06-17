@@ -6,6 +6,17 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-17 — ícone do macOS (`.saver`)
+
+O bundle `WilsonReborn.saver` agora inclui o **nosso** ícone como `wilson.icns`
+(`Contents/Resources/`, via `CFBundleIconFile` no `Info.plist`), gerado pelo mesmo
+`make_icon.py` (fonte única dos ícones; `build-saver.sh` copia o `.icns`). No macOS usamos
+**sempre o nosso** — o original de 1992 é 32×32/16 cores, ruim nos tamanhos do macOS.
+Validado: `Info.plist` parseia (`plistlib`), magic `icns` ok, `bash -n` ok (o build do
+`.saver` é macOS-only — roda no CI/no seu Mac).
+
+---
+
 ## 2026-06-17 — ícone do Windows nos binários
 
 - **Ícone próprio** (arte original nossa — ilha + palmeira, `crates/wilson/assets/wilson.ico`,

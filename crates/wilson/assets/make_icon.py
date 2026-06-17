@@ -71,7 +71,11 @@ for ddx in (-0.018, 0.012):
     d.ellipse([cx + ddx * S - S * 0.016, cy - S * 0.004, cx + ddx * S + S * 0.016, cy + S * 0.028],
               fill=(92, 56, 32, 255))
 
+here = os.path.dirname(os.path.abspath(__file__))
 icon = img.resize((256, 256), Image.LANCZOS)
-out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "wilson.ico")
-icon.save(out, sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
-print("wrote", out)
+ico = os.path.join(here, "wilson.ico")
+icon.save(ico, sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
+# macOS bundle icon (.icns) from the high-res master so the large sizes stay crisp.
+icns = os.path.join(here, "wilson.icns")
+img.save(icns)
+print("wrote", ico, "and", icns)

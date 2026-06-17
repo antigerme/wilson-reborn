@@ -23,6 +23,10 @@ echo "==> Assembling bundle at $BUNDLE"
 rm -rf "$BUNDLE"
 mkdir -p "$BUNDLE/Contents/MacOS"
 cp "$DIR/Info.plist" "$BUNDLE/Contents/Info.plist"
+mkdir -p "$BUNDLE/Contents/Resources"
+# App icon (our own art; see crates/wilson/assets/make_icon.py). Referenced by
+# CFBundleIconFile in Info.plist.
+cp "$ROOT/crates/wilson/assets/wilson.icns" "$BUNDLE/Contents/Resources/wilson.icns"
 
 echo "==> Compiling + linking ScreenSaverView"
 # The Rust staticlib pulls in std, which on macOS needs CoreFoundation/Security/iconv.
