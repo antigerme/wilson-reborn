@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+members = ["crates/wilson-dgds", "crates/wilson-engine", "crates/wilson", "crates/wilson-saver"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/antigerme/wilson-reborn"
+authors = ["Wilson Reborn contributors"]
+
+[profile.release]
+lto = true
+codegen-units = 1

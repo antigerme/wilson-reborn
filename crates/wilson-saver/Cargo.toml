@@ -1,0 +1,16 @@
+[package]
+name = "wilson-saver"
+description = "Wilson Reborn — C FFI for the macOS screensaver (.saver) bundle."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lib]
+# `staticlib` is linked into the macOS .saver bundle; `lib` lets us unit-test the FFI.
+crate-type = ["staticlib", "lib"]
+
+[dependencies]
+wilson-dgds = { path = "../wilson-dgds" }
+wilson-engine = { path = "../wilson-engine" }
