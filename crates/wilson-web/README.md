@@ -46,6 +46,10 @@ dissolves the intro→first-scene; the intro hold is `?intro_secs`, default 3 s.
   want.
 
 ## Build & run
+
+> Don't want to build? Grab **`wilson-web.zip`** from a [release](https://github.com/antigerme/wilson-reborn/releases)
+> (the bring-your-own bundle — no game data), unzip, serve it over HTTP, and bring your own files.
+
 ```sh
 cargo install wasm-bindgen-cli        # version must match the wasm-bindgen crate
                                       # (the wasm32 target is auto-added by build-web.sh)

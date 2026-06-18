@@ -6,6 +6,19 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-18 — Release: publicar o bundle Web/WASM (traga-seus-dados) nos artefatos
+
+O usuário perguntou por que o web não saía nas releases. Faltava mesmo: o `release.yml` só gerava
+desktop. Adicionado o job **`web`** que builda o bundle **bring-your-own** (`build-web.sh`, **sem**
+`WILSON_EMBED_DATA` ⇒ zero copyright) e anexa **`wilson-web.zip`** (`index.html` + `wilson_web.js` +
+`wilson_web_bg.wasm` + `HOW-TO-RUN.txt`) à release. O embutido continua **fora** (copyright).
+- Lint `release_does_not_ship_game_data` pegou meu texto instrucional com `RESOURCE.` — reescrito
+  sem o literal (o guard continua intacto: proíbe `RESOURCE.`/`embed-data`/`.wav`/`dist.zip`).
+- Vale a partir da próxima tag; v0.3.0 pode ser backfillada subindo o `wilson-web.zip` manualmente.
+- (Ideia futura: hospedar a página bring-your-own no **GitHub Pages** pra uma versão web "ao vivo".)
+
+---
+
 ## 2026-06-18 — Intro: 3 s configurável + dissolve no intro (opt-in); dissolve provado morto
 
 Pedido do usuário (que lembrava do dissolve "sempre ao sair do intro" + achou 4 s longo):

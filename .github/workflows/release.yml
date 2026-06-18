@@ -136,3 +136,59 @@ jobs:
           files: |
             wilson-macos-arm64.tar.gz
             WilsonReborn.saver.zip
+
+  web:
+    name: Web bundle (WASM, bring-your-own)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Rust toolchain (+ wasm32 target)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install wasm-bindgen-cli (version matching the wasm-bindgen crate)
+        run: |
+          ver=$(awk '/^name = "wasm-bindgen"$/{f=1} f && /^version = /{gsub(/[",]/,"",$3); print $3; exit}' Cargo.lock)
+          echo "installing wasm-bindgen-cli $ver"
+          cargo install wasm-bindgen-cli --version "$ver" --locked
+
+      - name: Build the bring-your-own web bundle
+        # No WILSON_EMBED_DATA ⇒ no game data is baked in (copyright-safe to distribute). The
+        # page asks the user for their own original data files (loose or a .zip), read locally.
+        run: bash crates/wilson-web/build-web.sh
+
+      - name: Package web bundle
+        run: |
+          cat > crates/wilson-web/web/HOW-TO-RUN.txt <<'TXT'
+          Wilson Reborn — Web/WASM (bring your own data)
+
+          1. Serve this folder over HTTP (ES modules + wasm need http, not file://), e.g.:
+               python3 -m http.server 8000
+          2. Open http://localhost:8000/ and drop your own original Johnny Castaway data files
+             (the .MAP + .001; add SCRANTIC.EXE for sound), or a scrantic-run / installer .zip.
+          Everything runs locally in your browser; nothing is uploaded. No game data is
+          bundled here (it is copyright). URL options & details: crates/wilson-web/README.md.
+          TXT
+          zip -j wilson-web.zip \
+            crates/wilson-web/web/index.html \
+            crates/wilson-web/web/wilson_web.js \
+            crates/wilson-web/web/wilson_web_bg.wasm \
+            crates/wilson-web/web/HOW-TO-RUN.txt
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wilson-web
+          path: wilson-web.zip
+
+      - name: Attach to release
+        # No `generate_release_notes` here — the linux job is the sole notes generator.
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: wilson-web.zip

@@ -105,8 +105,12 @@ cargo run -p wilson-engine --example render_run -- <dir> /tmp/out 27000 225 1
 - **PRs:** o usuário faz squash merge e apaga a branch. Posso abrir PR quando a branch
   estiver madura. Trabalhar em **branch nova** por incremento (`claude/...`), nunca direto
   na `main`. **Releases:** o push de tag `v*` é bloqueado neste ambiente (403) — guiar o
-  usuário a dar o `git push origin vX.Y.Z` e depois **acompanhar o `release.yml`** e
-  conferir os artefatos.
+  usuário a dar o `git tag -a vX.Y.Z -m … && git push origin vX.Y.Z` (a tag tem que ser
+  **criada** antes de empurrar) e depois **acompanhar o `release.yml`** e conferir os artefatos.
+  Artefatos da release: `wilson.scr`/`.exe` (Windows), binários Linux/macOS, `.saver` (macOS), e
+  o **`wilson-web.zip`** (bundle Web/WASM **traga-seus-dados** — sem dados, copyright-safe; o
+  embutido NÃO entra na release). ⚠️ `release.yml` **não pode** conter `RESOURCE.`/`embed-data`/
+  `.wav`/`dist.zip` (lint `release_does_not_ship_game_data` guarda contra vazar copyright).
 - **Documentar tudo** aqui, no PROJECT-LOG e na knowledge-base para preservar memória.
 
 ## Status atual
