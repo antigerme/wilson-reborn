@@ -22,6 +22,34 @@ const MAX_STORY_DAY: u8 = 11;
 const STORY_SECS_MIN: u32 = 5;
 const STORY_SECS_MAX: u32 = 86_400;
 
+/// Scene-transition style (between story runs).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum Transition {
+    /// Hard cut — the faithful original behaviour (the original ships its dissolve disabled).
+    #[default]
+    None,
+    /// The original's dormant LFSR tiled dissolve, resurrected (opt-in; KB10 §10.2).
+    Dissolve,
+}
+
+impl Transition {
+    fn parse(s: &str) -> Option<Self> {
+        match s.to_ascii_lowercase().as_str() {
+            "none" | "cut" | "hard" | "off" => Some(Transition::None),
+            "dissolve" | "lfsr" | "tiled" => Some(Transition::Dissolve),
+            _ => None,
+        }
+    }
+
+    /// The canonical name (round-trips with [`Transition::parse`]).
+    fn as_str(self) -> &'static str {
+        match self {
+            Transition::None => "none",
+            Transition::Dissolve => "dissolve",
+        }
+    }
+}
+
 /// The app's runtime options.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Config {
@@ -54,6 +82,8 @@ pub struct Config {
     pub story: bool,
     /// In story mode, how many real seconds each story day is shown (`--story-secs`).
     pub story_secs: u32,
+    /// Scene-transition style between story runs (default: hard cut, the faithful original).
+    pub transition: Transition,
 }
 
 impl Default for Config {
@@ -71,6 +101,7 @@ impl Default for Config {
             day: 0,
             story: false,
             story_secs: crate::timectl::DEFAULT_STORY_DAY_SECS,
+            transition: Transition::None,
         }
     }
 }
@@ -168,6 +199,11 @@ impl Config {
                         c.story_secs = n.clamp(STORY_SECS_MIN, STORY_SECS_MAX);
                     }
                 }
+                "transition" => {
+                    if let Some(t) = Transition::parse(value) {
+                        c.transition = t;
+                    }
+                }
                 _ => {}
             }
         }
@@ -201,7 +237,10 @@ impl Config {
              # story: true plays the whole arc in order (day 1→11→1…) on a fixed cadence.\n\
              story={}\n\
              # story_secs: in story mode, real seconds per story day ({STORY_SECS_MIN}–{STORY_SECS_MAX}).\n\
-             story_secs={}\n",
+             story_secs={}\n\
+             # transition: scene transition — none (hard cut, faithful) | dissolve (the\n\
+             # original's dormant LFSR tiled dissolve, resurrected).\n\
+             transition={}\n",
             self.windowed,
             self.mute,
             self.speed,
@@ -214,12 +253,14 @@ impl Config {
             self.day,
             self.story,
             self.story_secs,
+            self.transition.as_str(),
         )
     }
 
     /// Apply CLI overrides: `--windowed`, `--mute`, `--dedither`, `--debug`, `--no-intro`,
     /// `--story`, `--speed <pct>`, `--scale <mode>`, `--filter <nearest|linear|xbr|xbrz>`,
-    /// `--day <1-11>`, `--story-secs <s>`. Unknown flags are ignored.
+    /// `--day <1-11>`, `--story-secs <s>`, `--transition <none|dissolve>`. Unknown flags are
+    /// ignored.
     pub fn apply_args(&mut self, args: &[String]) {
         let mut i = 0;
         while i < args.len() {
@@ -239,6 +280,12 @@ impl Config {
                 "--story-secs" => {
                     if let Some(n) = args.get(i + 1).and_then(|v| v.parse::<u32>().ok()) {
                         self.story_secs = n.clamp(STORY_SECS_MIN, STORY_SECS_MAX);
+                        i += 1;
+                    }
+                }
+                "--transition" => {
+                    if let Some(t) = args.get(i + 1).and_then(|v| Transition::parse(v)) {
+                        self.transition = t;
                         i += 1;
                     }
                 }
@@ -311,6 +358,7 @@ mod tests {
         assert_eq!(c.day, 0); // auto: resume the persisted/real day
         assert!(!c.story); // real calendar by default, not story mode
         assert_eq!(c.story_secs, crate::timectl::DEFAULT_STORY_DAY_SECS);
+        assert_eq!(c.transition, Transition::None); // hard cut by default (faithful)
     }
 
     #[test]
@@ -328,6 +376,7 @@ mod tests {
             day: 7,
             story: true,
             story_secs: 120,
+            transition: Transition::Dissolve,
         };
         assert_eq!(Config::parse(&c.serialize()), c);
     }
@@ -384,6 +433,8 @@ mod tests {
             "5",
             "--story-secs",
             "120",
+            "--transition",
+            "dissolve",
         ]
         .iter()
         .map(|s| s.to_string())
@@ -401,6 +452,7 @@ mod tests {
         assert!(c.story); // --story
         assert_eq!(c.day, 5); // --day 5
         assert_eq!(c.story_secs, 120); // --story-secs 120
+        assert_eq!(c.transition, Transition::Dissolve); // --transition dissolve
     }
 
     #[test]

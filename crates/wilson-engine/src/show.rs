@@ -12,6 +12,7 @@
 use wilson_dgds::{Archive, BmpImage, Palette};
 
 use crate::ads_vm::AdsVm;
+use crate::dissolve::Dissolve;
 use crate::island::Island;
 use crate::rng::Rng;
 use crate::story::{Director, ScenePlay, StoryRun};
@@ -96,6 +97,17 @@ pub struct Show {
     /// The original's intro screen (`INTRO.SCR`), shown once at startup if enabled
     /// (the original's `Introduction` option). Consumed by the first `next_frame`.
     intro: Option<Surface>,
+    /// Opt-in: dissolve between story runs (the original's dormant LFSR tiled dissolve,
+    /// KB10 §10.2) instead of a hard cut. Off by default = faithful hard cut.
+    dissolve_on: bool,
+    /// The last surface emitted, kept so a run-boundary dissolve has a "from" image.
+    prev: Option<Surface>,
+    /// An in-progress dissolve transition, if any (drives `next_frame` while active).
+    dissolve: Option<Dissolve>,
+    /// The destination frame deferred until the dissolve finishes (carries its sounds/delay).
+    pending: Option<Frame>,
+    /// Set when a new story run was just planned, so `next_frame` can start a transition.
+    run_boundary: bool,
 }
 
 impl Show {
@@ -140,9 +152,21 @@ impl Show {
             stage: Stage::Idle,
             pending_sound: None,
             intro: None,
+            dissolve_on: false,
+            prev: None,
+            dissolve: None,
+            pending: None,
+            run_boundary: false,
         };
         show.plan_new_run(archive);
+        show.run_boundary = false; // the very first run is not a transition
         show
+    }
+
+    /// Enable the opt-in dissolve transition between story runs (the original's dormant
+    /// LFSR tiled dissolve — KB10 §10.2). Off by default = faithful hard cut.
+    pub fn enable_dissolve(&mut self) {
+        self.dissolve_on = true;
     }
 
     /// Update the wall-clock inputs (call before a new run picks up a new day).
@@ -209,7 +233,68 @@ impl Show {
     }
 
     /// Produce the next composited frame (the runtime never ends).
+    ///
+    /// With the opt-in dissolve enabled, a transition is woven in at story-run boundaries:
+    /// the new run's first frame is revealed cell-by-cell over the previous one (the
+    /// original's dormant LFSR tiled dissolve). Off by default ⇒ a hard cut, byte-identical
+    /// to before.
     pub fn next_frame(&mut self, archive: &Archive) -> Frame {
+        // Drive an in-progress dissolve to completion before advancing the scene.
+        if self.dissolve.is_some() {
+            return self.step_dissolve();
+        }
+        let frame = self.next_frame_inner(archive);
+        // At a run boundary, start a dissolve from the previous frame to this one.
+        if self.dissolve_on && self.run_boundary {
+            if let Some(prev) = self.prev.take() {
+                if prev.width == frame.surface.width
+                    && prev.height == frame.surface.height
+                    && prev.pixels != frame.surface.pixels
+                {
+                    self.run_boundary = false;
+                    self.dissolve = Some(Dissolve::new(prev, frame.surface.clone()));
+                    self.pending = Some(frame);
+                    return self.step_dissolve();
+                }
+            }
+        }
+        self.run_boundary = false;
+        // Only keep a "from" image when the transition is enabled (no per-frame clone
+        // otherwise, so the default hard-cut path is exactly as cheap as before).
+        if self.dissolve_on {
+            self.prev = Some(frame.surface.clone());
+        }
+        frame
+    }
+
+    /// Advance an active dissolve by one step; on completion emit the (deferred) destination
+    /// frame, carrying its sounds and delay.
+    fn step_dissolve(&mut self) -> Frame {
+        let done = {
+            let d = self
+                .dissolve
+                .as_mut()
+                .expect("called with an active dissolve");
+            d.step();
+            d.done()
+        };
+        if done {
+            let surface = self.dissolve.take().unwrap().into_destination();
+            self.prev = Some(surface.clone());
+            return self.pending.take().unwrap_or(Frame {
+                surface,
+                delay_ticks: 1,
+                sounds: Vec::new(),
+            });
+        }
+        Frame {
+            surface: self.dissolve.as_ref().unwrap().image().clone(),
+            delay_ticks: 1,
+            sounds: Vec::new(),
+        }
+    }
+
+    fn next_frame_inner(&mut self, archive: &Archive) -> Frame {
         // The intro screen (`INTRO.SCR`) is shown once, before the first run, if enabled.
         if let Some(surface) = self.intro.take() {
             return Frame {
@@ -330,6 +415,7 @@ impl Show {
             None
         };
         self.stage = self.stage_for_current(archive);
+        self.run_boundary = true; // a fresh run ⇒ an opt-in dissolve may start
     }
 
     fn go_next_scene(&mut self, archive: &Archive) {
@@ -560,6 +646,46 @@ mod tests {
             assert_eq!(f.surface.height, 480);
             assert!(f.delay_ticks > 0);
         }
+    }
+
+    #[test]
+    fn dissolve_transition_is_woven_in_at_run_boundaries() {
+        let arch = full_archive();
+        let pal = Palette {
+            colors: [[1u8; 3]; 256],
+        };
+        let clock = Clock {
+            yday: 200,
+            hour: 12,
+            month: 6,
+            day: 14,
+        };
+        // Drive the same deterministic sequence with the dissolve off vs on, counting the
+        // short (1-tick) frames. The opt-in dissolve injects a burst of short intermediate
+        // frames at each run boundary, so enabling it strictly increases their count — and
+        // every frame stays a valid 640×480 (it never panics or stalls).
+        let count_short = |dissolve: bool| {
+            let mut show = Show::new(&arch, &pal, 640, 480, Director::new(5, 200), clock, 42);
+            if dissolve {
+                show.enable_dissolve();
+            }
+            let mut short = 0u32;
+            for _ in 0..1500 {
+                let f = show.next_frame(&arch);
+                assert_eq!((f.surface.width, f.surface.height), (640, 480));
+                assert!(f.delay_ticks > 0);
+                if f.delay_ticks == 1 {
+                    short += 1;
+                }
+            }
+            short
+        };
+        let off = count_short(false);
+        let on = count_short(true);
+        assert!(
+            on > off,
+            "dissolve should add short transition frames (on={on}, off={off})"
+        );
     }
 
     #[test]

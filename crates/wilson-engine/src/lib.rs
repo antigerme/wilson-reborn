@@ -21,6 +21,7 @@ pub const MS_PER_TICK: u64 = 16;
 
 pub mod ads_vm;
 pub mod clock;
+pub mod dissolve;
 pub mod error;
 pub mod island;
 pub mod path;
@@ -36,6 +37,7 @@ pub mod walk_data;
 pub mod xbrz;
 
 pub use ads_vm::{AdsFrame, AdsVm, MAX_TTM_SLOTS, MAX_TTM_THREADS};
+pub use dissolve::Dissolve;
 pub use error::{EngineError, Result};
 pub use island::Island;
 pub use path::{calc_path, calc_paths, NUM_OF_NODES};
