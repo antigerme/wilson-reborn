@@ -71,6 +71,16 @@ cargo run -p wilson-engine --example render_run -- <dir> /tmp/out 27000 225 1
 
 ## Regras de trabalho (combinadas com o usuário)
 - **Sempre 100% → 100%:** cada incremento compila, passa lint e testes (local **e** CI).
+- **⚠️ TESTAR E VALIDAR DE VERDADE O ENTREGÁVEL — não só o CI — em TODAS as superfícies afetadas**
+  (desktop, **Web/WASM**, embedded, `.scr` Windows, macOS), **antes** de dizer "pronto" ou abrir PR.
+  CI verde ≠ funciona pro usuário. Re-verificar **comportamentos já corrigidos** (guardar contra
+  regressão). Quando algo **não** der pra testar aqui (ex.: áudio do navegador exige um browser
+  real; `.scr` exige Windows), **dizer isso explicitamente** e validar o máximo possível por outro
+  meio (ex.: **smoke test em Node** do wasm: `wasm-bindgen --target nodejs` + checar
+  `has_sound()`/`take_sounds()`/`sound_wav()`; cross-compile `windows-gnu`). Nunca declarar uma
+  feature "funcionando" sem evidência. (Pedido enfático do usuário, 2026-06-18 — regressão do som
+  no web.) (Nota: navegadores **bloqueiam áudio até o 1º gesto** do usuário — não é bug; a página
+  inicia o som no primeiro clique/tecla/toque e a UI mostra esse estado "aguardando".)
 - **⚠️ Todo bug encontrado entra com teste de regressão que FALHA sem o fix** (verificar que
   falha antes de aplicar a correção) — para nunca reverter algo já corrigido. Vale também
   para invariantes de workflow/CI (ex.: lint do `release.yml`). (Pedido do usuário,
