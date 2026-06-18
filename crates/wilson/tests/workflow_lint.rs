@@ -54,3 +54,16 @@ fn public_artifacts_do_not_ship_game_data() {
         }
     }
 }
+
+/// `ci.yml` must not trigger on pushes to `claude/**` branches — PR branches are covered by the
+/// `pull_request` event, so a `push` trigger would run the whole matrix TWICE per PR push
+/// (doubling CI and making "is it green?" ambiguous). It should push-trigger only on `main`.
+#[test]
+fn ci_does_not_double_run_on_branch_pushes() {
+    let yml = workflow("ci.yml");
+    assert!(
+        !yml.contains("claude/"),
+        "ci.yml must not `push`-trigger on claude/** branches (pull_request already covers PR \
+         branches; a push trigger doubles every run)"
+    );
+}
