@@ -213,10 +213,19 @@ mod tests {
 
     #[test]
     fn silent_without_device_or_files() {
-        // No data dir (and usually no device in CI): must not panic and play is a no-op.
+        // No data dir, so no sound is loaded: playback must be a silent no-op (never panics,
+        // never plays). The exact outcome is environment-dependent and BOTH are correct:
+        // `Unavailable` when no audio device opens (e.g. headless Linux CI), or `NotLoaded`
+        // when a device IS present but the file is missing (e.g. macOS CI with CoreAudio).
+        // Assert it is silent (anything but `Played`), not a specific device-availability.
         let audio = Audio::new(None, false);
-        assert_eq!(audio.play(0), PlayOutcome::Unavailable);
-        assert_eq!(audio.play(24), PlayOutcome::Unavailable);
+        for id in [0, 24] {
+            let outcome = audio.play(id);
+            assert!(
+                matches!(outcome, PlayOutcome::Unavailable | PlayOutcome::NotLoaded),
+                "expected a silent outcome for id {id}, got {outcome:?}"
+            );
+        }
     }
 
     #[test]
