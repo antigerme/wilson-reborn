@@ -19,6 +19,13 @@
 /// use the original's measured 16 ms.)
 pub const MS_PER_TICK: u64 = 16;
 
+/// Convert a desired intro-screen hold in **seconds** to engine ticks (for
+/// [`show::Show::enable_intro`]). Clamps to `1..=u16::MAX` ticks; `0 s` is treated as 1 tick.
+pub fn intro_ticks_from_secs(secs: u32) -> u16 {
+    let ticks = u64::from(secs).max(1).saturating_mul(1000) / MS_PER_TICK;
+    ticks.clamp(1, u16::MAX as u64) as u16
+}
+
 pub mod ads_vm;
 mod calcpath_data;
 pub mod clock;
@@ -43,7 +50,7 @@ pub use error::{EngineError, Result};
 pub use island::Island;
 pub use path::{calc_path, calc_paths, NUM_OF_NODES};
 pub use rng::Rng;
-pub use show::{Clock, DebugInfo, Frame, Show};
+pub use show::{Clock, DebugInfo, Frame, Show, DEFAULT_INTRO_TICKS};
 pub use story::{
     DayNight, Director, Holiday, IslandState, ScenePlay, StoryRun, StoryScene, STORY_SCENES,
 };

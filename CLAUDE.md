@@ -180,6 +180,12 @@ de RNG com seeds pequenas).
 engine em todo `RedrawRequested` (inclusive os espontâneos do SO), atropelando o `WaitUntil`;
 agora `pace::FramePacer` trava o avanço por deadline (teste de regressão fail-first). RE
 confirmou que o original **não tem timer de intro** (hard-cut, fica até a 1ª cena carregar).
+**Intro polish (2026-06-18):** duração do intro agora **3 s por padrão e configurável**
+(`DEFAULT_INTRO_TICKS=187`, `enable_intro(archive, ticks)`, `intro_ticks_from_secs`; desktop
+`--intro-secs 1–30`/config `intro_secs`, web `?intro_secs`). **Dissolve no intro = opt-in**: com
+`--transition dissolve`/`?dissolve` ligado, dissolve do `INTRO.SCR`→1ª cena (`Show::intro_boundary`).
+**Byte scan do binário inteiro provou** que o dissolve está morto (gate `[0x1ebf]`: 10 leituras, 0
+escritas) ⇒ o original **nunca** dissolve, nem no intro — padrão segue hard-cut fiel (KB10 §10.2).
 **Fix Windows .scr (2026-06-18):** testando no Windows 11 — (1) faltava
 `#![windows_subsystem = "windows"]` (o `.scr` abria janela de **console** preta); (2) **Configurar**
 (`/c`) só fazia `println!` ⇒ agora `configure()` abre o `config.txt` no editor; (3) o **preview**

@@ -82,7 +82,7 @@
     <code>scrantic-run.zip</code> / <code>scrantic-installer.zip</code>. Everything runs locally; nothing is uploaded.
     You can optionally <strong>💾 Save</strong> it in this browser to skip the picker next time.
     URL options (mirror the desktop): <code>?fullscreen &amp; scale=fit|stretch|integer &amp; filter=linear|nearest &amp;
-    speed=200 &amp; day=5 &amp; dissolve &amp; story &amp; daynight=real &amp; intro=0 &amp; mute &amp; volume=50 &amp; seed=…</code>
+    speed=200 &amp; day=5 &amp; dissolve &amp; story &amp; daynight=real &amp; intro=0 &amp; intro_secs=3 &amp; mute &amp; volume=50 &amp; seed=…</code>
   </p>
 
 <script type="module">
@@ -112,6 +112,7 @@
     o.speed = pint("speed", 25, 400, 0);
     o.dissolve = P.has("dissolve") ? pflag("dissolve", false) : $("dissolve").checked;
     o.intro = pflag("intro", true);
+    o.intro_secs = pint("intro_secs", 1, 30, 0);
     o.story = pflag("story", false);
     o.story_secs = pint("story_secs", 1, 100000, 0);
     o.real_daynight = ["real", "real24h", "24h"].includes((P.get("daynight") || "").toLowerCase());

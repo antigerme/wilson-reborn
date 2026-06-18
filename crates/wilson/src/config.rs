@@ -21,6 +21,11 @@ const MAX_STORY_DAY: u8 = 11;
 /// Bounds for the story-mode per-day cadence, in real seconds.
 const STORY_SECS_MIN: u32 = 5;
 const STORY_SECS_MAX: u32 = 86_400;
+/// Bounds for the intro-screen hold, in real seconds (`--intro-secs`).
+const INTRO_SECS_MIN: u32 = 1;
+const INTRO_SECS_MAX: u32 = 30;
+/// Default intro hold, in seconds (the original has no intro timer — KB10 §10.2).
+const INTRO_SECS_DEFAULT: u32 = 3;
 
 /// Scene-transition style (between story runs).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
@@ -74,6 +79,9 @@ pub struct Config {
     /// Show the original's intro screen (`INTRO.SCR`) once at startup (default on, like the
     /// original's `Introduction` option). Disable with `--no-intro`.
     pub intro: bool,
+    /// How long the intro screen is held, in seconds (`--intro-secs`, default 3). The shipped
+    /// original has no intro timer (KB10 §10.2); this is our approximation.
+    pub intro_secs: u32,
     /// Start the 11-day story arc at this day (1–11); `0` = auto (resume the persisted day,
     /// or today). A one-off override (`--day N`), not persisted.
     pub day: u8,
@@ -98,6 +106,7 @@ impl Default for Config {
             daynight: DayNight::Original,
             debug: false,
             intro: true,
+            intro_secs: INTRO_SECS_DEFAULT,
             day: 0,
             story: false,
             story_secs: crate::timectl::DEFAULT_STORY_DAY_SECS,
@@ -184,6 +193,11 @@ impl Config {
                         c.intro = b;
                     }
                 }
+                "intro_secs" => {
+                    if let Ok(n) = value.parse::<u32>() {
+                        c.intro_secs = n.clamp(INTRO_SECS_MIN, INTRO_SECS_MAX);
+                    }
+                }
                 "day" => {
                     if let Ok(n) = value.parse::<u8>() {
                         c.day = n.min(MAX_STORY_DAY);
@@ -232,6 +246,8 @@ impl Config {
              debug={}\n\
              # intro: true shows the original's intro screen (INTRO.SCR) once at startup.\n\
              intro={}\n\
+             # intro_secs: how long to hold the intro screen ({INTRO_SECS_MIN}–{INTRO_SECS_MAX}; default {INTRO_SECS_DEFAULT}).\n\
+             intro_secs={}\n\
              # day: start the 11-day arc at this day (1–{MAX_STORY_DAY}); 0 = auto (resume/today).\n\
              day={}\n\
              # story: true plays the whole arc in order (day 1→11→1…) on a fixed cadence.\n\
@@ -250,6 +266,7 @@ impl Config {
             self.daynight.as_str(),
             self.debug,
             self.intro,
+            self.intro_secs,
             self.day,
             self.story,
             self.story_secs,
@@ -270,6 +287,12 @@ impl Config {
                 "--dedither" => self.dedither = true,
                 "--debug" => self.debug = true,
                 "--no-intro" => self.intro = false,
+                "--intro-secs" => {
+                    if let Some(n) = args.get(i + 1).and_then(|v| v.parse::<u32>().ok()) {
+                        self.intro_secs = n.clamp(INTRO_SECS_MIN, INTRO_SECS_MAX);
+                        i += 1;
+                    }
+                }
                 "--story" => self.story = true,
                 "--day" => {
                     if let Some(n) = args.get(i + 1).and_then(|v| v.parse::<u8>().ok()) {
@@ -373,6 +396,7 @@ mod tests {
             daynight: DayNight::Real24h,
             debug: true,
             intro: false,
+            intro_secs: 5,
             day: 7,
             story: true,
             story_secs: 120,

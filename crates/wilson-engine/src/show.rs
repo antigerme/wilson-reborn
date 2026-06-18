@@ -20,9 +20,11 @@ use crate::surface::{Surface, TRANSPARENT};
 use crate::ttm_exec::detect_transparent;
 use crate::walk::{WalkFrame, Walker};
 
-/// How long the intro screen (`INTRO.SCR`) is held at startup, in engine ticks
-/// (≈4 s at [`crate::MS_PER_TICK`] = 16 ms/tick), when the intro is enabled.
-const INTRO_TICKS: u16 = 250;
+/// Default hold for the intro screen (`INTRO.SCR`) at startup, in engine ticks
+/// (≈3 s at [`crate::MS_PER_TICK`] = 16 ms/tick). Overridable per-run via [`Show::enable_intro`]
+/// (`--intro-secs` / `?intro_secs`). The shipped original has no intro timer (KB10 §10.2); this
+/// is our approximation of "title shown until the first scene loads".
+pub const DEFAULT_INTRO_TICKS: u16 = 187;
 
 /// The wall-clock inputs the director needs (injected so the runtime is testable).
 #[derive(Debug, Clone, Copy)]
@@ -97,6 +99,11 @@ pub struct Show {
     /// The original's intro screen (`INTRO.SCR`), shown once at startup if enabled
     /// (the original's `Introduction` option). Consumed by the first `next_frame`.
     intro: Option<Surface>,
+    /// How long to hold the intro screen, in ticks (set by [`Show::enable_intro`]).
+    intro_ticks: u16,
+    /// Set when the intro was just shown, so the *next* frame can dissolve from it into the
+    /// first scene (only when the opt-in dissolve is enabled).
+    intro_boundary: bool,
     /// Opt-in: dissolve between story runs (the original's dormant LFSR tiled dissolve,
     /// KB10 §10.2) instead of a hard cut. Off by default = faithful hard cut.
     dissolve_on: bool,
@@ -152,6 +159,8 @@ impl Show {
             stage: Stage::Idle,
             pending_sound: None,
             intro: None,
+            intro_ticks: DEFAULT_INTRO_TICKS,
+            intro_boundary: false,
             dissolve_on: false,
             prev: None,
             dissolve: None,
@@ -175,9 +184,11 @@ impl Show {
     }
 
     /// Queue the original's intro screen (`INTRO.SCR`) to be shown once at startup —
-    /// the original's `Introduction` option. No-op if the resource is missing, so it
-    /// degrades gracefully. Call right after [`Show::new`].
-    pub fn enable_intro(&mut self, archive: &Archive) {
+    /// the original's `Introduction` option — held for `hold_ticks` (see
+    /// [`DEFAULT_INTRO_TICKS`]; use [`crate::intro_ticks_from_secs`]). No-op if the resource is
+    /// missing, so it degrades gracefully. Call right after [`Show::new`].
+    pub fn enable_intro(&mut self, archive: &Archive, hold_ticks: u16) {
+        self.intro_ticks = hold_ticks.max(1);
         let Some(scr) = archive.scr("INTRO.SCR") else {
             return;
         };
@@ -244,14 +255,17 @@ impl Show {
             return self.step_dissolve();
         }
         let frame = self.next_frame_inner(archive);
-        // At a run boundary, start a dissolve from the previous frame to this one.
-        if self.dissolve_on && self.run_boundary {
+        // At a run boundary — or leaving the intro into the first scene — start a dissolve from
+        // the previous frame to this one. (The intro→first-scene dissolve only happens with the
+        // opt-in enabled; the shipped original hard-cuts everywhere — KB10 §10.2.)
+        if self.dissolve_on && (self.run_boundary || self.intro_boundary) {
             if let Some(prev) = self.prev.take() {
+                self.run_boundary = false;
+                self.intro_boundary = false; // consumed: we had a "from" image to dissolve from
                 if prev.width == frame.surface.width
                     && prev.height == frame.surface.height
                     && prev.pixels != frame.surface.pixels
                 {
-                    self.run_boundary = false;
                     self.dissolve = Some(Dissolve::new(prev, frame.surface.clone()));
                     self.pending = Some(frame);
                     return self.step_dissolve();
@@ -297,9 +311,10 @@ impl Show {
     fn next_frame_inner(&mut self, archive: &Archive) -> Frame {
         // The intro screen (`INTRO.SCR`) is shown once, before the first run, if enabled.
         if let Some(surface) = self.intro.take() {
+            self.intro_boundary = true; // let the next frame dissolve from the intro (opt-in)
             return Frame {
                 surface,
-                delay_ticks: INTRO_TICKS,
+                delay_ticks: self.intro_ticks,
                 sounds: Vec::new(),
             };
         }
@@ -709,14 +724,53 @@ mod tests {
             day: 14,
         };
         let mut show = Show::new(&arch, &pal, 640, 480, Director::new(5, 200), clock, 42);
-        show.enable_intro(&arch);
+        show.enable_intro(&arch, 250); // hold is configurable (`--intro-secs`/`?intro_secs`)
         assert!(show.intro.is_some());
-        // The first frame is the intro screen (held for INTRO_TICKS); the upper-left is the
-        // INTRO.SCR fill value (7), and it is consumed so it never shows again.
+        // The first frame is the intro screen (held for the configured ticks); the upper-left is
+        // the INTRO.SCR fill value (7), and it is consumed so it never shows again.
         let f0 = show.next_frame(&arch);
-        assert_eq!(f0.delay_ticks, INTRO_TICKS);
+        assert_eq!(
+            f0.delay_ticks, 250,
+            "intro hold honours the configured ticks"
+        );
         assert_eq!(f0.surface.get(10, 10), Some(7));
         assert!(show.intro.is_none(), "intro is shown only once");
+    }
+
+    #[test]
+    fn dissolve_covers_the_intro_to_first_scene() {
+        // Regression: with the opt-in dissolve on, leaving the intro must dissolve into the first
+        // scene (not hard-cut). Without the intro-boundary handling, the frame after the intro is
+        // the scene directly and no dissolve starts.
+        let mut arch = full_archive();
+        arch.screens.push((
+            "INTRO.SCR".to_string(),
+            Scr {
+                width: 640,
+                height: 480,
+                pixels: vec![7; 640 * 480],
+            },
+        ));
+        let pal = Palette {
+            colors: [[1u8; 3]; 256],
+        };
+        let clock = Clock {
+            yday: 200,
+            hour: 12,
+            month: 6,
+            day: 14,
+        };
+        let mut show = Show::new(&arch, &pal, 640, 480, Director::new(5, 200), clock, 42);
+        show.enable_dissolve();
+        show.enable_intro(&arch, 60);
+        let f0 = show.next_frame(&arch); // the intro screen
+        assert_eq!(f0.surface.get(10, 10), Some(7), "first frame is the intro");
+        let f1 = show.next_frame(&arch); // leaving the intro → a dissolve step, not the scene
+        assert!(
+            show.dissolve.is_some(),
+            "leaving the intro starts a dissolve into the first scene"
+        );
+        assert_eq!(f1.delay_ticks, 1, "a dissolve step is paced at 1 tick");
     }
 
     #[test]
@@ -732,7 +786,7 @@ mod tests {
             day: 14,
         };
         let mut show = Show::new(&arch, &pal, 640, 480, Director::new(5, 200), clock, 42);
-        show.enable_intro(&arch); // INTRO.SCR absent -> no-op
+        show.enable_intro(&arch, DEFAULT_INTRO_TICKS); // INTRO.SCR absent -> no-op
         assert!(show.intro.is_none());
     }
 

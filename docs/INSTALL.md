@@ -159,8 +159,9 @@ python3 -m http.server -d crates/wilson-web/web 8000
 **Opções na URL** (paridade com o desktop) — `?fullscreen` (tela cheia + fundo preto),
 `?scale=fit|stretch|integer` e `?filter=linear|nearest` (**padrão `fit`+`linear`, igual ao
 desktop**), `?speed=25–400`, `?day=1–11`, `?dissolve`, `?story[&story_secs=N]`, `?daynight=real`,
-`?intro=0`, `?mute`, `?volume=0–100`, `?seed=N`. Há botões **🔊/🔇 + volume** e **⛶ tela cheia**
-(que mantém a tela acordada via **Wake Lock**); a UI/cursor somem após alguns segundos parados.
+`?intro=0`, `?intro_secs=1–30` (hold do intro, padrão 3 s), `?mute`, `?volume=0–100`, `?seed=N`.
+Há botões **🔊/🔇 + volume** e **⛶ tela cheia** (que mantém a tela acordada via **Wake Lock**); a
+UI/cursor somem após alguns segundos parados. (Com `?dissolve`, o dissolve também cobre o intro→1ª cena.)
 
 **2. Autossuficiente** (uso pessoal) — embute os `RESOURCE.*` **+ os sons** (do `SCRANTIC.EXE`)
 no `.wasm` (feature `embed-data`), então a página **abre e roda** sem seletor. Aponte

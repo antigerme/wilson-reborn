@@ -6,6 +6,24 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-18 — Intro: 3 s configurável + dissolve no intro (opt-in); dissolve provado morto
+
+Pedido do usuário (que lembrava do dissolve "sempre ao sair do intro" + achou 4 s longo):
+- **Dissolve no original — provado morto (byte scan do binário INTEIRO):** o gate `[0x1ebf]` aparece
+  em 10 instruções, **todas leituras** (9× `cmp [0x1ebf],0`), **0 escritas** ⇒ o dissolve nunca roda,
+  nem saindo do intro (hard-cut). A memória do usuário é do efeito **programado-mas-desligado**. KB10 §10.2
+  atualizado.
+- **Dissolve no intro (opt-in):** com `--transition dissolve`/`?dissolve` ligado, o `enable_intro` agora
+  dissolve do `INTRO.SCR` pra 1ª cena (`Show::intro_boundary`); padrão segue hard-cut, fiel ao binário.
+  Teste de regressão `dissolve_covers_the_intro_to_first_scene` (fail-first verificado).
+- **Duração do intro configurável (padrão 3 s):** `DEFAULT_INTRO_TICKS=187`, `enable_intro(archive, ticks)`,
+  helper `wilson_engine::intro_ticks_from_secs`. Desktop `--intro-secs <1–30>` (config `intro_secs`); web
+  `?intro_secs`/`Options.intro_secs`. (Era 4 s/250 ticks fixos.)
+- Validado: fmt, clippy (host + wasm 2 configs), 58 testes `wilson` + 78 `wilson-engine`, e **e2e no Chrome
+  real** (render + som intactos com o build embedded novo).
+
+---
+
 ## 2026-06-18 — Teste e2e do web num Chrome real (Playwright) — "validar como usuário"
 
 Pedido do usuário: validar o web **abrindo um Chrome de verdade**, pra não restar dúvida (depois
