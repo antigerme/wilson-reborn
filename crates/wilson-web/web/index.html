@@ -49,59 +49,62 @@
   </p>
 
 <script type="module">
-  import init, { Wilson } from "./wilson_web.js";
+  import init, { Wilson, has_embedded_data } from "./wilson_web.js";
 
   const $ = (id) => document.getElementById(id);
   const status = (m) => { $("status").textContent = m; };
+  const seed = () => Math.random() * 9007199254740991;
+  let running = null;
 
-  let mapBytes = null, dataBytes = null, running = null;
-
-  const readFile = (input) => new Promise((resolve) => {
-    const f = input.files && input.files[0];
-    if (!f) return resolve(null);
-    const r = new FileReader();
-    r.onload = () => resolve(new Uint8Array(r.result));
-    r.readAsArrayBuffer(f);
-  });
-
-  function refreshStartEnabled() {
-    $("start").disabled = !(mapBytes && dataBytes);
+  // Drive a built Wilson into the canvas on a timer (shared by both flows).
+  function run(wilson) {
+    if (running) { clearTimeout(running); running = null; }
+    if ($("dissolve").checked) wilson.enable_dissolve();
+    const canvas = $("screen");
+    canvas.width = wilson.width();
+    canvas.height = wilson.height();
+    const ctx = canvas.getContext("2d");
+    const tick = () => {
+      const rgba = wilson.frame(Date.now() / 1000);
+      ctx.putImageData(new ImageData(new Uint8ClampedArray(rgba), wilson.width(), wilson.height()), 0, 0);
+      running = setTimeout(tick, wilson.delay_ms());
+    };
+    tick();
   }
 
   await init(); // load the wasm module
 
-  $("map").addEventListener("change", async (e) => {
-    mapBytes = await readFile(e.target); refreshStartEnabled();
-  });
-  $("data").addEventListener("change", async (e) => {
-    dataBytes = await readFile(e.target); refreshStartEnabled();
-  });
-
-  $("start").addEventListener("click", () => {
-    if (running) { clearTimeout(running); running = null; }
+  if (has_embedded_data()) {
+    // Self-contained build: the data is baked into the wasm — no file picker, just run.
+    $("panel").hidden = true;
     try {
-      const wilson = new Wilson(
-        mapBytes, dataBytes, Math.random() * 9007199254740991, Date.now() / 1000,
-      );
-      if ($("dissolve").checked) wilson.enable_dissolve();
-
-      const canvas = $("screen");
-      canvas.width = wilson.width();
-      canvas.height = wilson.height();
-      const ctx = canvas.getContext("2d");
-      status("Running. (Reload to pick different data.)");
-
-      const tick = () => {
-        const rgba = wilson.frame(Date.now() / 1000);
-        const img = new ImageData(new Uint8ClampedArray(rgba), wilson.width(), wilson.height());
-        ctx.putImageData(img, 0, 0);
-        running = setTimeout(tick, wilson.delay_ms());
-      };
-      tick();
+      run(Wilson.embedded(seed(), Date.now() / 1000));
+      status("Running (embedded data).");
     } catch (err) {
       status("Could not start: " + err);
     }
-  });
+  } else {
+    // Bring-your-own: read RESOURCE.MAP + RESOURCE.001 from the file pickers.
+    let mapBytes = null, dataBytes = null;
+    const readFile = (input) => new Promise((resolve) => {
+      const f = input.files && input.files[0];
+      if (!f) return resolve(null);
+      const r = new FileReader();
+      r.onload = () => resolve(new Uint8Array(r.result));
+      r.readAsArrayBuffer(f);
+    });
+    const refresh = () => { $("start").disabled = !(mapBytes && dataBytes); };
+    $("map").addEventListener("change", async (e) => { mapBytes = await readFile(e.target); refresh(); });
+    $("data").addEventListener("change", async (e) => { dataBytes = await readFile(e.target); refresh(); });
+    $("start").addEventListener("click", () => {
+      try {
+        run(new Wilson(mapBytes, dataBytes, seed(), Date.now() / 1000));
+        status("Running. (Reload to pick different data.)");
+      } catch (err) {
+        status("Could not start: " + err);
+      }
+    });
+  }
 </script>
 </body>
 </html>

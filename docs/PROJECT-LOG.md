@@ -6,6 +6,24 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-18 — Web/WASM autossuficiente (dados embutidos, uso pessoal)
+
+Pedido do usuário: o `build-embedded.sh --web` (e o `build-web.sh`) agora podem gerar uma
+página **autossuficiente** — os `RESOURCE.*` embutidos no `.wasm`, sem seletor de arquivo.
+- `wilson-web`: feature **`embed-data`** + `build.rs` (lê `WILSON_EMBED_DATA`, assa MAP+DATA;
+  fallback do instalador `RESOURCE.00$`; stub quando sem env — pro CI). Novo ctor
+  `Wilson.embedded(seed, now)` + free fn `has_embedded_data()`; `index.html` auto-inicia quando
+  há dados embutidos, senão mostra o seletor. Modo padrão (traga-seus-dados) intacto.
+- `build-web.sh`: se `WILSON_EMBED_DATA` setado → `--features embed-data` (mensagem + aviso de
+  copyright). `build-embedded.sh --web` herda o `WILSON_EMBED_DATA` exportado: **com** `<data-dir>`
+  o web sai embutido, **sem** sai traga-seus-dados.
+- CI: o job `web-wasm` agora roda **clippy** no alvo wasm (o clippy do host não linta esse crate
+  wasm-only) nos dois configs (default + `embed-data`).
+- Validado: build wasm nos 3 modos (sem embed / stub / dados reais), clippy wasm limpo, fmt,
+  host workspace, `workflow_lint`. Aviso: bundle embutido contém o jogo → uso pessoal.
+
+---
+
 ## 2026-06-18 — calcpath: byte-check + **port fiel** das rotas do original
 
 O byte-check (RE) decifrou o `calcpath` do original e mostrou que a nossa `WALK_MATRIX`

@@ -7,6 +7,12 @@ license.workspace = true
 repository.workspace = true
 authors.workspace = true
 
+[features]
+# Personal use: bake the user's RESOURCE.* into the .wasm (read at build time from
+# WILSON_EMBED_DATA, like the desktop `wilson` crate) so the page runs self-contained, with
+# no file picker. The data is copyright and is NEVER committed; off by default.
+embed-data = []
+
 [lib]
 # `cdylib` is what wasm-bindgen links; `rlib` lets the (empty, on non-wasm) crate sit in the
 # workspace build without complaint.
@@ -20,3 +26,7 @@ wilson-dgds = { path = "../wilson-dgds" }
 # compiles this crate as an empty lib (no JS/wasm deps, no cost). See `src/lib.rs`.
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "0.2"
+
+# build.rs (embed-data only) reuses wilson-dgds to resolve the data dir / installer.
+[build-dependencies]
+wilson-dgds = { path = "../wilson-dgds" }

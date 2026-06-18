@@ -17,6 +17,19 @@ use wilson_engine::{clock, Director, Show};
 const WIDTH: u16 = 640;
 const HEIGHT: u16 = 480;
 
+/// Original data baked into the wasm by `build.rs` (only in an `embed-data` build).
+#[cfg(feature = "embed-data")]
+mod embedded {
+    include!(concat!(env!("OUT_DIR"), "/embedded_data.rs"));
+}
+
+/// Whether this build has the original data baked in (the `embed-data` feature). The page
+/// reads it to decide: auto-start ([`Wilson::embedded`]) vs. ask for the user's `RESOURCE.*`.
+#[wasm_bindgen]
+pub fn has_embedded_data() -> bool {
+    cfg!(feature = "embed-data")
+}
+
 /// A running Wilson Reborn instance, driven from JavaScript.
 #[wasm_bindgen]
 pub struct Wilson {
@@ -34,21 +47,15 @@ impl Wilson {
     /// clock as Unix seconds (`Date.now() / 1000`), used for the day/holiday logic.
     #[wasm_bindgen(constructor)]
     pub fn new(map: &[u8], data: &[u8], seed: f64, now_secs: f64) -> Result<Wilson, JsValue> {
-        let archive = Archive::parse(map, data)
-            .map_err(|e| JsValue::from_str(&format!("failed to parse the game data: {e}")))?;
-        let palette = archive
-            .palette()
-            .cloned()
-            .ok_or_else(|| JsValue::from_str("the data has no palette (PAL) resource"))?;
-        let cl = clock::from_unix(now_secs as u64);
-        let director = Director::new(1, cl.yday);
-        let show = Show::new(&archive, &palette, WIDTH, HEIGHT, director, cl, seed as u64);
-        Ok(Wilson {
-            show,
-            archive,
-            palette,
-            delay_ticks: 1,
-        })
+        Wilson::build(map, data, seed, now_secs)
+    }
+
+    /// Build from the data baked into the wasm at compile time (the `embed-data` feature) — a
+    /// self-contained page, no file picker. Only present in an `embed-data` build (the page
+    /// calls it when [`has_embedded_data`] is true).
+    #[cfg(feature = "embed-data")]
+    pub fn embedded(seed: f64, now_secs: f64) -> Result<Wilson, JsValue> {
+        Wilson::build(embedded::MAP, embedded::DATA, seed, now_secs)
     }
 
     /// Advance one frame at wall-clock `now_secs` and return its pixels as RGBA bytes
@@ -79,5 +86,28 @@ impl Wilson {
     /// LFSR tiled dissolve). Off by default = faithful hard cut.
     pub fn enable_dissolve(&mut self) {
         self.show.enable_dissolve();
+    }
+}
+
+// Private helpers (a separate, non-`#[wasm_bindgen]` impl so they are not exported to JS).
+impl Wilson {
+    /// Parse `map`+`data`, take the palette, and start a [`Show`] — shared by `new`
+    /// (JS-provided bytes) and `embedded` (compile-time bytes).
+    fn build(map: &[u8], data: &[u8], seed: f64, now_secs: f64) -> Result<Wilson, JsValue> {
+        let archive = Archive::parse(map, data)
+            .map_err(|e| JsValue::from_str(&format!("failed to parse the game data: {e}")))?;
+        let palette = archive
+            .palette()
+            .cloned()
+            .ok_or_else(|| JsValue::from_str("the data has no palette (PAL) resource"))?;
+        let cl = clock::from_unix(now_secs as u64);
+        let director = Director::new(1, cl.yday);
+        let show = Show::new(&archive, &palette, WIDTH, HEIGHT, director, cl, seed as u64);
+        Ok(Wilson {
+            show,
+            archive,
+            palette,
+            delay_ticks: 1,
+        })
     }
 }

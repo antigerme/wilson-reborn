@@ -6,6 +6,10 @@
 # Prerequisites are checked (and the wasm target is auto-added) below; you only need:
 #   cargo install wasm-bindgen-cli      # version must match the `wasm-bindgen` crate
 #
+# If WILSON_EMBED_DATA points at your original data, the bundle is built self-contained
+# (RESOURCE.* baked into the .wasm via the `embed-data` feature — no file picker; personal
+# use). Otherwise it's the default "bring your own data" page.
+#
 # Usage: ./build-web.sh [release|debug]   (default: release)
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -15,6 +19,13 @@ flag=""
 [ "$profile" = "release" ] && flag="--release"
 target="wasm32-unknown-unknown"
 have() { command -v "$1" >/dev/null 2>&1; }
+
+# Embed the data when WILSON_EMBED_DATA is set (self-contained, personal-use page).
+feat=()
+if [ -n "${WILSON_EMBED_DATA:-}" ]; then
+    feat=(--features embed-data)
+    echo "==> embedding data from WILSON_EMBED_DATA=$WILSON_EMBED_DATA (self-contained page)"
+fi
 
 # ---- preflight: the prerequisites people miss (the missing target is the #1 trip-up) ----
 have cargo || {
@@ -34,7 +45,7 @@ else
 fi
 
 echo "[1/2] cargo build ($profile) → $target"
-cargo build $flag --target "$target" -p wilson-web
+cargo build $flag --target "$target" -p wilson-web "${feat[@]}"
 
 wasm="../../target/$target/$profile/wilson_web.wasm"
 echo "[2/2] wasm-bindgen → web/"
@@ -48,4 +59,9 @@ wasm-bindgen --target web --no-typescript --out-dir web "$wasm"
 echo
 echo "Done. Serve the page locally, e.g.:"
 echo "    python3 -m http.server -d \"$(pwd)/web\" 8000"
-echo "then open http://localhost:8000/ and pick your RESOURCE.MAP + RESOURCE.001."
+if [ ${#feat[@]} -gt 0 ]; then
+    echo "then open http://localhost:8000/ — it runs straight away (data is embedded)."
+    echo "NOTE: this bundle embeds the copyright game data — personal use only, do not host/redistribute."
+else
+    echo "then open http://localhost:8000/ and pick your RESOURCE.MAP + RESOURCE.001."
+fi
