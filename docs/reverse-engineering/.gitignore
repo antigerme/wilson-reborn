@@ -1,0 +1,13 @@
+# Python bytecode cache
+__pycache__/
+*.pyc
+
+# Disassembler output — a derivative of the copyright binary; keep it local.
+out/
+disasm/
+
+# Local copies of the (copyright) inputs, if placed next to the tools.
+SCRANTIC.EXE
+SCRANTIC.SCR
+*.SCR
+specs/
