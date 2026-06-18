@@ -25,9 +25,19 @@
   #status { min-height: 1.2em; color: #f9e2af; }
   a { color: #89b4fa; }
   .hint { opacity: .7; font-size: .85em; max-width: 60ch; text-align: center; }
+  /* Sound on/off toggle — shown once running, when sound is available. */
+  #sound {
+    position: fixed; top: 12px; right: 12px; z-index: 10;
+    font-size: 1.3rem; line-height: 1; padding: .35rem .55rem;
+    background: #1e2536cc; color: inherit; border: 1px solid #313a52;
+    border-radius: 8px; cursor: pointer; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  }
+  #sound:hover { background: #283050; }
 </style>
 </head>
 <body>
+  <button id="sound" hidden title="Mute" aria-label="Mute sound">🔊</button>
+
   <h1>Wilson Reborn — the life of Johnny Castaway, in your browser</h1>
 
   <canvas id="screen" width="640" height="480"></canvas>
@@ -35,6 +45,9 @@
   <div id="panel">
     <label>RESOURCE.MAP <input id="map" type="file" /></label>
     <label>RESOURCE.001 <input id="data" type="file" /></label>
+    <label title="The original's sound effects are embedded inside SCRANTIC.EXE — add it for audio (optional)">
+      SCRANTIC.EXE <input id="exe" type="file" />
+    </label>
     <label title="The original's dormant tiled dissolve, resurrected">
       <input id="dissolve" type="checkbox" /> dissolve transitions
     </label>
@@ -45,7 +58,8 @@
   <p class="hint">
     The game data is copyright Sierra/Dynamix and is <strong>not</strong> bundled — pick your
     own <code>RESOURCE.MAP</code> and <code>RESOURCE.001</code> (e.g. from the Internet
-    Archive's <code>scrantic-run.zip</code>). Everything runs locally; nothing is uploaded.
+    Archive's <code>scrantic-run.zip</code>). Add <code>SCRANTIC.EXE</code> for sound (optional).
+    Everything runs locally; nothing is uploaded.
   </p>
 
 <script type="module">
@@ -56,6 +70,54 @@
   const seed = () => Math.random() * 9007199254740991;
   let running = null;
 
+  // ---- audio: play the engine's per-frame sound cues via the Web Audio API ---------------
+  // On by default; the 🔊/🔇 button mutes/unmutes after the page opens. Browsers gate audio
+  // behind a user gesture, so the AudioContext only starts on the first click anywhere.
+  let audioCtx = null, muted = false, onAudioRunning = null;
+  const audioBuffers = new Map();              // sound id -> AudioBuffer (null = absent/pending)
+
+  function ensureAudio() {
+    if (!audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) audioCtx = new AC();
+    }
+    if (audioCtx && audioCtx.state === "suspended") {
+      audioCtx.resume().then(() => { if (onAudioRunning) { onAudioRunning(); onAudioRunning = null; } })
+        .catch(() => {});
+    }
+  }
+  document.addEventListener("click", ensureAudio);
+
+  function playBuffer(b) {
+    const src = audioCtx.createBufferSource();
+    src.buffer = b;
+    src.connect(audioCtx.destination);
+    src.start();
+  }
+  function playCue(wilson, id) {
+    if (muted || !audioCtx || audioCtx.state !== "running") return;
+    const buf = audioBuffers.get(id);
+    if (buf === undefined) {                   // first time we see this id: decode (once), then play
+      audioBuffers.set(id, null);
+      const wav = wilson.sound_wav(id);
+      if (!wav || wav.length === 0) return;    // no sound loaded for this id
+      const ab = wav.buffer.slice(wav.byteOffset, wav.byteOffset + wav.byteLength);
+      audioCtx.decodeAudioData(ab)
+        .then((b) => { audioBuffers.set(id, b); if (!muted) playBuffer(b); })
+        .catch(() => {});
+      return;
+    }
+    if (buf) playBuffer(buf);
+  }
+
+  $("sound").addEventListener("click", () => {
+    muted = !muted;
+    const b = $("sound");
+    b.textContent = muted ? "🔇" : "🔊";
+    b.title = muted ? "Unmute" : "Mute";
+    if (!muted) ensureAudio();
+  });
+
   // Drive a built Wilson into the canvas on a timer (shared by both flows).
   function run(wilson) {
     if (running) { clearTimeout(running); running = null; }
@@ -64,28 +126,41 @@
     canvas.width = wilson.width();
     canvas.height = wilson.height();
     const ctx = canvas.getContext("2d");
+
+    const hasSound = wilson.has_sound();
+    $("sound").hidden = !hasSound;
+    if (hasSound) ensureAudio();               // works inside a click (bring-your-own Start); else awaits one
+
     const tick = () => {
       const rgba = wilson.frame(Date.now() / 1000);
       ctx.putImageData(new ImageData(new Uint8ClampedArray(rgba), wilson.width(), wilson.height()), 0, 0);
+      for (const id of wilson.take_sounds()) playCue(wilson, id);
       running = setTimeout(tick, wilson.delay_ms());
     };
     tick();
+    return hasSound;
   }
 
   await init(); // load the wasm module
 
   if (has_embedded_data()) {
-    // Self-contained build: the data is baked into the wasm — no file picker, just run.
+    // Self-contained build: data (and sound) are baked into the wasm — no file picker.
     $("panel").hidden = true;
     try {
-      run(Wilson.embedded(seed(), Date.now() / 1000));
-      status("Running (embedded data).");
+      const wilson = Wilson.embedded(seed(), Date.now() / 1000);
+      const base = "Running (embedded data).";
+      if (run(wilson) && (!audioCtx || audioCtx.state !== "running")) {
+        status(base + " 🔊 Click anywhere to enable sound.");
+        onAudioRunning = () => status(base);   // drop the hint once audio actually starts
+      } else {
+        status(base);
+      }
     } catch (err) {
       status("Could not start: " + err);
     }
   } else {
-    // Bring-your-own: read RESOURCE.MAP + RESOURCE.001 from the file pickers.
-    let mapBytes = null, dataBytes = null;
+    // Bring-your-own: read RESOURCE.MAP + RESOURCE.001 (+ optional SCRANTIC.EXE for sound).
+    let mapBytes = null, dataBytes = null, exeBytes = null;
     const readFile = (input) => new Promise((resolve) => {
       const f = input.files && input.files[0];
       if (!f) return resolve(null);
@@ -96,10 +171,19 @@
     const refresh = () => { $("start").disabled = !(mapBytes && dataBytes); };
     $("map").addEventListener("change", async (e) => { mapBytes = await readFile(e.target); refresh(); });
     $("data").addEventListener("change", async (e) => { dataBytes = await readFile(e.target); refresh(); });
+    $("exe").addEventListener("change", async (e) => { exeBytes = await readFile(e.target); });
     $("start").addEventListener("click", () => {
       try {
-        run(new Wilson(mapBytes, dataBytes, seed(), Date.now() / 1000));
-        status("Running. (Reload to pick different data.)");
+        const wilson = new Wilson(mapBytes, dataBytes, seed(), Date.now() / 1000);
+        let note = "";
+        if (exeBytes) {
+          const n = wilson.set_sound_data(exeBytes);  // load the WAVs from SCRANTIC.EXE
+          note = n > 0 ? ` (${n} sounds)` : " (no sounds found in that file)";
+        } else {
+          note = " — add SCRANTIC.EXE for sound";
+        }
+        run(wilson);
+        status("Running" + note + ". (Reload to pick different data.)");
       } catch (err) {
         status("Could not start: " + err);
       }

@@ -23,7 +23,12 @@ as the desktop app, no server. Two modes:
   pacing frames by `delay_ms()` (the engine's 16 ms/tick). No `web-sys` dependency — just
   `wasm-bindgen`.
 - The clock comes from JS (`Date.now()`), so the day/night cycle and the 11-day arc work.
-- Audio is desktop-only for now (the browser build is silent).
+- **Sound (on by default):** the engine emits per-frame sound cues; `take_sounds()` drains them
+  and `sound_wav(id)` returns the WAV bytes, which the page plays via the **Web Audio API**. The
+  effects live inside `SCRANTIC.EXE` (not `RESOURCE.*`): baked in for an `embed-data` build, or
+  loaded at runtime via `set_sound_data(exeBytes)` when the user supplies `SCRANTIC.EXE`
+  (`has_sound()` reports availability). A 🔊/🔇 button toggles mute; browsers gate audio behind a
+  user gesture, so it starts on the first click.
 
 ## Build & run
 ```sh

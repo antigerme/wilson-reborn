@@ -151,11 +151,12 @@ localmente, nada é enviado). É o modo seguro pra hospedar:
 cargo install wasm-bindgen-cli          # a versão precisa casar com o crate wasm-bindgen
 ./crates/wilson-web/build-web.sh        # auto-adiciona o target wasm + gera crates/wilson-web/web/
 python3 -m http.server -d crates/wilson-web/web 8000
-# abra http://localhost:8000/ e escolha RESOURCE.MAP + RESOURCE.001
+# abra http://localhost:8000/ e escolha RESOURCE.MAP + RESOURCE.001 (+ SCRANTIC.EXE p/ som)
 ```
 
-**2. Autossuficiente** (uso pessoal) — embute os `RESOURCE.*` no `.wasm` (feature `embed-data`),
-então a página **abre e roda** sem seletor. Aponte `WILSON_EMBED_DATA` (ou use o empacotador):
+**2. Autossuficiente** (uso pessoal) — embute os `RESOURCE.*` **+ os sons** (do `SCRANTIC.EXE`)
+no `.wasm` (feature `embed-data`), então a página **abre e roda** sem seletor. Aponte
+`WILSON_EMBED_DATA` (ou use o empacotador):
 
 ```bash
 WILSON_EMBED_DATA=<pasta-com-RESOURCE.*> ./crates/wilson-web/build-web.sh   # direto
@@ -172,7 +173,9 @@ scripts/build-embedded.sh --web <data-dir>      # desktop (embutido) + web (embu
 
 > O bundle **autossuficiente** contém o jogo (copyright) — **uso pessoal, não hospede/redistribua.**
 > Os artefatos gerados (`wilson_web.js`/`_bg.wasm`) são git-ignored; só o `index.html` é
-> versionado. Áudio é desktop-only por enquanto (o web é mudo).
+> versionado. **Som ligado por padrão** (Web Audio; botão 🔊/🔇 pra mutar) — começa no primeiro
+> clique (política de autoplay dos navegadores). No modo "traga seus dados", o som precisa do
+> `SCRANTIC.EXE` (onde os efeitos ficam embutidos); no autossuficiente já vem assado.
 
 ## Ícone (Windows e macOS)
 

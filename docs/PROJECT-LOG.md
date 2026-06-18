@@ -6,6 +6,23 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-18 — Som no Web/WASM (Web Audio, ligado por padrão + botão de mute)
+
+Pedido do usuário: web com **som ligado por padrão**, com um botão na página pra desativar.
+- `wilson-web`: o engine já dobra os cues (incl. `sound 0` de transição de dia) em
+  `frame.sounds`; expus `take_sounds() → Vec<u32>`, `sound_wav(id) → bytes`, `has_sound()` e
+  `set_sound_data(exe)`. Os WAVs vêm do **`SCRANTIC.EXE`** (não do `RESOURCE.*`): **assados no
+  `.wasm`** no `embed-data` (build.rs estende a extração — 23 sons, igual ao desktop) ou
+  carregados em runtime no modo traga-seus-dados.
+- `index.html`: toca os cues via **Web Audio API** (decode + cache por id), botão **🔊/🔇**
+  (padrão ligado), retoma o `AudioContext` no **primeiro clique** (política de autoplay), e um
+  3º input opcional de `SCRANTIC.EXE` no modo traga-seus-dados.
+- Validado: wasm compila + clippy limpo nos dois configs (o macro `#[wasm_bindgen]` valida as
+  assinaturas), embed assa 23 sons, fmt, host clippy, `workflow_lint`. CI (clippy-wasm de #74)
+  já cobre os dois configs.
+
+---
+
 ## 2026-06-18 — Web/WASM autossuficiente (dados embutidos, uso pessoal)
 
 Pedido do usuário: o `build-embedded.sh --web` (e o `build-web.sh`) agora podem gerar uma

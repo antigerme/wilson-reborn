@@ -16,6 +16,9 @@ use wilson_engine::{clock, Director, Show};
 /// The engine renders at the original's fixed 640×480.
 const WIDTH: u16 = 640;
 const HEIGHT: u16 = 480;
+/// Sound-effect slots (ids `0..25`), matching the desktop player and `sounds_from_scrantic_exe`.
+#[cfg(feature = "embed-data")]
+const NUM_SOUNDS: usize = 25;
 
 /// Original data baked into the wasm by `build.rs` (only in an `embed-data` build).
 #[cfg(feature = "embed-data")]
@@ -37,6 +40,12 @@ pub struct Wilson {
     archive: Archive,
     palette: Palette,
     delay_ticks: u16,
+    /// WAV bytes per sound-effect id (the originals live in `SCRANTIC.EXE`, not `RESOURCE.*`):
+    /// baked in for an `embed-data` build, or supplied at runtime via [`Wilson::set_sound_data`].
+    /// Empty ⇒ silent. The page plays these via the Web Audio API.
+    sounds: Vec<Option<Vec<u8>>>,
+    /// Sound-effect ids the last [`Wilson::frame`] fired, drained by [`Wilson::take_sounds`].
+    last_sounds: Vec<u16>,
 }
 
 #[wasm_bindgen]
@@ -55,16 +64,56 @@ impl Wilson {
     /// calls it when [`has_embedded_data`] is true).
     #[cfg(feature = "embed-data")]
     pub fn embedded(seed: f64, now_secs: f64) -> Result<Wilson, JsValue> {
-        Wilson::build(embedded::MAP, embedded::DATA, seed, now_secs)
+        let mut wilson = Wilson::build(embedded::MAP, embedded::DATA, seed, now_secs)?;
+        // Bake-in the sound effects too (extracted from SCRANTIC.EXE at build time).
+        let mut sounds = vec![None; NUM_SOUNDS];
+        for &(id, bytes) in embedded::SOUNDS {
+            if let Some(slot) = sounds.get_mut(id as usize) {
+                *slot = Some(bytes.to_vec());
+            }
+        }
+        wilson.sounds = sounds;
+        Ok(wilson)
     }
 
     /// Advance one frame at wall-clock `now_secs` and return its pixels as RGBA bytes
-    /// (`WIDTH * HEIGHT * 4`), ready to wrap in a `Uint8ClampedArray` / `ImageData`.
+    /// (`WIDTH * HEIGHT * 4`), ready to wrap in a `Uint8ClampedArray` / `ImageData`. The
+    /// sound effects fired this frame are stashed for [`Wilson::take_sounds`].
     pub fn frame(&mut self, now_secs: f64) -> Vec<u8> {
         self.show.set_clock(clock::from_unix(now_secs as u64));
         let frame = self.show.next_frame(&self.archive);
         self.delay_ticks = frame.delay_ticks;
+        self.last_sounds = frame.sounds; // partial move; frame.surface stays usable
         frame.surface.to_rgba(&self.palette)
+    }
+
+    /// Drain the sound-effect ids the last [`Wilson::frame`] fired (incl. the day-transition
+    /// cue, which the engine folds in). The page maps each id through [`Wilson::sound_wav`].
+    pub fn take_sounds(&mut self) -> Vec<u32> {
+        std::mem::take(&mut self.last_sounds)
+            .into_iter()
+            .map(u32::from)
+            .collect()
+    }
+
+    /// The WAV bytes for sound-effect `id`, or an empty array if none is loaded for it.
+    pub fn sound_wav(&self, id: u32) -> Vec<u8> {
+        self.sounds
+            .get(id as usize)
+            .and_then(|o| o.clone())
+            .unwrap_or_default()
+    }
+
+    /// Whether any sound effect is loaded (so the page can hint when audio is unavailable).
+    pub fn has_sound(&self) -> bool {
+        self.sounds.iter().any(Option::is_some)
+    }
+
+    /// Load the sound effects from a `SCRANTIC.EXE`/`.SCR` the user supplied (bring-your-own:
+    /// the WAVs are embedded in that binary, not in `RESOURCE.*`). Returns how many loaded.
+    pub fn set_sound_data(&mut self, exe: &[u8]) -> usize {
+        self.sounds = wilson_dgds::sounds_from_scrantic_exe(exe);
+        self.sounds.iter().filter(|o| o.is_some()).count()
     }
 
     /// How long to display the last [`Wilson::frame`], in milliseconds (for the JS timer).
@@ -108,6 +157,8 @@ impl Wilson {
             archive,
             palette,
             delay_ticks: 1,
+            sounds: Vec::new(), // populated by `embedded` or `set_sound_data`
+            last_sounds: Vec::new(),
         })
     }
 }
