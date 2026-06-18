@@ -164,4 +164,10 @@ de RNG com seeds pequenas).
 engine em todo `RedrawRequested` (inclusive os espontâneos do SO), atropelando o `WaitUntil`;
 agora `pace::FramePacer` trava o avanço por deadline (teste de regressão fail-first). RE
 confirmou que o original **não tem timer de intro** (hard-cut, fica até a 1ª cena carregar).
+**Fix Windows .scr (2026-06-18):** testando no Windows 11 — (1) faltava
+`#![windows_subsystem = "windows"]` (o `.scr` abria janela de **console** preta); (2) **Configurar**
+(`/c`) só fazia `println!` ⇒ agora `configure()` abre o `config.txt` no editor; (3) o **preview**
+(`/p`) tocava som ⇒ `audio_muted` silencia o preview. Validado por cross-compile `windows-gnu`
+(confirmação final no Windows do usuário). *Pendente possível:* o monitorzinho do preview ainda
+pode renderizar preto (embutir via `with_parent_window` é frágil; não testável fora do Windows).
 **Próximo:** cortar a **v0.3.0** (empacotar tudo isso) ou outra frente (a combinar com o usuário).

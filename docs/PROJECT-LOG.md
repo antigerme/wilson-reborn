@@ -6,6 +6,23 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-18 — Fix: integração do screensaver no Windows (console, Configurar, preview com som)
+
+Testando o `wilson.scr` no Windows 11, o usuário viu: o botão **Configurações** abria uma **janela
+preta** (parecia rodando, com som) em vez de mostrar opções. Três bugs de integração:
+- **Faltava `#![windows_subsystem = "windows"]`** → o `.scr` era subsistema **console**, então o
+  Windows abria uma janela de console preta (título no caminho do `.scr`) ao lançar pelas
+  Configurações de Proteção de Tela. Adicionado (em release; mantém console no debug pro `--debug`).
+- **`Configure` (`/c`) só fazia `println!`** → sem console (após o fix acima) não mostrava nada.
+  Agora `configure()` **abre o `config.txt`** (settings comentados) no editor padrão no Windows
+  (Notepad, com fallback pro shell); fora do Windows, imprime como antes.
+- **Preview (`/p`) tocava som** → o monitorzinho das Configurações deve ser **mudo**. `audio_muted`
+  (mute por config **ou** preview) silencia o preview. Teste de regressão `preview_pane_is_always_silent`.
+- Validado: fmt, clippy, testes, e **cross-compile `x86_64-pc-windows-gnu`** (cobre o código
+  `#[cfg(windows)]` + o atributo de subsistema). Confirmação final é no Windows do usuário.
+
+---
+
 ## 2026-06-18 — Web: igualar o look do desktop (fit+linear), scale/filter, Wake Lock, salvar claro
 
 Feedback do usuário sobre o web (tudo em `index.html`, sem Rust):
