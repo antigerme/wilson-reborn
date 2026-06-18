@@ -99,7 +99,8 @@ no Windows, rodar no Linux/macOS e publicar releases.
 > embed-data` — gera um único arquivo que roda sem `--data`. Os dados são copyright e **não**
 > são redistribuídos; por isso esse build não é publicado nas releases.
 
-> **Rodar no navegador (WASM):** a engine também compila para WebAssembly — veja
+> **Rodar no navegador (WASM):** 🌐 **demo ao vivo: <https://antigerme.github.io/wilson-reborn/>**
+> (traga seus dados — nada é enviado). A engine também compila para WebAssembly — veja
 > **[`crates/wilson-web`](crates/wilson-web/README.md)**. Gere com
 > `crates/wilson-web/build-web.sh` (ou `scripts/build-embedded.sh --web`). Arraste seus próprios
 > `RESOURCE.MAP`/`RESOURCE.001` (ou um `scrantic-run.zip` / `scrantic-installer.zip`) — lidos

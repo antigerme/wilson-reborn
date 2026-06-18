@@ -6,6 +6,19 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-18 — GitHub Pages: hospedar a página Web/WASM (traga-seus-dados) "ao vivo"
+
+Pedido do usuário. Novo workflow `pages.yml`: builda o bundle **bring-your-own** (sem
+`WILSON_EMBED_DATA` ⇒ sem copyright) e faz **deploy no GitHub Pages** a cada push na `main` →
+<https://antigerme.github.io/wilson-reborn/> (visita + traz seus dados + roda; nada hospedado é
+copyright). Build roda também em PR (pega quebra); deploy só fora de PR. **Setup único:** o usuário
+precisa ligar Settings → Pages → Source = **GitHub Actions** (o 1º deploy falha até isso).
+- `workflow_lint` estendido: o guard de "não vazar dados" agora cobre `release.yml` **e** `pages.yml`
+  (renomeado `public_artifacts_do_not_ship_game_data`), e o node24 cobre os 3 workflows. Pegou meu
+  comentário com `RESOURCE.` no pages.yml — reescrito (guard intacto).
+
+---
+
 ## 2026-06-18 — Fix: preview do screensaver no Windows preenche o painel (sem faixas pretas)
 
 O usuário testou no Win11: o monitorzinho das Configurações **renderiza** (Johnny + ilha), mas com

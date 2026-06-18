@@ -109,8 +109,12 @@ cargo run -p wilson-engine --example render_run -- <dir> /tmp/out 27000 225 1
   **criada** antes de empurrar) e depois **acompanhar o `release.yml`** e conferir os artefatos.
   Artefatos da release: `wilson.scr`/`.exe` (Windows), binários Linux/macOS, `.saver` (macOS), e
   o **`wilson-web.zip`** (bundle Web/WASM **traga-seus-dados** — sem dados, copyright-safe; o
-  embutido NÃO entra na release). ⚠️ `release.yml` **não pode** conter `RESOURCE.`/`embed-data`/
-  `.wav`/`dist.zip` (lint `release_does_not_ship_game_data` guarda contra vazar copyright).
+  embutido NÃO entra na release). ⚠️ `release.yml` **e `pages.yml`** **não podem** conter
+  `RESOURCE.`/`embed-data`/`.wav`/`dist.zip` (lint `public_artifacts_do_not_ship_game_data`).
+- **GitHub Pages** (`pages.yml`): a página traga-seus-dados é publicada **ao vivo** em
+  <https://antigerme.github.io/wilson-reborn/> a cada push na `main` (deploy só fora de PR; build
+  roda no PR). **Setup único do usuário:** Settings → Pages → Source = **GitHub Actions** (o 1º
+  deploy falha até ligar). Nada hospedado é copyright (sem `WILSON_EMBED_DATA`).
 - **Documentar tudo** aqui, no PROJECT-LOG e na knowledge-base para preservar memória.
 
 ## Status atual

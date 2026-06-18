@@ -98,7 +98,8 @@ screensaver, run on Linux/macOS, and cut releases.
 > embed-data` — a single file that runs without `--data`. The data is copyrighted and is
 > **not** redistributed, so that build is never published in releases.
 
-> **Run it in a browser (WASM):** the engine also compiles to WebAssembly — see
+> **Run it in a browser (WASM):** 🌐 **live demo: <https://antigerme.github.io/wilson-reborn/>**
+> (bring your own data — nothing is uploaded). The engine also compiles to WebAssembly — see
 > **[`crates/wilson-web`](crates/wilson-web/README.md)**. Build it with
 > `crates/wilson-web/build-web.sh` (or `scripts/build-embedded.sh --web`). Drop your own
 > `RESOURCE.MAP`/`RESOURCE.001` (or a `scrantic-run.zip` / `scrantic-installer.zip`) — read

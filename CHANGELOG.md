@@ -10,6 +10,10 @@ All notable changes to **Wilson Reborn** are recorded here. The project follows 
 - **Web/WASM bundle in releases**: the release now ships **`wilson-web.zip`** — the bring-your-own
   web build (`index.html` + the wasm/JS + a `HOW-TO-RUN.txt`). No game data is bundled (copyright);
   serve it over HTTP and supply your own `RESOURCE.*` / a `.zip`.
+- **Live web page on GitHub Pages** (`pages.yml`): the bring-your-own page is auto-deployed to
+  <https://antigerme.github.io/wilson-reborn/> on every push to `main` — visit, bring your own
+  data, run it. No game data is hosted (copyright-safe). *(One-time: enable Pages → Source =
+  GitHub Actions.)*
 
 ### Fixed
 - **Windows preview pane**: the screensaver now fills the little monitor in the Screen Saver
