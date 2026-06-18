@@ -6,6 +6,26 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-18 — Fix: intro (e primeiros frames) passavam rápido demais no desktop
+
+Bug reportado pelo usuário: o intro (`INTRO.SCR`) sumia em **menos de 1 s**, apesar do engine
+devolver o frame com `delay_ticks = 250` (~4 s) e `frame_delay_ms` não capar nada.
+- **Causa (loop winit):** o app avançava o engine em **todo** `RedrawRequested`, mas o SO dispara
+  `RedrawRequested` espontâneos (show/resize/scale da janela — uma **rajada no startup** e ao ir pra
+  fullscreen). Esses redraws extras passavam por cima do `WaitUntil` (que só controla **quando nós**
+  pedimos redraw) e consumiam o intro + os primeiros frames em milissegundos. No web não ocorre (o
+  loop é um `setTimeout` limpo).
+- **RE confirmada por disassembly** (`SCRANTIC.EXE`, `seg2:1502`→`150a`): o original dá **hard-cut**
+  do `INTRO.SCR` pra tela e **na instrução seguinte** já liga o timer de 16 ms e entra no loop —
+  **não há timer de intro**; o título fica até a 1ª cena ser desenhada (no PC de 1992, o tempo de
+  disco fazia durar alguns segundos). Nosso hold fixo é a aproximação — agora corretamente respeitada.
+- **Fix:** `pace::FramePacer` — porta de avanço por **deadline**: o engine só avança quando o hold do
+  frame vence; redraws fora de hora **re-apresentam o último frame** (resize ainda repinta) sem
+  avançar a animação. Teste de regressão `holds_a_frame_for_its_full_delay_despite_extra_redraws`
+  (verificado que **falha** com o comportamento antigo "avança sempre"). 57 testes do `wilson` OK.
+
+---
+
 ## 2026-06-18 — Web/WASM: tela cheia, parâmetros de URL, upload de ZIP e "lembrar dados"
 
 Pacote de melhorias do web (o usuário escolheu as quatro):

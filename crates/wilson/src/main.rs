@@ -23,6 +23,7 @@ mod config;
 #[cfg(feature = "embed-data")]
 mod embedded;
 mod font;
+mod pace;
 mod scale;
 mod state;
 mod stats;
@@ -187,6 +188,12 @@ fn main() {
     let base_secs = stats.total_secs;
     let session_start = Instant::now();
     let mut last_flush = Instant::now();
+    // Pace the engine off a per-frame deadline so spurious OS redraws (the startup burst,
+    // resizes, scale changes) can't race past the timer and play the first frames — most
+    // visibly the intro — too fast. `last_rgba` lets a non-due redraw repaint without
+    // stepping the animation. See `pace::FramePacer`.
+    let mut pacer = pace::FramePacer::new();
+    let mut last_rgba: Option<Vec<u8>> = None;
 
     // --debug diagnostics: measured FPS over a rolling 1-second window.
     let mut dbg_frames = 0u32;
@@ -291,114 +298,146 @@ fn main() {
                             // original.
                             let frame_start = Instant::now();
                             surface.resize(w, h).expect("resize surface");
-                            // Refresh the clock so the day rolls over within a long session.
-                            // Story mode feeds a synthetic clock (the arc in order); otherwise
-                            // it is the real wall clock (rolls over at midnight).
-                            show.set_clock(if cfg.story {
-                                timectl::story_clock(
-                                    clock::now(),
-                                    session_start.elapsed().as_secs(),
-                                    cfg.story_secs,
-                                )
-                            } else {
-                                clock::now()
-                            });
-                            let frame = show.next_frame(&archive);
-                            for &id in &frame.sounds {
-                                let outcome = audio.play(id);
-                                if cfg.debug {
-                                    eprintln!("[wilson:debug] sound cue {id}: {outcome:?}");
+                            if pacer.due(frame_start) {
+                                // The current frame's hold has elapsed (or this is the first
+                                // frame): step the engine. Refresh the clock so the day rolls
+                                // over within a long session — story mode feeds a synthetic
+                                // clock (the arc in order); otherwise the real wall clock.
+                                show.set_clock(if cfg.story {
+                                    timectl::story_clock(
+                                        clock::now(),
+                                        session_start.elapsed().as_secs(),
+                                        cfg.story_secs,
+                                    )
+                                } else {
+                                    clock::now()
+                                });
+                                let frame = show.next_frame(&archive);
+                                for &id in &frame.sounds {
+                                    let outcome = audio.play(id);
+                                    if cfg.debug {
+                                        eprintln!("[wilson:debug] sound cue {id}: {outcome:?}");
+                                    }
                                 }
-                            }
-                            let (day, yday) = show.day_state();
-                            // Persist the day only in real-time mode — `--story`/`--day` are
-                            // one-off overrides and must not clobber the saved real arc.
-                            if persist_day && last_saved != Some((day, yday)) {
-                                state::DayState {
-                                    current_day: day,
-                                    stored_yday: yday,
+                                let (day, yday) = show.day_state();
+                                // Persist the day only in real-time mode — `--story`/`--day`
+                                // are one-off overrides and must not clobber the saved arc.
+                                if persist_day && last_saved != Some((day, yday)) {
+                                    state::DayState {
+                                        current_day: day,
+                                        stored_yday: yday,
+                                    }
+                                    .save();
+                                    last_saved = Some((day, yday));
                                 }
-                                .save();
-                                last_saved = Some((day, yday));
-                            }
-                            // Update lifetime stats, flushing to disk occasionally.
-                            stats.note_day(day);
-                            if last_flush.elapsed() >= Duration::from_secs(30) {
-                                stats.total_secs = base_secs + session_start.elapsed().as_secs();
-                                stats.save();
-                                last_flush = Instant::now();
-                            }
-                            let rgba = frame.surface.to_rgba(&palette);
-                            // Optional: smooth the dithered sea/sky before scaling.
-                            let rgba = if cfg.dedither {
-                                wilson_engine::dedither(&rgba, 640, 480)
-                            } else {
-                                rgba
-                            };
-                            let mut buffer = surface.buffer_mut().expect("surface buffer");
-                            scale::scale_rgba_to_argb(
-                                &rgba,
-                                640,
-                                480,
-                                &mut buffer,
-                                size.width as usize,
-                                size.height as usize,
-                                cfg.scale,
-                                cfg.filter,
-                            );
-                            if cfg.debug {
-                                // Measure FPS over a 1s window; emit a stdout status line
-                                // each second and draw the on-screen HUD every frame.
-                                dbg_frames += 1;
-                                if dbg_window.elapsed() >= Duration::from_secs(1) {
-                                    dbg_fps = dbg_frames;
-                                    dbg_frames = 0;
-                                    dbg_window = Instant::now();
-                                    let d = show.debug_info();
-                                    let scene = d
-                                        .scene
-                                        .map(|(n, t)| format!("{n}#{t}"))
-                                        .unwrap_or_else(|| "-".into());
-                                    let off = d
-                                        .offset
-                                        .map(|(x, y)| format!("{x},{y}"))
-                                        .unwrap_or_else(|| "-".into());
-                                    eprintln!(
-                                        "[wilson:debug] fps={} delay={}t stage={} day={}/11 \
-                                     scene={} drift=({}) night={} tide={} raft={} holiday={:?}",
-                                        dbg_fps,
-                                        frame.delay_ticks,
-                                        d.stage,
-                                        d.day,
-                                        scene,
-                                        off,
-                                        d.night as u8,
-                                        d.low_tide as u8,
-                                        d.raft,
-                                        d.holiday,
+                                // Update lifetime stats, flushing to disk occasionally.
+                                stats.note_day(day);
+                                if last_flush.elapsed() >= Duration::from_secs(30) {
+                                    stats.total_secs =
+                                        base_secs + session_start.elapsed().as_secs();
+                                    stats.save();
+                                    last_flush = Instant::now();
+                                }
+                                let rgba = frame.surface.to_rgba(&palette);
+                                // Optional: smooth the dithered sea/sky before scaling.
+                                let rgba = if cfg.dedither {
+                                    wilson_engine::dedither(&rgba, 640, 480)
+                                } else {
+                                    rgba
+                                };
+                                {
+                                    let mut buffer = surface.buffer_mut().expect("surface buffer");
+                                    scale::scale_rgba_to_argb(
+                                        &rgba,
+                                        640,
+                                        480,
+                                        &mut buffer,
+                                        size.width as usize,
+                                        size.height as usize,
+                                        cfg.scale,
+                                        cfg.filter,
                                     );
+                                    if cfg.debug {
+                                        // Measure FPS over a 1s window; emit a stdout status
+                                        // line each second and draw the on-screen HUD.
+                                        dbg_frames += 1;
+                                        if dbg_window.elapsed() >= Duration::from_secs(1) {
+                                            dbg_fps = dbg_frames;
+                                            dbg_frames = 0;
+                                            dbg_window = Instant::now();
+                                            let d = show.debug_info();
+                                            let scene = d
+                                                .scene
+                                                .map(|(n, t)| format!("{n}#{t}"))
+                                                .unwrap_or_else(|| "-".into());
+                                            let off = d
+                                                .offset
+                                                .map(|(x, y)| format!("{x},{y}"))
+                                                .unwrap_or_else(|| "-".into());
+                                            eprintln!(
+                                                "[wilson:debug] fps={} delay={}t stage={} \
+                                                 day={}/11 scene={} drift=({}) night={} \
+                                                 tide={} raft={} holiday={:?}",
+                                                dbg_fps,
+                                                frame.delay_ticks,
+                                                d.stage,
+                                                d.day,
+                                                scene,
+                                                off,
+                                                d.night as u8,
+                                                d.low_tide as u8,
+                                                d.raft,
+                                                d.holiday,
+                                            );
+                                        }
+                                        draw_debug_hud(
+                                            &mut buffer,
+                                            size.width as usize,
+                                            size.height as usize,
+                                            dbg_fps,
+                                            frame.delay_ticks,
+                                            &show.debug_info(),
+                                            &cfg,
+                                        );
+                                    }
+                                    buffer.present().expect("present");
                                 }
-                                draw_debug_hud(
-                                    &mut buffer,
-                                    size.width as usize,
-                                    size.height as usize,
-                                    dbg_fps,
-                                    frame.delay_ticks,
-                                    &show.debug_info(),
-                                    &cfg,
-                                );
+                                if cfg.debug && dbg_first_frame {
+                                    dbg_first_frame = false;
+                                    eprintln!("[wilson:debug] first frame presented {w}x{h}");
+                                }
+                                let delay =
+                                    Duration::from_millis(cfg.frame_delay_ms(frame.delay_ticks));
+                                // Deadline from the frame's due time, so compute time is
+                                // absorbed (period ≈ delay); if compute overran it is already
+                                // in the past and the next frame runs immediately.
+                                let due = pacer.schedule(frame_start, delay);
+                                elwt.set_control_flow(ControlFlow::WaitUntil(due));
+                                last_rgba = Some(rgba);
+                            } else {
+                                // A redraw arrived before the current frame's hold elapsed
+                                // (the OS startup burst, a resize, a scale change). Re-present
+                                // the last frame at the current size so resizes still repaint —
+                                // but do NOT step the animation, or the intro/first frames flash
+                                // by. Re-arm the existing deadline without moving it.
+                                if let Some(rgba) = &last_rgba {
+                                    let mut buffer = surface.buffer_mut().expect("surface buffer");
+                                    scale::scale_rgba_to_argb(
+                                        rgba,
+                                        640,
+                                        480,
+                                        &mut buffer,
+                                        size.width as usize,
+                                        size.height as usize,
+                                        cfg.scale,
+                                        cfg.filter,
+                                    );
+                                    buffer.present().expect("present");
+                                }
+                                if let Some(due) = pacer.deadline() {
+                                    elwt.set_control_flow(ControlFlow::WaitUntil(due));
+                                }
                             }
-                            buffer.present().expect("present");
-                            if cfg.debug && dbg_first_frame {
-                                dbg_first_frame = false;
-                                eprintln!("[wilson:debug] first frame presented {w}x{h}");
-                            }
-                            let delay =
-                                Duration::from_millis(cfg.frame_delay_ms(frame.delay_ticks));
-                            // Deadline measured from the frame's due time, so compute time is
-                            // absorbed (period ≈ delay); if compute overran, this is already in
-                            // the past and the next frame runs immediately.
-                            elwt.set_control_flow(ControlFlow::WaitUntil(frame_start + delay));
                         } else if cfg.debug && dbg_first_frame {
                             dbg_first_frame = false;
                             eprintln!(
