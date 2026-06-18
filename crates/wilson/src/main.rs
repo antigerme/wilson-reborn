@@ -574,10 +574,13 @@ fn apply_preview(builder: WindowBuilder, hwnd: isize) -> WindowBuilder {
     {
         use std::num::NonZeroIsize;
         use winit::raw_window_handle::{RawWindowHandle, Win32WindowHandle};
-        // The classic Windows preview pane is ~152×112 px.
+        // Fill the host preview pane: query its actual client size instead of guessing, so the
+        // screensaver covers the whole little monitor (no black bands on the right/bottom). Fall
+        // back to the classic ~152×112 if the query fails.
+        let (w, h) = preview_pane_size(hwnd).unwrap_or((152, 112));
         let b = builder
             .with_decorations(false)
-            .with_inner_size(winit::dpi::PhysicalSize::new(152u32, 112u32));
+            .with_inner_size(winit::dpi::PhysicalSize::new(w, h));
         if let Some(nz) = NonZeroIsize::new(hwnd) {
             let handle = RawWindowHandle::Win32(Win32WindowHandle::new(nz));
             // SAFETY: `hwnd` is the preview window handle Windows passed on the command
@@ -591,6 +594,39 @@ fn apply_preview(builder: WindowBuilder, hwnd: isize) -> WindowBuilder {
         let _ = hwnd;
         builder
     }
+}
+
+/// Query the client size (in px) of the Windows preview pane `hwnd`, so the embedded child can
+/// fill it exactly. `None` if the handle is null or the query fails.
+#[cfg(windows)]
+fn preview_pane_size(hwnd: isize) -> Option<(u32, u32)> {
+    #[repr(C)]
+    struct Rect {
+        left: i32,
+        top: i32,
+        right: i32,
+        bottom: i32,
+    }
+    #[link(name = "user32")]
+    extern "system" {
+        fn GetClientRect(hwnd: isize, rect: *mut Rect) -> i32;
+    }
+    if hwnd == 0 {
+        return None;
+    }
+    let mut r = Rect {
+        left: 0,
+        top: 0,
+        right: 0,
+        bottom: 0,
+    };
+    // SAFETY: `hwnd` is the preview window handle Windows passed; `r` is a valid out-param.
+    let ok = unsafe { GetClientRect(hwnd, &mut r) };
+    if ok == 0 {
+        return None;
+    }
+    let (w, h) = (r.right - r.left, r.bottom - r.top);
+    (w > 0 && h > 0).then_some((w as u32, h as u32))
 }
 
 /// Print the active configuration and where it lives (the textual `/c` dialog).
