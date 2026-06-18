@@ -1,12 +1,12 @@
-# 06 — Projetos de Referência (comparativo, reúso e licenças)
+# 06 — Reference Projects (comparison, reuse and licenses)
 
-> Avaliação dos 5 projetos em `repos/` como referência para o Wilson Reborn: o que cada
-> um faz melhor, o que reaproveitar e as implicações de licença. Notas técnicas
-> detalhadas de cada um estão em [`raw/`](raw/).
+> Evaluation of the 5 projects in `repos/` as a reference for Wilson Reborn: what each
+> one does best, what to reuse and the license implications. Detailed technical notes
+> on each are in [`raw/`](raw/).
 
-> **⚠️ Os 5 projetos NÃO são mais vendorizados em `repos/`** — foram removidos do
-> repositório público (não redistribuir código de terceiros nem material copyright). Para
-> consultá-los, clone os upstreams:
+> **⚠️ The 5 projects are NO LONGER vendored in `repos/`** — they were removed from the
+> public repository (do not redistribute third-party code or copyright material). To
+> consult them, clone the upstreams:
 >
 > - **jc_reborn** (jno6809): <https://github.com/jno6809/jc_reborn>
 > - **JCOS** / Johnny-Castaway-Open-Source (nivs1978): <https://github.com/nivs1978/Johnny-Castaway-Open-Source>
@@ -14,116 +14,116 @@
 > - **dgds-viewer** (xesf): <https://github.com/xesf/dgds-viewer>
 > - **dgds** (ScummVM): <https://github.com/scummvm/scummvm> (`engines/dgds`)
 >
-> As referências `repos/...` neste documento e na KB apontam para os caminhos **desses**
-> projetos.
+> The `repos/...` references in this document and in the KB point to the paths of **those**
+> projects.
 
 ---
 
-## 1. Quadro comparativo
+## 1. Comparison table
 
-| Projeto | Linguagem/Stack | Licença | Estado | Força principal |
+| Project | Language/Stack | License | State | Main strength |
 |---|---|---|---|---|
-| **jc_reborn** | C99 + SDL2 | **GPLv3** | Jogável, "toda cena funciona" (c/ imprecisões) | **Melhor blueprint de gameplay**: VMs quase completas, walk, escalonador, ilha, dia/feriado |
-| **dgds (ScummVM)** | C++ (ScummVM) | **GPLv2+** | WIP exploratório (RotD/HoC) | **Autoridade do formato DGDS**: chunks, RLE/LZW, fontes, som/MIDI, hash |
-| **JCOS** | C# / WinForms (.NET) | **GPLv3** | WIP, Windows-only, sem ciclo de dias | **Melhor doc de formatos+opcodes** (nomes em inglês, operandos); extraiu os `.wav` |
-| **castaway** | JS (ES Modules), Canvas | ver `LICENSE` | WIP web | **Metadados SCRANTIC** (nomes de cena, história/dia), roadmap de melhorias |
-| **dgds-viewer** | JS + React + Electron | ver `LICENSE` | Visualizador multi-jogo | **Melhor tooling JS**: parsers defensivos, disassembler, UI de inspeção |
+| **jc_reborn** | C99 + SDL2 | **GPLv3** | Playable, "every scene works" (w/ inaccuracies) | **Best gameplay blueprint**: near-complete VMs, walk, scheduler, island, day/holiday |
+| **dgds (ScummVM)** | C++ (ScummVM) | **GPLv2+** | Exploratory WIP (RotD/HoC) | **DGDS format authority**: chunks, RLE/LZW, fonts, sound/MIDI, hash |
+| **JCOS** | C# / WinForms (.NET) | **GPLv3** | WIP, Windows-only, no day cycle | **Best format+opcode docs** (English names, operands); extracted the `.wav` |
+| **castaway** | JS (ES Modules), Canvas | see `LICENSE` | Web WIP | **SCRANTIC metadata** (scene names, story/day), improvements roadmap |
+| **dgds-viewer** | JS + React + Electron | see `LICENSE` | Multi-game viewer | **Best JS tooling**: defensive parsers, disassembler, inspection UI |
 
 ---
 
-## 2. Avaliação individual
+## 2. Individual evaluation
 
-### 2.1 `jc_reborn` — a base de gameplay ⭐
-**É a referência primária do Wilson Reborn.** Carrega os dados originais e reproduz o
-comportamento interpretando TTM/ADS. Arquitetura limpa em 4 camadas (I/O, VM, backend,
-lógica). Implementa o que nenhum outro tem junto: **walk entre spots, escalonador
-aleatório de cenas, desenho da ilha/nuvens, ciclo de 11 dias e feriados**.
+### 2.1 `jc_reborn` — the gameplay base ⭐
+**It is Wilson Reborn's primary reference.** It loads the original data and reproduces the
+behavior by interpreting TTM/ADS. Clean 4-layer architecture (I/O, VM, backend,
+logic). It implements what no other has together: **walk between spots, random scene
+scheduler, island/cloud drawing, 11-day cycle and holidays**.
 
-- **Reaproveitar:** semântica de opcodes (§[04](04-engine-scripting-opcodes.md)); as 3
-  tabelas de dados (`story_data.h`, `walk_data.h`, `calcpath_data.h`); a lógica do
-  diretor/escalonador; a lógica de dia/noite/maré/feriado.
-- **Cuidados:** walk, escalonador, posicionamento da ilha e algumas ops de zona
-  (`grSaveImage1`, `grSaveZone`) são **aproximações observacionais** (o autor admite); um
-  disassembly do original as refinaria. Render re-blita tudo por frame (sem dirty-rect).
-- **Licença:** GPLv3 — copiar código contamina; reusar os *insights* documentados (esta
-  KB) não.
+- **Reuse:** opcode semantics (§[04](04-engine-scripting-opcodes.md)); the 3
+  data tables (`story_data.h`, `walk_data.h`, `calcpath_data.h`); the
+  director/scheduler logic; the day/night/tide/holiday logic.
+- **Caveats:** walk, scheduler, island positioning and some zone ops
+  (`grSaveImage1`, `grSaveZone`) are **observational approximations** (the author admits it); a
+  disassembly of the original would refine them. The render re-blits everything per frame (no dirty-rect).
+- **License:** GPLv3 — copying code contaminates; reusing the documented *insights*
+  (this KB) does not.
 
-### 2.2 `dgds` (ScummVM) — a autoridade do formato ⭐
-Engine ScummVM para a família DGDS. **Não cobre o JC** no `detection_tables.h` (lista só
-Rise of the Dragon e Heart of China, que usam `VOLUME.RMF` em vez de `RESOURCE.MAP`), mas
-o **formato de chunk, compressão, fontes, paleta e som são compartilhados**.
+### 2.2 `dgds` (ScummVM) — the format authority ⭐
+A ScummVM engine for the DGDS family. **It does not cover JC** in `detection_tables.h` (it lists only
+Rise of the Dragon and Heart of China, which use `VOLUME.RMF` instead of `RESOURCE.MAP`), but
+the **chunk format, compression, fonts, palette and sound are shared**.
 
-- **Reaproveitar:** a especificação rigorosa do container (bit de 0x80000000, prefixo de
-  chunk packed), RLE/LZW exatos (incl. a nuance `_cacheBits`), recombinação de planos
-  BIN/VGA, paleta `<<2`, e o `dgdsHash()` (se um dia suportar outros jogos DGDS).
-- **Cuidados:** muitos opcodes ADS/TTM são **stubs** (`warning("Unimplemented")`) — para
-  semântica de opcodes do JC, o `jc_reborn` é melhor. `VQT:` não é decodificado.
-- **Licença:** GPLv2+ (ScummVM).
+- **Reuse:** the rigorous container spec (the 0x80000000 bit, the packed-chunk
+  prefix), exact RLE/LZW (incl. the `_cacheBits` nuance), BIN/VGA plane
+  recombination, the `<<2` palette, and `dgdsHash()` (if one day supporting other DGDS games).
+- **Caveats:** many ADS/TTM opcodes are **stubs** (`warning("Unimplemented")`) — for
+  JC opcode semantics, `jc_reborn` is better. `VQT:` is not decoded.
+- **License:** GPLv2+ (ScummVM).
 
-### 2.3 `JCOS` — o pioneiro e dicionário de opcodes
-Primeira decodificação completa dos dados (2015). `Instruction.cs` tem um `ToString()`
-que **soletra os operandos de ~60 opcodes** — a melhor referência de nomes/tuplas.
-Também **extraiu os 24 `.wav`** que o jc_reborn reaproveita.
+### 2.3 `JCOS` — the pioneer and opcode dictionary
+The first complete decoding of the data (2015). `Instruction.cs` has a `ToString()`
+that **spells out the operands of ~60 opcodes** — the best reference for names/tuples.
+It also **extracted the 24 `.wav`** that jc_reborn reuses.
 
-- **Reaproveitar:** o dicionário de opcodes; a gramática de ADS/TTM/BMP/SCR/PAL; os
-  `.wav`; o exportador de disassembly via Excel (`Excel.cs`).
-- **Cuidados:** WinForms **Windows-only**, caminho `C:\SIERRA\SCRANTIC` fixo, **sem
-  lógica de dia/feriado** (seletor aleatório de 4 cenas), retângulos de debug por cima,
-  paleta de 16 cores fixa em vez da `.PAL` parseada, 2 opcodes de sprite não
-  implementados.
-- **Licença:** GPLv3.
+- **Reuse:** the opcode dictionary; the ADS/TTM/BMP/SCR/PAL grammar; the
+  `.wav`; the Excel disassembly exporter (`Excel.cs`).
+- **Caveats:** WinForms **Windows-only**, hardcoded `C:\SIERRA\SCRANTIC` path, **no
+  day/holiday logic** (random selector of 4 scenes), debug rectangles on top,
+  fixed 16-color palette instead of the parsed `.PAL`, 2 sprite opcodes not
+  implemented.
+- **License:** GPLv3.
 
-### 2.4 `castaway` — metadados e roadmap
-Port web (Canvas). Único com a **camada de história/cenas do SCRANTIC**:
-`metadata/scenes.mjs` (nomes descritivos das cenas ACTIVITY), `story.mjs` (contador de
-dia), `palette.mjs`. Tem uma **roadmap de melhorias** muito alinhada aos seus objetivos
-(ver [07](07-plano-do-port-moderno.md) §enhancements).
+### 2.4 `castaway` — metadata and roadmap
+A web port (Canvas). The only one with the **SCRANTIC story/scene layer**:
+`metadata/scenes.mjs` (descriptive names of the ACTIVITY scenes), `story.mjs` (day
+counter), `palette.mjs`. It has an **improvements roadmap** very aligned with your goals
+(see [07](07-plano-do-port-moderno.md) §enhancements).
 
-- **Reaproveitar:** as **descrições de cena** (GAG DIVES, NATIVE, GULL READING…); a
-  roadmap; a abordagem de render em Canvas (se o alvo for web).
-- **Cuidados:** `story.mjs` ainda escolhe cena **aleatória uniforme** (sem o schedule
-  real de dias); RLE2 lança erro.
+- **Reuse:** the **scene descriptions** (GAG DIVES, NATIVE, GULL READING…); the
+  roadmap; the Canvas rendering approach (if the target is web).
+- **Caveats:** `story.mjs` still picks a **uniformly random** scene (without the real day
+  schedule); RLE2 throws an error.
 
-### 2.5 `dgds-viewer` — o melhor tooling JS
-Versão mais elaborada do castaway, como **visualizador genérico** de recursos DGDS (todos
-os 5 jogos), com React/Electron e um **disassembler ao vivo** (`ScriptCode.jsx`).
-Interpretador mais robusto (`process.js`, dispatch O(1)).
+### 2.5 `dgds-viewer` — the best JS tooling
+A more elaborate version of castaway, as a **generic viewer** of DGDS resources (all
+5 games), with React/Electron and a **live disassembler** (`ScriptCode.jsx`).
+A more robust interpreter (`process.js`, O(1) dispatch).
 
-- **Reaproveitar:** os **parsers** (limpos, sem dependências, `DataView`); o disassembler
-  para **inspecionar/depurar assets** durante o desenvolvimento.
-- **Cuidados:** o interpretador (`process.*`) é o ponto fraco (estado global mutável, não
-  reentrante, muitos NOPs, scheduling ADS com bugs) — usar como **referência semântica**,
-  reescrever do zero.
+- **Reuse:** the **parsers** (clean, dependency-free, `DataView`); the disassembler
+  to **inspect/debug assets** during development.
+- **Caveats:** the interpreter (`process.*`) is the weak point (mutable global state, not
+  re-entrant, many NOPs, ADS scheduling with bugs) — use it as a **semantic reference**,
+  rewrite from scratch.
 
 ---
 
-## 3. Estratégia de reúso recomendada
+## 3. Recommended reuse strategy
 
-1. **Conhecimento, não código (default).** Esta KB captura os *insights* (formatos,
-   opcodes, lógica) de forma independente de licença. Reimplementar a partir dela mantém o
-   Wilson Reborn livre da contaminação GPL — útil se quiser escolher a licença.
-2. **Parsers JS** (`dgds-viewer`) são os mais fáceis de portar se o alvo for
+1. **Knowledge, not code (default).** This KB captures the *insights* (formats,
+   opcodes, logic) in a license-independent way. Reimplementing from it keeps
+   Wilson Reborn free from GPL contamination — useful if you want to choose the license.
+2. **JS parsers** (`dgds-viewer`) are the easiest to port if the target is
    web/TypeScript.
-3. **Tabelas de dados** (`story_data.h`, `walk_data.h`, `calcpath_data.h` do jc_reborn):
-   são **dados/fatos** reconstruídos. Reusá-los acelera muito; avaliar implicação de
-   licença (dados vs código criativo) ou **re-extrair** do `SCRANTIC.SCR`.
-4. **Disassembler** (`dgds-viewer` ou `jc_reborn dump`): indispensável para validar o
-   port contra os dados reais.
-5. **Validação cruzada:** rodar a mesma cena em ≥2 implementações e comparar — a melhor
-   forma de resolver as divergências de opcode ([04](04-engine-scripting-opcodes.md) §4).
+3. **Data tables** (`story_data.h`, `walk_data.h`, `calcpath_data.h` from jc_reborn):
+   they are **reconstructed data/facts**. Reusing them speeds things up a lot; assess the license
+   implication (data vs creative code) or **re-extract** from `SCRANTIC.SCR`.
+4. **Disassembler** (`dgds-viewer` or `jc_reborn dump`): indispensable for validating the
+   port against the real data.
+5. **Cross-validation:** run the same scene in ≥2 implementations and compare — the best
+   way to resolve the opcode divergences ([04](04-engine-scripting-opcodes.md) §4).
 
 ---
 
-## 4. Matriz de licenças (resumo)
+## 4. License matrix (summary)
 
-| Origem | Licença | Implicação se **copiar código** |
+| Origin | License | Implication if you **copy code** |
 |---|---|---|
-| jc_reborn, JCOS | GPLv3 | obra derivada deve ser GPLv3 |
-| dgds (ScummVM) | GPLv2+ | obra derivada deve ser GPL |
-| castaway, dgds-viewer | ver `LICENSE` no upstream | conferir antes de copiar |
-| **Esta KB (docs)** | — | reimplementar a partir de fatos/documentação não cria obra derivada do código |
+| jc_reborn, JCOS | GPLv3 | a derivative work must be GPLv3 |
+| dgds (ScummVM) | GPLv2+ | a derivative work must be GPL |
+| castaway, dgds-viewer | see `LICENSE` in the upstream | check before copying |
+| **This KB (docs)** | — | reimplementing from facts/documentation does not create a derivative work of the code |
 
-> **Os dados do jogo** (`RESOURCE.*`, sprites, sons) permanecem **copyright
-> Sierra/Dynamix** — nenhum projeto os redistribui (ver
-> [01 §nota legal](01-historia-e-creditos.md)). Decisão de licença e de assets do Wilson
-> Reborn está em [07](07-plano-do-port-moderno.md).
+> **The game data** (`RESOURCE.*`, sprites, sounds) remains **copyright
+> Sierra/Dynamix** — no project redistributes it (see
+> [01 §legal note](01-historia-e-creditos.md)). Wilson Reborn's license and asset
+> decision is in [07](07-plano-do-port-moderno.md).

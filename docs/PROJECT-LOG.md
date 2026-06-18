@@ -6,6 +6,28 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-18 — intro do original + ferramentas de RE salvas + MCI resolvido + KB em inglês
+
+Quatro entregas (seleção do usuário, dando seguimento à RE da entrada abaixo):
+- **Intro**: o original mostra `INTRO.SCR` no arranque (opção INI `Introduction`).
+  Reproduzido — `Show::enable_intro` (mostra uma vez, ~4 s, antes do fluxo normal) + opção
+  `intro` (padrão ligado, como o original) e flag `--no-intro`. Testes cobrem mostrar-uma-vez
+  e ausência graciosa do recurso.
+- **Ferramentas de RE salvas** em `docs/reverse-engineering/` (`ne.py` = parser NE/Win16 +
+  `disasm.py` = desassemblador capstone 16-bit com relocações resolvidas; +README e
+  `.gitignore`) — a RE do `SCRANTIC.EXE` agora é **reprodutível e auditável**. Caminhos por
+  variável de ambiente; o binário (copyright) e a listagem gerada (derivada) ficam **locais**.
+- **Áudio MCI investigado = código morto, NÃO é lacuna**: o único `mciSendCommand`
+  (`seg5:00ab`) só emite `MCI_CLOSE` (`0x804`) num device nunca aberto (`[0x35ee]` só é lido,
+  nunca escrito); não há `MCI_OPEN` (0x803) nem `MCI_PLAY` (0x806) em lugar nenhum do binário.
+  `sndPlaySound` é o único caminho de áudio **vivo** (que já reproduzimos). KB10 atualizada.
+- **Knowledge-base traduzida para inglês** (11 docs) — estrutura preservada (code fences,
+  headings, tabelas; valores hex de opcode/offset byte-idênticos), âncoras internas atualizadas.
+- `cargo fmt`/`clippy -D warnings`/`test --workspace` **verdes** (49+1+3+41+1+68+3+3).
+  Branch `claude/affectionate-gates-6oc4we` (pushed; sem PR — não solicitado).
+
+---
+
 ## 2026-06-18 — engenharia reversa do original + relatório de lacunas (KB 10)
 
 RE do `SCRANTIC.EXE` (NE Win16) contra a nossa implementação, pra responder "estamos

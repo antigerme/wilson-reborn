@@ -134,5 +134,14 @@ desejada); o app agora usa **100% os arquivos originais** — `assets.rs` ficou 
 (feature `embed-data` + `build.rs` + `embedded.rs`): `WILSON_EMBED_DATA=<dir> cargo build
 --release --features embed-data` embute `RESOURCE.*` + `soundN.wav` no binário (lido só em
 tempo de compilação, **nunca** versionado; uso pessoal por causa do copyright) ⇒ roda sem
-`--data`. **CI verde.** **Próximo:** melhorias **sobre os dados originais** (a combinar com
-o usuário).
+`--data`. **CI verde.**
+**Engenharia reversa do original (2026-06-18):** RE completa do `SCRANTIC.EXE` (NE/Win16)
+documentada em [`docs/knowledge-base/10`](docs/knowledge-base/10-engenharia-reversa-do-original.md),
+com **ferramentas reprodutíveis** salvas em
+[`docs/reverse-engineering/`](docs/reverse-engineering/README.md) (`ne.py` + `disasm.py`; o
+binário copyright e a listagem gerada ficam **locais**, fora do repo). Conclusões: paridade
+alta sobre os dados; `walk_data` byte-idêntico; **`0x0080` e o áudio `MCI` resolvidos como
+no-op/código-morto** (não são lacunas); a única lacuna real — o **intro** (`INTRO.SCR` +
+opção `Introduction`) — foi **implementada** (`Show::enable_intro`, config `intro` padrão
+ligado, flag `--no-intro`). A **knowledge-base foi traduzida para inglês** (11 docs).
+**Próximo:** melhorias **sobre os dados originais** (a combinar com o usuário).

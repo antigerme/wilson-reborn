@@ -37,6 +37,9 @@ pub struct Config {
     pub daynight: DayNight,
     /// Show diagnostics: a per-second status line on stdout and an on-screen HUD overlay.
     pub debug: bool,
+    /// Show the original's intro screen (`INTRO.SCR`) once at startup (default on, like the
+    /// original's `Introduction` option). Disable with `--no-intro`.
+    pub intro: bool,
 }
 
 impl Default for Config {
@@ -50,6 +53,7 @@ impl Default for Config {
             dedither: false,
             daynight: DayNight::Original,
             debug: false,
+            intro: true,
         }
     }
 }
@@ -127,6 +131,11 @@ impl Config {
                         c.daynight = m;
                     }
                 }
+                "intro" => {
+                    if let Some(b) = parse_bool(value) {
+                        c.intro = b;
+                    }
+                }
                 _ => {}
             }
         }
@@ -152,7 +161,9 @@ impl Config {
              # daynight: day/night cycle — original (8h, as in 1992) | real24h (wall clock).\n\
              daynight={}\n\
              # debug: true shows diagnostics (stdout status line + on-screen HUD overlay).\n\
-             debug={}\n",
+             debug={}\n\
+             # intro: true shows the original's intro screen (INTRO.SCR) once at startup.\n\
+             intro={}\n",
             self.windowed,
             self.mute,
             self.speed,
@@ -161,10 +172,11 @@ impl Config {
             self.dedither,
             self.daynight.as_str(),
             self.debug,
+            self.intro,
         )
     }
 
-    /// Apply CLI overrides: `--windowed`, `--mute`, `--dedither`, `--debug`,
+    /// Apply CLI overrides: `--windowed`, `--mute`, `--dedither`, `--debug`, `--no-intro`,
     /// `--speed <pct>`, `--scale <mode>`, `--filter <nearest|linear|xbr|xbrz>`. Unknown flags
     /// are ignored.
     pub fn apply_args(&mut self, args: &[String]) {
@@ -175,6 +187,7 @@ impl Config {
                 "--mute" => self.mute = true,
                 "--dedither" => self.dedither = true,
                 "--debug" => self.debug = true,
+                "--no-intro" => self.intro = false,
                 "--speed" => {
                     if let Some(n) = args.get(i + 1).and_then(|v| v.parse::<u32>().ok()) {
                         self.speed = n.clamp(SPEED_MIN, SPEED_MAX);
@@ -239,6 +252,7 @@ mod tests {
         assert_eq!(c.filter, Filter::Linear); // linear by default
         assert!(!c.dedither); // keep the authentic dither by default
         assert!(!c.debug); // no diagnostics by default
+        assert!(c.intro); // the intro screen is shown by default (like the original)
     }
 
     #[test]
@@ -252,6 +266,7 @@ mod tests {
             dedither: true,
             daynight: DayNight::Real24h,
             debug: true,
+            intro: false,
         };
         assert_eq!(Config::parse(&c.serialize()), c);
     }
@@ -292,6 +307,7 @@ mod tests {
             "--debug",
             "--daynight",
             "real24h",
+            "--no-intro",
         ]
         .iter()
         .map(|s| s.to_string())
@@ -305,6 +321,7 @@ mod tests {
         assert!(c.dedither);
         assert!(c.debug);
         assert_eq!(c.daynight, DayNight::Real24h);
+        assert!(!c.intro); // --no-intro
     }
 
     #[test]
