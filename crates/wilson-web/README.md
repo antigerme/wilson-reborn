@@ -38,8 +38,11 @@ CLI: `?fullscreen&scale=fit|stretch|integer&filter=linear|nearest&speed=200&day=
   and `sound_wav(id)` returns the WAV bytes, which the page plays via the **Web Audio API**. The
   effects live inside `SCRANTIC.EXE` (not `RESOURCE.*`): baked in for an `embed-data` build, or
   loaded at runtime via `set_sound_data(exeBytes)` when the user supplies `SCRANTIC.EXE`
-  (`has_sound()` reports availability). A 🔊/🔇 button toggles mute; browsers gate audio behind a
-  user gesture, so it starts on the first click.
+  (`has_sound()` reports availability). A 🔊/🔇 button toggles mute. **Browsers block audio until
+  the first user interaction** (a security policy — the desktop has no such limit), so the page
+  starts sound on the first click/keypress/tap/pointer and the 🔊 control **pulses** until then
+  (it doesn't pretend sound is already playing). Sound stays on by default; the user mutes if they
+  want.
 
 ## Build & run
 ```sh

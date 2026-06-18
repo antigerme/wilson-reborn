@@ -44,6 +44,10 @@
   }
   #controls button { font-size: 1.2rem; line-height: 1; background: none; border: 0; color: inherit; cursor: pointer; padding: .1rem .25rem; }
   #controls input[type=range] { width: 70px; accent-color: #89b4fa; }
+  /* Sound is on, but the browser hasn't let us start it yet (needs a user gesture): pulse the
+     🔊 button so it's clearly "waiting", not "already playing". */
+  @keyframes soundpulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.25); } }
+  #controls button.pending { animation: soundpulse 1.1s ease-in-out infinite; color: #f9e2af; }
   /* Idle while running: hide the cursor and fade the controls (real-screensaver feel). */
   body.running.idle { cursor: none; }
   body.running.idle #controls { opacity: 0; }
@@ -114,24 +118,56 @@
     return o;
   }
 
-  // ---- audio: per-frame cues via the Web Audio API (on by default; mute + volume) ----------
-  let audioCtx = null, gain = null, muted = pflag("mute", false), volume = pint("volume", 0, 100, 100) / 100;
+  // ---- audio: per-frame cues via the Web Audio API --------------------------------------------
+  // Sound is ON by default. Browsers, however, block audio until the first user interaction (a
+  // security policy — the desktop has no such limit), so we start it on the first
+  // click/keypress/tap/pointer and keep the 🔊 control honest about that "waiting" state.
+  let audioCtx = null, gain = null;
+  let muted = pflag("mute", false), volume = pint("volume", 0, 100, 100) / 100;
+  let haveSound = false; // set in run(): does this instance have any sound effects?
   let onAudioRunning = null;
   const audioBuffers = new Map();
+
+  const audioRunning = () => !!audioCtx && audioCtx.state === "running";
+  const applyGain = () => { if (gain) gain.gain.value = muted ? 0 : volume; };
 
   function ensureAudio() {
     if (!audioCtx) {
       const AC = window.AudioContext || window.webkitAudioContext;
-      if (AC) { audioCtx = new AC(); gain = audioCtx.createGain(); applyGain(); gain.connect(audioCtx.destination); }
+      if (!AC) return;
+      audioCtx = new AC();
+      gain = audioCtx.createGain();
+      applyGain();
+      gain.connect(audioCtx.destination);
     }
-    if (audioCtx && audioCtx.state === "suspended") {
-      audioCtx.resume().then(() => { if (onAudioRunning) { onAudioRunning(); onAudioRunning = null; } }).catch(() => {});
+    if (audioCtx.state === "suspended") {
+      audioCtx.resume().then(() => {
+        if (onAudioRunning) { onAudioRunning(); onAudioRunning = null; }
+        refreshSoundUi();
+      }).catch(() => {});
     }
+    refreshSoundUi();
   }
-  const applyGain = () => { if (gain) gain.gain.value = muted ? 0 : volume; };
+
+  // Keep the 🔊 control honest: it "pends" (pulses) while sound is on but the browser hasn't let
+  // us start it yet; shows 🔊 once actually playing; 🔇 only when the user mutes.
+  function refreshSoundUi() {
+    $("mute").hidden = !haveSound;
+    $("volume").hidden = !haveSound;
+    if (!haveSound) return;
+    const gated = !muted && !audioRunning();
+    $("mute").textContent = muted ? "🔇" : "🔊";
+    $("mute").classList.toggle("pending", gated);
+    $("mute").title = muted
+      ? "Unmute (sound off)"
+      : gated
+        ? "Sound is on — click or press any key to start it"
+        : "Mute";
+  }
+
   function playBuffer(b) { const s = audioCtx.createBufferSource(); s.buffer = b; s.connect(gain); s.start(); }
   function playCue(wilson, id) {
-    if (muted || !audioCtx || audioCtx.state !== "running") return;
+    if (muted || !audioRunning()) return;
     const buf = audioBuffers.get(id);
     if (buf === undefined) {
       audioBuffers.set(id, null);
@@ -143,18 +179,26 @@
     }
     if (buf) playBuffer(buf);
   }
+
+  // 🔊/🔇 button: while sound is still gated, the first press just *starts* it (doesn't mute);
+  // once it's playing, it toggles mute.
   $("mute").addEventListener("click", () => {
-    muted = !muted; applyGain();
-    $("mute").textContent = muted ? "🔇" : "🔊";
-    $("mute").title = muted ? "Unmute" : "Mute";
-    if (!muted) ensureAudio();
+    if (!audioRunning()) { ensureAudio(); muted = false; }
+    else { muted = !muted; }
+    applyGain();
+    refreshSoundUi();
   });
   $("volume").value = String(Math.round(volume * 100));
   $("volume").addEventListener("input", (e) => {
     volume = (parseInt(e.target.value, 10) || 0) / 100;
-    if (volume > 0 && muted) { muted = false; $("mute").textContent = "🔊"; }
-    applyGain(); ensureAudio();
+    if (volume > 0) muted = false;
+    applyGain(); ensureAudio(); refreshSoundUi();
   });
+
+  // Browsers gate audio behind a user gesture — start it on the first interaction of any kind.
+  ["pointerdown", "keydown", "touchstart", "click"].forEach((ev) =>
+    document.addEventListener(ev, ensureAudio)
+  );
 
   // ---- fullscreen (Fullscreen API ≈ F11) + idle hide --------------------------------------
   const wantFullscreen = pflag("fullscreen", false) || pflag("fs", false);
@@ -220,7 +264,6 @@
     idleTimer = setTimeout(() => document.body.classList.add("idle"), 3000);
   };
   document.addEventListener("mousemove", poke);
-  document.addEventListener("click", ensureAudio); // browsers gate audio behind a user gesture
 
   // ---- run loop ---------------------------------------------------------------------------
   function run(wilson) {
@@ -232,9 +275,9 @@
 
     document.body.classList.add("running");
     $("controls").hidden = false;
-    $("mute").hidden = !wilson.has_sound();
-    $("volume").hidden = !wilson.has_sound();
-    if (wilson.has_sound()) ensureAudio();
+    haveSound = wilson.has_sound();
+    if (haveSound) ensureAudio(); // set up + try to resume (works inside a gesture)
+    refreshSoundUi();
     poke();
 
     if (wantFullscreen) {
@@ -278,7 +321,14 @@
       if (d.exe) wilson.set_sound_data(d.exe);
     }
     run(wilson);
-    status("Running." + (wilson.has_sound() ? "" : " (no sound — add SCRANTIC.EXE or use a zip that has it)"));
+    if (!wilson.has_sound()) {
+      status("Running. (no sound — add SCRANTIC.EXE or use a zip that has it)");
+    } else if (audioRunning()) {
+      status("Running. 🔊 sound on.");
+    } else {
+      status("Running. 🔊 Sound is on — click or press any key to start it.");
+      onAudioRunning = () => status("Running. 🔊 sound on.");
+    }
   }
 
   await init(); // load the wasm module
@@ -289,11 +339,11 @@
     try {
       const wilson = Wilson.embedded(Date.now() / 1000, buildOptions());
       const hasSound = run(wilson);
-      if (hasSound && (!audioCtx || audioCtx.state !== "running")) {
-        status("Running (embedded data). 🔊 Click anywhere to enable sound.");
-        onAudioRunning = () => status("Running (embedded data).");
+      if (hasSound && !audioRunning()) {
+        status("Running (embedded data). 🔊 Sound is on — click or press any key to start it (browsers block audio until you interact).");
+        onAudioRunning = () => status("Running (embedded data). 🔊 sound on.");
       } else {
-        status("Running (embedded data).");
+        status("Running (embedded data)." + (hasSound ? " 🔊 sound on." : ""));
       }
     } catch (err) {
       status("Could not start: " + err);
