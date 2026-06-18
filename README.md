@@ -13,6 +13,8 @@ original.
 
 ## Demo
 
+▶ **Try it live in your browser (bring your own data):** <https://antigerme.github.io/wilson-reborn/>
+
 ![Johnny fishing off his island — Wilson Reborn](docs/screenshot.png)
 
 ![Wilson Reborn in motion — fishing as the clouds drift](docs/demo.gif)

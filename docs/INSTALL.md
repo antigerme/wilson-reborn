@@ -140,6 +140,10 @@ o binário não roda — útil só para o CI checar a compilação.)
 
 ## Web (WASM) — rodar no navegador
 
+> **Jeito mais fácil — sem instalar nada:** abra a página hospedada em
+> **<https://antigerme.github.io/wilson-reborn/>**, arraste seus `RESOURCE.*` (ou um `.zip`) e
+> pronto (roda local, nada é enviado; fica salvo no navegador pra abrir já rodando depois).
+
 A engine também roda **no navegador** via WebAssembly (crate [`wilson-web`](../crates/wilson-web/README.md)).
 Só precisa do `wasm-bindgen-cli`; o **target wasm é adicionado automaticamente** pelo script
 (via `rustup`). Há **dois modos**:
