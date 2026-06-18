@@ -144,4 +144,7 @@ alta sobre os dados; `walk_data` byte-idêntico; **`0x0080` e o áudio `MCI` res
 no-op/código-morto** (não são lacunas); a única lacuna real — o **intro** (`INTRO.SCR` +
 opção `Introduction`) — foi **implementada** (`Show::enable_intro`, config `intro` padrão
 ligado, flag `--no-intro`). A **knowledge-base foi traduzida para inglês** (11 docs).
-**Próximo:** melhorias **sobre os dados originais** (a combinar com o usuário).
+**Release v0.2.0 (2026-06-18):** primeira release pública empacotada (tag `v*` → `release.yml`
+publica `wilson.scr`/`.exe` Windows + binários Linux/macOS + `.saver`). Processo: **bumpar a
+versão e mergear ANTES de taguear** (a v0.2.0 precisou de re-corte por ter sido tagueada antes
+do bump). **Próximo:** melhorias **sobre os dados originais** (a combinar com o usuário).
