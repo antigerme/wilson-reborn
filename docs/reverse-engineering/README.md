@@ -18,6 +18,7 @@ original and check every claim in the report against the bytes.
 |---|---|
 | [`ne.py`](ne.py) | A self-contained **NE (Win16) parser**: segment table, entry table, module/import tables, and **per-segment relocations** resolved to targets (internal `seg:off`, or `MODULE.Api` via the Wine ordinal maps). Run standalone for a summary; imported as a module by the disassembler. |
 | [`disasm.py`](disasm.py) | A **recursive-descent disassembler** (capstone, 16-bit). Seeds from the entry-table exports + every `INTERNALREF` target, follows calls/jumps, and applies the relocations so each far call / data ref is labeled with its API name or internal target. Emits per-segment annotated `.asm`, a `funcs.txt` of each function's API signature, and a coverage summary. |
+| [`extract_calcpath.py`](extract_calcpath.py) | Decodes the original's **pathfinding route streams** (the 6×6 weighted per-trip tables; KB10 §10.3) and emits them as the Rust `ROUTE_STREAMS` data table (`crates/wilson-engine/src/calcpath_data.rs`). `SCRANTIC_EXE=… python3 extract_calcpath.py` prints a route summary; add `--rust` to emit the data module. |
 
 ## Inputs (you supply these — none are in the repo)
 

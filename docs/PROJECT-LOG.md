@@ -6,6 +6,28 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-18 — calcpath: byte-check + **port fiel** das rotas do original
+
+O byte-check (RE) decifrou o `calcpath` do original e mostrou que a nossa `WALK_MATRIX`
+(reconstrução do jc_reborn, 2ª ordem **sem pesos**) **divergia nos 30 pares** — o original é
+**1ª ordem, curado por viagem, com pesos** (erro mais claro: nunca anda 5→3 direto, sempre via 4).
+Portado **fielmente**:
+- **`extract_calcpath.py`** (extrator reprodutível, em `docs/reverse-engineering/`) decodifica os
+  30 *route streams* (`seg14:0x0362–0x0AA2`) + registros `0x2de` → gera `calcpath_data.rs`
+  (`ROUTE_STREAMS`, dados extraídos como o `walk_data`). Marcado `#[rustfmt::skip]` p/ ser
+  reprodutível byte-a-byte.
+- **`path.rs`** reescrito: `calc_path` agora é a **caminhada ponderada** do original (sorteio por
+  seção, `rng % Σpesos`); `calc_paths` enumera sobre os streams. A camada de animação (`WALK_BOOKMARKS`)
+  não muda. Validado: alcança todos os destinos (todos os pares, 300 seeds) + invariantes com dados
+  reais (8000 frames, dias 1–6, sem pânico).
+- **Bug latente de RNG corrigido** (exposto pelo port): `Rng::new` deixava os bits altos do
+  xorshift64 sem mistura p/ seeds pequenas (0..64) ⇒ o **primeiro sorteio era sempre 0** (toda seed
+  pequena pegava a 1ª opção). Agora a seed passa pelo finalizador **splitmix64**. Teste de regressão
+  adicionado (`small_seeds_give_a_varied_first_draw`).
+- `fmt`/`clippy`/`test` verdes (engine 77) + wasm OK.
+
+---
+
 ## 2026-06-18 — Web/WASM: o engine rodando no navegador (`wilson-web`)
 
 Novo crate `crates/wilson-web` (a última pendência da Fase 3): compila o **engine** pra

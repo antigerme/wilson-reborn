@@ -506,14 +506,19 @@ mod tests {
                 ("BACKGRND.BMP".to_string(), solid_bmp(42, 1)),
                 ("MRAFT.BMP".to_string(), solid_bmp(5, 9)),
             ],
-            screens: vec![(
-                "OCEAN00.SCR".to_string(),
-                Scr {
-                    width: w,
-                    height: h,
-                    pixels,
-                },
-            )],
+            // All three ocean variants (build picks one via `rng.below(3)`), same content.
+            screens: (0..3)
+                .map(|i| {
+                    (
+                        format!("OCEAN0{i}.SCR"),
+                        Scr {
+                            width: w,
+                            height: h,
+                            pixels: pixels.clone(),
+                        },
+                    )
+                })
+                .collect(),
             ..Default::default()
         };
         let mut rng = Rng::new(1);

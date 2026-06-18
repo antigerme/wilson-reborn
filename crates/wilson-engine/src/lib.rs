@@ -20,6 +20,7 @@
 pub const MS_PER_TICK: u64 = 16;
 
 pub mod ads_vm;
+mod calcpath_data;
 pub mod clock;
 pub mod dissolve;
 pub mod error;
