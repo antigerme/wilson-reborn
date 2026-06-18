@@ -6,6 +6,22 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-18 — Teste e2e do web num Chrome real (Playwright) — "validar como usuário"
+
+Pedido do usuário: validar o web **abrindo um Chrome de verdade**, pra não restar dúvida (depois
+da regressão de som). Harness em `crates/wilson-web/e2e` (`run.mjs`, Playwright + Chromium headless)
+que dirige a página como usuário e **se adapta ao bundle**:
+- **embedded** (dados embutidos): teste **completo** — canvas renderiza não-preto (engine roda no
+  browser), áudio fica **`suspended`** antes do gesto (confirma a política de autoplay), e após um
+  **clique** retoma e **um buffer de som realmente toca**. Determinístico/rápido com `?seed=0&speed=400`.
+- **bring-your-own** (sem dados): **smoke** — carrega, wasm inicia, picker presente, zero erros JS.
+- **Provado localmente** com os dados demo: render + **som tocando** (3/3 estável). O smoke entrou
+  no **CI** (job `web-e2e`: builda o bundle, instala Playwright+Chromium, roda `run.mjs`); o teste
+  completo (com som) é local porque exige os dados copyright. `node_modules` é git-ignored;
+  `package-lock.json` fixa a versão.
+
+---
+
 ## 2026-06-18 — Fix: integração do screensaver no Windows (console, Configurar, preview com som)
 
 Testando o `wilson.scr` no Windows 11, o usuário viu: o botão **Configurações** abria uma **janela

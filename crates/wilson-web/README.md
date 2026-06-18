@@ -61,4 +61,12 @@ WILSON_EMBED_DATA=<dir-with-RESOURCE.*> ./build-web.sh   # then serve web/ as ab
 bring-your-own without one.) The generated `web/wilson_web.js` + `wilson_web_bg.wasm` are build
 outputs (git-ignored); only `index.html` is committed.
 
+## Testing
+
+[`e2e/`](e2e/README.md) drives the built page in a **real headless Chrome** (Playwright), like a
+user: with an embedded build it checks the engine **renders** and that **sound actually plays**
+after a click (the browser autoplay gate); with a bring-your-own build it's a data-free **smoke**
+(loads + wasm inits + no JS errors). CI runs the smoke (job `web-e2e`); the full render+sound test
+is local (it needs the copyright data). See the testing rule in the repo's `CLAUDE.md`.
+
 [`wilson-engine`]: ../wilson-engine
