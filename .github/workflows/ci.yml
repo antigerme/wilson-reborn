@@ -1,8 +1,10 @@
 name: CI
 
 on:
+  # PRs are covered by `pull_request`; `push` only on `main` (post-merge). This avoids running
+  # CI twice on every PR branch push (a branch `push` run plus the `pull_request` run).
   push:
-    branches: [main, "claude/**"]
+    branches: [main]
   pull_request:
 
 # Cancel superseded runs on the same ref.
