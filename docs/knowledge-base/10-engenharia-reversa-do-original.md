@@ -36,7 +36,7 @@
 | Table | Result | Confidence |
 |---|---|---|
 | **`walk_data`** (walk animation) | **489/489 entries BYTE-IDENTICAL** to the original | **Binary proof** ✅ |
-| `calcpath` (pathfinding adjacency) | **route table FOUND**: a 6×6 word-pointer matrix at `seg14:0x0A94` (file `0x18894`) + route streams (see §10.3) | **Binary proof** of the mechanism ✅ (waypoint bytes pending check ⚠️) |
+| `calcpath` (pathfinding adjacency) | **route table FOUND + ported byte-faithfully**: 6×6 weighted route streams at `seg14:0x0A94`→`0x0362–0x0AA2` (see §10.3) | **Binary proof** ✅ (decoded, diverged from the old reconstruction, now ported) |
 | `story_data` (63 scenes) + holiday/tide/drift/scheduling logic | constants **not** locatable as immediates | Port of jc_reborn; content matches the bible ⚠️ |
 
 ### 2.1 `walk_data` — byte-perfect ✅
@@ -50,15 +50,16 @@ the binary, via `extract_walk_data.c`) reproduces the **489** entries exactly: `
 > a 1-frame lag in the sprite. It was a grouping error — with the correct layout
 > (`sprite` **first**), it matches exactly. Recorded so as not to reopen it.
 
-### 2.2 `calcpath` — route table FOUND ✅ (mechanism confirmed; see §10.3)
-**Resolved by the 2026-06-18 deep dive.** Our `WALK_MATRIX[7][6][6]` does not appear as one
-contiguous block (which is why the earlier scan missed it), but the original **is** table-driven:
-a **6×6 matrix of word pointers** (start × dest spot, **1-based** — hence our `[7]`) at
-`seg14:0x0A94` (file `0x18894`), each pointing into a **route stream** (`seg14:0x0362–0x0AA2`)
-of marker-delimited waypoints. The lookup routine is `seg4:03ac` (`route_ptr = *(0x0A94 +
-start*12 + dest*2)`). So the **mechanism matches jc_reborn/ours** (table of routes, not geometric).
-**Pending:** resolve the 30 route streams and byte-compare them to our `WALK_MATRIX` waypoints.
-Full evidence (table dump, lookup disassembly) in §10.3.
+### 2.2 `calcpath` — byte-checked, then ported byte-faithfully ✅ (see §10.3)
+**Resolved and ported (2026-06-18).** The original is table-driven: a **6×6 matrix of word
+pointers** (start × dest, **1-based**) at `seg14:0x0A94`, each → a **route stream**
+(`seg14:0x0362–0x0AA2`) of marker-delimited, **weighted** `(next_spot, weight)` choices per
+cursor spot (lookup `seg4:03ac`). The byte-check found our old `WALK_MATRIX[7][6][6]` (the
+jc_reborn reconstruction) **diverged on all 30 pairs** — a second-order *unweighted* model vs
+the original's first-order *weighted, per-trip-curated* one (clearest case: the original never
+walks 5→3 directly, always via 4). **Fixed:** `path.rs` now ports the original's weighted route
+streams (extracted into `calcpath_data.rs` by `extract_calcpath.py`); `calc_path` is the
+original's step-wise weighted walk. Full detail in §10.3.
 
 ### 2.3 `story_data` + story logic — port of jc_reborn ⚠️
 The constants of our logic (holiday ranges `mmdd` like `1028<mmdd<1101`; island drift
@@ -292,6 +293,17 @@ The **route-pointer table** at `seg14:0x0A94` (file `0x18894`), 6×6 words, diag
 Each entry points into a **route stream** (`seg14:0x0362–0x0AA2`) of marker-delimited (`-1…-7`) `(value,
 value)` waypoint pairs consumed by the walk animator; per-spot 3-byte records are at `seg14:0x02DE`, and
 anim-base tables at `seg14:0x0347`/`0x034E`. There is **no single 252-entry contiguous matrix** (which is
-why §2.2's earlier scan missed it). Confidence: **HIGH** on table location/shape/lookup; **MEDIUM** on the
-exact per-pair field semantics. **Pending byte-check:** resolve the 30 streams and compare waypoint
-sequences to our `WALK_MATRIX` (a future increment).
+why §2.2's earlier scan missed it).
+
+**Byte-check + port (done).** Each section is a list of **`(value, weight)`** pairs; a `value` →
+`(start_hdg, end_hdg, next_spot)` at `0x02DE + value*3`, so a section is the weighted next-spot
+choices for that cursor. The selection is a **step-wise weighted walk**: at the current spot, roll
+against its section (weights, summed per section — usually 100, but at least one section, s1→d5
+cursor 1, sums to 150), move to the chosen `next_spot`, repeat to the destination. Compared to our
+old `WALK_MATRIX` (jc_reborn's second-order *unweighted* reconstruction), the original **diverged on
+all 30 pairs**; the clearest structural error was a spurious direct **5→3** hop (the original always
+detours via 4). We **ported it faithfully**: `extract_calcpath.py` decodes the 30 streams into
+`calcpath_data.rs` (`ROUTE_STREAMS`), and `path.rs::calc_path` is the weighted walk. *(Aside: this
+exposed a latent RNG bug — `Rng::new` left xorshift64's high bits unmixed for tiny seeds, so the
+first draw was always 0; now splitmix64-scrambled.)* Confidence: **HIGH** (routes match the
+disassembly; the engine runs the real data clean with the new routing).

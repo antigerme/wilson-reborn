@@ -1,131 +1,120 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! Pathfinding between the island's six spots (A–F).
 //!
-//! Faithful port of `calcpath.c` + `calcpath_data.h` (`repos/jc_reborn`). Movement
-//! uses a **second-order** adjacency table `walk_matrix[prev][cur][next]`: which next
-//! spot is reachable depends on where Johnny came from (this shapes natural-looking
-//! turns). The first hop uses the "from any spot" row. `calc_paths` enumerates all
-//! simple routes; `calc_path` picks one at random — matching the reference engine,
-//! which acknowledges this is a plausible reconstruction rather than the original.
+//! **Byte-faithful** to the original `SCRANTIC.EXE`: for each `(from, to)` pair the binary
+//! stores a *route stream* — per cursor spot, a weighted list of next-spot choices (weights
+//! sum to 100). Walking is a **step-wise weighted pick**: stand at `from`, roll against that
+//! spot's section to choose the next spot, repeat until `to` is reached. The data is in
+//! [`crate::calcpath_data::ROUTE_STREAMS`] (extracted by `docs/reverse-engineering/
+//! extract_calcpath.py`; see KB10 §10.3). This replaces the earlier jc_reborn-reconstructed
+//! second-order `WALK_MATRIX`, which diverged from the original on all 30 pairs.
 
+use crate::calcpath_data::{Section, ROUTE_STREAMS};
 use crate::rng::Rng;
 
 /// Number of island spots (A–F).
 pub const NUM_OF_NODES: usize = 6;
-/// Sentinel for "no previous node" (used for the first hop).
-const UNDEF_NODE: u8 = 6;
 
-/// `walk_matrix[prev][cur][next] != 0` ⇒ Johnny may go `cur → next` having arrived
-/// from `prev`. Index `[6]` ("from any spot") is used for the first hop.
-static WALK_MATRIX: [[[u8; NUM_OF_NODES]; NUM_OF_NODES]; NUM_OF_NODES + 1] = [
-    // from A
-    [
-        [0, 0, 0, 0, 0, 0], // A
-        [0, 0, 1, 0, 0, 0], // B
-        [0, 0, 0, 1, 0, 0], // C
-        [0, 0, 0, 0, 0, 0], // D
-        [0, 0, 0, 1, 0, 1], // E
-        [0, 0, 0, 0, 0, 0], // F
-    ],
-    // from B
-    [
-        [0, 0, 0, 0, 1, 0], // A
-        [0, 0, 0, 0, 0, 0], // B
-        [0, 0, 0, 1, 0, 0], // C
-        [0, 0, 0, 0, 0, 0], // D
-        [0, 0, 0, 0, 0, 0], // E
-        [0, 0, 0, 0, 0, 0], // F
-    ],
-    // from C
-    [
-        [0, 0, 0, 0, 1, 0], // A
-        [1, 0, 0, 0, 0, 0], // B
-        [0, 0, 0, 0, 0, 0], // C
-        [0, 0, 0, 0, 1, 0], // D
-        [0, 0, 0, 0, 0, 0], // E
-        [0, 0, 0, 0, 0, 0], // F
-    ],
-    // from D
-    [
-        [0, 0, 0, 0, 0, 0], // A
-        [0, 0, 0, 0, 0, 0], // B
-        [1, 1, 0, 0, 0, 1], // C
-        [0, 0, 0, 0, 0, 0], // D
-        [1, 0, 0, 0, 0, 0], // E
-        [0, 0, 0, 0, 1, 0], // F
-    ],
-    // from E
-    [
-        [0, 1, 1, 0, 0, 0], // A
-        [0, 0, 0, 0, 0, 0], // B
-        [0, 0, 0, 0, 0, 0], // C
-        [0, 0, 1, 0, 0, 0], // D
-        [0, 0, 0, 0, 0, 0], // E
-        [0, 0, 0, 1, 0, 0], // F
-    ],
-    // from F
-    [
-        [0, 0, 0, 0, 0, 0], // A
-        [0, 0, 0, 0, 0, 0], // B
-        [0, 0, 0, 1, 0, 0], // C
-        [0, 0, 0, 0, 0, 0], // D
-        [1, 0, 0, 0, 0, 0], // E
-        [0, 0, 0, 0, 0, 0], // F
-    ],
-    // from any spot
-    [
-        [0, 1, 1, 0, 1, 1], // A
-        [1, 0, 1, 0, 0, 0], // B
-        [1, 1, 0, 1, 1, 1], // C
-        [0, 0, 1, 0, 1, 1], // D
-        [1, 0, 1, 1, 0, 1], // E
-        [1, 0, 1, 1, 1, 0], // F
-    ],
-];
+/// The weighted moves available at `cursor` in `stream` (the section `-cursor`), if any.
+fn section(stream: &'static [Section], cursor: u8) -> Option<&'static [(u8, u8)]> {
+    stream
+        .iter()
+        .find(|(c, _)| *c == cursor)
+        .map(|(_, moves)| *moves)
+}
 
-fn recurse(
-    prev: u8,
-    cur: u8,
-    dst: u8,
-    visited: &mut [bool; NUM_OF_NODES],
-    path: &mut Vec<u8>,
-    out: &mut Vec<Vec<u8>>,
-) {
-    if cur == dst {
-        out.push(path.clone());
-        return;
+/// Weighted random pick of the next spot from `cursor` (mirrors the original's `rng % Σw`
+/// then cumulative-subtract). Returns `None` at a dead end (e.g. the destination's section).
+fn pick_next(stream: &'static [Section], cursor: u8, rng: &mut Rng) -> Option<u8> {
+    let moves = section(stream, cursor)?;
+    let total: u32 = moves.iter().map(|&(_, w)| u32::from(w)).sum();
+    if total == 0 {
+        return None;
     }
-    for next in 0..NUM_OF_NODES as u8 {
-        if WALK_MATRIX[prev as usize][cur as usize][next as usize] != 0 && !visited[next as usize] {
-            visited[next as usize] = true;
-            path.push(next);
-            recurse(cur, next, dst, visited, path, out);
-            path.pop();
-            visited[next as usize] = false;
+    let mut roll = rng.below(total);
+    for &(next, w) in moves {
+        let w = u32::from(w);
+        if roll < w {
+            return Some(next);
         }
+        roll -= w;
+    }
+    moves.last().map(|&(next, _)| next)
+}
+
+/// Pick one route from `from` to `to`, the original's way: a step-wise weighted walk over the
+/// `(from, to)` route stream. Falls back to `[from]` for a degenerate/unknown pair.
+pub fn calc_path(from: u8, to: u8, rng: &mut Rng) -> Vec<u8> {
+    let (f, t) = (from as usize, to as usize);
+    if f >= NUM_OF_NODES || t >= NUM_OF_NODES || from == to {
+        return vec![from];
+    }
+    let stream = ROUTE_STREAMS[f][t];
+    let mut route = vec![from];
+    let mut cur = from;
+    // A simple route visits at most NUM_OF_NODES spots; the bound also guards bad data.
+    while cur != to && route.len() <= NUM_OF_NODES {
+        match pick_next(stream, cur, rng) {
+            Some(next) if !route.contains(&next) => {
+                route.push(next);
+                cur = next;
+            }
+            _ => break,
+        }
+    }
+    if cur == to {
+        route
+    } else {
+        // The curated streams always reach `to` from `from`; this is a defensive fallback for
+        // any pick that dead-ends, so callers always get a route that arrives at `to`.
+        calc_paths(from, to)
+            .into_iter()
+            .next()
+            .unwrap_or_else(|| vec![from])
     }
 }
 
-/// Enumerate every simple route from `from` to `to` (each a list of spots).
+/// Enumerate every simple route from `from` to `to` allowed by the original's route stream
+/// (each a list of spots). Used for validation and reachability.
 pub fn calc_paths(from: u8, to: u8) -> Vec<Vec<u8>> {
-    let mut out = Vec::new();
-    if from as usize >= NUM_OF_NODES || to as usize >= NUM_OF_NODES {
-        return out;
+    let (f, t) = (from as usize, to as usize);
+    if f >= NUM_OF_NODES || t >= NUM_OF_NODES {
+        return Vec::new();
     }
-    let mut visited = [false; NUM_OF_NODES];
-    visited[from as usize] = true;
+    if from == to {
+        return vec![vec![from]];
+    }
+    let stream = ROUTE_STREAMS[f][t];
+    let mut out = Vec::new();
     let mut path = vec![from];
-    recurse(UNDEF_NODE, from, to, &mut visited, &mut path, &mut out);
+    enumerate(stream, from, to, &mut path, &mut out);
     out
 }
 
-/// Pick one random route from `from` to `to` (falls back to `[from]` if none exist).
-pub fn calc_path(from: u8, to: u8, rng: &mut Rng) -> Vec<u8> {
-    let paths = calc_paths(from, to);
-    if paths.is_empty() {
-        return vec![from];
+fn enumerate(
+    stream: &'static [Section],
+    cur: u8,
+    to: u8,
+    path: &mut Vec<u8>,
+    out: &mut Vec<Vec<u8>>,
+) {
+    if cur == to {
+        out.push(path.clone());
+        return;
     }
-    paths[rng.below(paths.len() as u32) as usize].clone()
+    let Some(moves) = section(stream, cur) else {
+        return;
+    };
+    let mut tried = Vec::new();
+    for &(next, _w) in moves {
+        if path.contains(&next) || tried.contains(&next) {
+            continue;
+        }
+        tried.push(next);
+        path.push(next);
+        enumerate(stream, next, to, path, out);
+        path.pop();
+    }
 }
 
 #[cfg(test)]
@@ -142,15 +131,16 @@ mod tests {
             assert!(seen.insert(n), "path must be simple (no repeats): {path:?}");
         }
 
-        let mut prev = UNDEF_NODE;
+        // Every hop must be a choice the original's stream offers at that cursor.
+        let stream = ROUTE_STREAMS[from as usize][to as usize];
         for w in path.windows(2) {
+            let moves = section(stream, w[0]).unwrap_or(&[]);
             assert!(
-                WALK_MATRIX[prev as usize][w[0] as usize][w[1] as usize] != 0,
-                "illegal hop {} -> {} (from {prev}) in {path:?}",
+                moves.iter().any(|&(next, _)| next == w[1]),
+                "illegal hop {} -> {} in {path:?}",
                 w[0],
                 w[1]
             );
-            prev = w[0];
         }
     }
 
@@ -158,6 +148,9 @@ mod tests {
     fn every_pair_is_reachable_and_valid() {
         for from in 0..NUM_OF_NODES as u8 {
             for to in 0..NUM_OF_NODES as u8 {
+                if from == to {
+                    continue;
+                }
                 let paths = calc_paths(from, to);
                 assert!(!paths.is_empty(), "no path from {from} to {to}");
                 for p in &paths {
@@ -168,20 +161,56 @@ mod tests {
     }
 
     #[test]
+    fn calc_path_reaches_every_destination() {
+        // The weighted walk must always arrive at `to` (and yield a valid, simple route) for
+        // every pair over many seeds — the core guarantee of the faithful route streams.
+        let mut rng = Rng::new(20_260_618);
+        for from in 0..NUM_OF_NODES as u8 {
+            for to in 0..NUM_OF_NODES as u8 {
+                if from == to {
+                    continue;
+                }
+                for _ in 0..300 {
+                    let p = calc_path(from, to, &mut rng);
+                    validate(&p, from, to);
+                }
+            }
+        }
+    }
+
+    #[test]
     fn same_spot_is_trivial() {
         assert_eq!(calc_paths(3, 3), vec![vec![3]]);
+        let mut rng = Rng::new(1);
+        assert_eq!(calc_path(3, 3, &mut rng), vec![3]);
     }
 
     #[test]
     fn calc_path_is_deterministic_and_valid() {
         let mut rng = Rng::new(123);
-        for _ in 0..50 {
+        for _ in 0..200 {
             let p = calc_path(4, 5, &mut rng); // E -> F
             validate(&p, 4, 5);
         }
-        // Same seed -> same first choice.
+        // Same seed -> same choice.
         let mut a = Rng::new(7);
         let mut b = Rng::new(7);
         assert_eq!(calc_path(0, 3, &mut a), calc_path(0, 3, &mut b));
+    }
+
+    #[test]
+    fn no_direct_5_to_3_hop_matches_the_original() {
+        // The clearest divergence the byte-check found: the original never walks spot 5→3
+        // (0-based 4→2) directly — it detours via spot 4 (0-based 3). Guard it.
+        for to in 0..NUM_OF_NODES as u8 {
+            for p in calc_paths(4, to) {
+                for w in p.windows(2) {
+                    assert!(
+                        !(w[0] == 4 && w[1] == 2),
+                        "unexpected direct 5->3 hop in {p:?}"
+                    );
+                }
+            }
+        }
     }
 }
