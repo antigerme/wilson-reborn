@@ -2091,6 +2091,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "wilson-web"
+version = "0.2.0"
+dependencies = [
+ "wasm-bindgen",
+ "wilson-dgds",
+ "wilson-engine",
+]
+
+[[package]]
 name = "winapi-util"
 version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"

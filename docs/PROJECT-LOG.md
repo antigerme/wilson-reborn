@@ -6,6 +6,25 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-18 — Web/WASM: o engine rodando no navegador (`wilson-web`)
+
+Novo crate `crates/wilson-web` (a última pendência da Fase 3): compila o **engine** pra
+`wasm32` e roda no navegador. Como os dados são copyright, **não embute nada** — a página
+pede o `RESOURCE.MAP` + `RESOURCE.001` do usuário (lidos localmente, nada sobe).
+- **Crate wasm-only** (`#![cfg(target_arch = "wasm32")]`): no host vira lib vazia, então o
+  `cargo build --workspace` do desktop não é afetado; o `wasm-bindgen` é dep só do alvo wasm.
+- API mínima (`Wilson`): `new(map, data, seed, now_secs)`, `frame(now_secs) → RGBA`,
+  `delay_ms()`, `width/height`, `enable_dissolve()`. Sem `web-sys` — o JS cuida do canvas
+  (`ImageData`) e do loop (pacing por `delay_ms()` = 16 ms/tick). Relógio vem do JS
+  (`Date.now()`) via `clock::from_unix` (exposto; sem `SystemTime`, que não existe no wasm).
+- `web/index.html` (file pickers + canvas 640×480 + toggle de dissolve), `build-web.sh`
+  (cargo wasm + `wasm-bindgen --target web`), README. Artefatos gerados são git-ignored.
+- **CI**: novo job `web-wasm` (instala o target + `cargo build --target wasm32 -p wilson-web`)
+  pra garantir que o caminho wasm continua compilando. Áudio fica desktop-only por ora.
+- `fmt`/`clippy`/`test` verdes no host + build wasm32 OK.
+
+---
+
 ## 2026-06-18 — transição opt-in: o dissolve LFSR do próprio original
 
 A RE (KB10 §10.2) achou no binário do original um **dissolve dormente** (blocos em ordem

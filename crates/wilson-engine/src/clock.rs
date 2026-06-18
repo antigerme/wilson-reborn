@@ -16,7 +16,9 @@ pub fn now() -> Clock {
     from_unix(secs)
 }
 
-fn from_unix(secs: u64) -> Clock {
+/// Convert Unix epoch **seconds** (UTC) to an engine [`Clock`]. Pure (no `SystemTime`), so
+/// frontends without a system clock — e.g. the WASM/web build — can pass `Date.now()/1000`.
+pub fn from_unix(secs: u64) -> Clock {
     let days = (secs / 86_400) as i64;
     let hour = ((secs % 86_400) / 3_600) as u8;
     let (y, m, d) = civil_from_days(days);
