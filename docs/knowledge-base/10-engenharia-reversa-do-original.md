@@ -126,7 +126,10 @@ ACTIVITY…WALKSTUF; 42 nomes `.TTM` incluindo os easter eggs `GJGULIVR`, `GJLIL
   `walk_data` é **byte-perfeita**; `calcpath` e as fronteiras de feriado/deriva são a
   reconstrução do jc_reborn, que portamos fielmente, mas **não dá para provar paridade
   byte-a-byte com o original** sem um disassembly completo (fora do alcance do `objdump`).
-- **Única melhoria de paridade acionável:** as **transições com fade/wipe** entre cenas.
+- **Melhorias de paridade acionáveis** (revisadas pelo disassembly, §9): o **intro**
+  (recurso real com toggle `Introduction`, que não exibimos) e o caminho de áudio **MCI**
+  (`mciSendCommand`). *(O "fade entre cenas" foi **rebaixado** — ver §9.3: vinha do jc_reborn,
+  não confirmado no original.)*
 
 ## 8. Como reproduzir esta análise
 
@@ -139,3 +142,68 @@ WILSON_DATA_DIR=<dir> cargo run -p wilson-engine --example audit
 WILSON_DATA_DIR=<dir> cargo test -p wilson-engine real_data_long_run_invariants -- --nocapture
 WILSON_DATA_DIR=<dir> cargo test -p wilson-dgds --test real_data -- --nocapture
 ```
+
+---
+
+## 9. Disassembly completo do binário (capstone) — direto do original
+
+> Pass profundo a pedido do usuário e **sem depender do jc_reborn**. Ferramenta: disassembler
+> recursivo próprio (**capstone** 16-bit) com as **relocações NE resolvidas** (mapas de
+> ordinais das `.spec` do Wine) → cada chamada de API e `call` interno fica rotulado. **255
+> funções, 25 732 instruções, ~75% do código** por descida recursiva (o resto é o CRT da
+> Borland, *procs* de callback do Windows e tabelas de dados). A listagem crua é mantida
+> **local** (é obra derivada do código copyright — não vai pro repo); aqui ficam só os fatos.
+
+### 9.1 Arquitetura (confirmada no binário)
+- **Gráficos:** composição em DCs off-screen (`CreateCompatibleDC`/`Bitmap`, `SelectObject`
+  ×59, `BitBlt` ×19) + **`StretchBlt` ×11 = escala pra tela** (o original escala, como nós).
+  Primitivas vetoriais GDI (`LineTo`/`MoveTo`/`Rectangle`/`Ellipse`/`CreatePen`) = os opcodes
+  TTM de desenho. **NENHUMA API de paleta** (`CreatePalette`/`RealizePalette`/`AnimatePalette`
+  ausentes) ⇒ **sem animação de paleta**; nossa abordagem (`.PAL` → RGB → blit) confere.
+- **Som:** `sndPlaySound` (MMSYSTEM.2) pros WAVs (`WAVESFX%d`) — **e também `mciSendCommand`**
+  (MCI) em `seg5:0085` (segundo caminho de áudio; não temos).
+- **Loop/tempo:** `SetTimer(…, 50 ms, …)` bombeia `WM_TIMER` (0x0113), mas o avanço é **paceado
+  por tempo real** (`GetCurrentTime`, `elapsed × rate[0x2e14]` em ponto-fixo /100000 via helper
+  de 32 bits `seg1:0302`) ⇒ **não é 50 ms/quadro fixo** (é frame-rate-independente). O jc_reborn
+  aproxima com 20 ms/tick fixo; **o rate exato (`[0x2e14]`, definido na init) não foi cravado** —
+  é o único número de timing em aberto.
+- **Config:** INI `[ScreenSaver.ScreenAntics]` em `SCRANTIC.INI`: `Sounds`, `Introduction`,
+  `Password`/`PasswordProtection`, `CurrentMonth` (persistência).
+
+### 9.2 Interpretador TTM (`seg12`) — opcodes lidos do binário
+Despacho por **busca linear em tabelas de opcodes** (opcode em `[0x46da]`; interpretador de
+**dois passes**, flag `[0x46d8]`; slots de bitmap em `[0x2638]`/`[0x263e]`). As próprias tabelas:
+- família **C**, `seg12:0x00fc`: `c01f c02f c031 … c0f4 c102 cf01 cf11` (16 variantes; os dados
+  só usam `c051`=PLAY_SAMPLE — tratamos o subconjunto usado);
+- família **A**, `0x03bc`: `a002 a0a4 a104 … a5a7 a601 a704 af02 af1f af2f`;
+- **A0xx zona**, `0x1900`: `a014 a024 … a054(SAVE) a064(RESTORE) a094 a0b5`;
+- **baixos**, `0x12bd`: `0010 0020 0070 0080 0090 00c0 00e0 0110 0400`;
+- alias: o interpretador **remapeia** `0x1301→0xc051` e `0x1311→0xc061`.
+
+**`0x0080` (DRAW_BACKGROUND) — RESOLVIDO:** o handler (`seg12:0806`) **libera o handle GDI do
+slot de bitmap atual** (`call seg6:1845` = wrapper de `DeleteObject`) e zera o slot —
+**gerência de memória, ZERO saída visual.** Logo: o jc_reborn estava **certo** ("frees image
+slots"); castaway/dgds-viewer/JCOS erram ao chamá-lo de "redesenho de fundo"; **e o nosso
+no-op está correto vs o ORIGINAL.** *(A dúvida LOW da §6 fica resolvida — não é lacuna.)*
+
+### 9.3 Correções aos itens que vinham do jc_reborn (não do original)
+- **Fade/wipe entre cenas (era "MÉDIA") → REBAIXADO p/ NÃO-CONFIRMADO.** No binário **não há
+  fade de paleta** (sem APIs de paleta). Um *wipe* via BitBlt é possível, mas **não foi
+  localizado** no código analisado. A evidência de fade vinha do **jc_reborn** (reimplementação)
+  — então **pode não ser lacuna**. Cravar exige analisar o caminho de transição de cena.
+- **Intro (era "BAIXA") → CONFIRMADO como recurso real:** existe `INTRO.SCR` + a chave de
+  config **`Introduction`** (liga/desliga). Não exibimos o intro ⇒ **lacuna real**,
+  binário-confirmada.
+
+### 9.4 Novos achados (só no binário)
+- **`mciSendCommand`** — caminho de áudio MCI além do `sndPlaySound` (não reproduzido).
+- **Relógio em tempo real** — formato `"%2d:%02d %cm"` ⇒ um gag mostra a hora real do PC.
+- Família **C completa** (`c01f…c0f4`, 16 variantes de PLAY_SAMPLE) — tratamos só a usada.
+
+### 9.5 Veredito pós-disassembly
+A reengenharia direta do binário **fortaleceu** a confiança: confirmou a arquitetura e o
+conjunto de opcodes, e **resolveu o `0x0080`** (nosso no-op está certo vs o original). Lacunas
+reais binário-confirmadas: **intro** (recurso com toggle, não exibido) e o caminho **MCI**.
+O **fade** foi **rebaixado** (não confirmado no original). O **rate de tempo exato** é o único
+número em aberto. `calcpath` e as constantes de feriado/deriva seguem na lógica não-traçada
+(fiéis ao jc_reborn, sem prova binária).
