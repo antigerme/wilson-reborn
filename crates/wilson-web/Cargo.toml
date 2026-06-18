@@ -1,0 +1,22 @@
+[package]
+name = "wilson-web"
+description = "WASM/web frontend for Wilson Reborn — runs the engine in a browser (bring your own RESOURCE.* data)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lib]
+# `cdylib` is what wasm-bindgen links; `rlib` lets the (empty, on non-wasm) crate sit in the
+# workspace build without complaint.
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wilson-engine = { path = "../wilson-engine" }
+wilson-dgds = { path = "../wilson-dgds" }
+
+# The web glue is only pulled for the wasm target, so a host `cargo build --workspace`
+# compiles this crate as an empty lib (no JS/wasm deps, no cost). See `src/lib.rs`.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"

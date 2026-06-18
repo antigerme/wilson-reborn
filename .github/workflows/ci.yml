@@ -106,3 +106,23 @@ jobs:
 
       - name: Test
         run: cargo test --workspace --all-features --verbose
+
+  # The browser frontend (`wilson-web`) targets wasm32; make sure it keeps compiling there.
+  # (On a host target it is an empty crate, so the matrix above does not exercise the wasm
+  # path.) This builds the Rust → .wasm; generating the JS bindings is a local dev step.
+  web-wasm:
+    name: Build (wasm32 web)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Rust toolchain (+ wasm32 target)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build wilson-web for wasm32
+        run: cargo build --release --target wasm32-unknown-unknown -p wilson-web

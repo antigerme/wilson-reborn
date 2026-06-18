@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Wilson Reborn — web</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 1rem;
+    background: #0b0f17; color: #cdd6f4;
+    font: 15px/1.5 system-ui, sans-serif;
+  }
+  h1 { margin: .2rem; font-size: 1.1rem; font-weight: 600; }
+  #screen {
+    image-rendering: pixelated;            /* crisp 1992 pixels when scaled up */
+    width: min(96vw, 128vh);               /* keep the 4:3 aspect, fit the viewport */
+    aspect-ratio: 4 / 3; background: #000;
+    border: 1px solid #1e2536; border-radius: 6px;
+  }
+  #panel { display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; align-items: center; max-width: 96vw; }
+  label { display: inline-flex; gap: .4rem; align-items: center; }
+  #status { min-height: 1.2em; color: #f9e2af; }
+  a { color: #89b4fa; }
+  .hint { opacity: .7; font-size: .85em; max-width: 60ch; text-align: center; }
+</style>
+</head>
+<body>
+  <h1>Wilson Reborn — the life of Johnny Castaway, in your browser</h1>
+
+  <canvas id="screen" width="640" height="480"></canvas>
+
+  <div id="panel">
+    <label>RESOURCE.MAP <input id="map" type="file" /></label>
+    <label>RESOURCE.001 <input id="data" type="file" /></label>
+    <label title="The original's dormant tiled dissolve, resurrected">
+      <input id="dissolve" type="checkbox" /> dissolve transitions
+    </label>
+    <button id="start" disabled>Start</button>
+  </div>
+
+  <div id="status"></div>
+  <p class="hint">
+    The game data is copyright Sierra/Dynamix and is <strong>not</strong> bundled — pick your
+    own <code>RESOURCE.MAP</code> and <code>RESOURCE.001</code> (e.g. from the Internet
+    Archive's <code>scrantic-run.zip</code>). Everything runs locally; nothing is uploaded.
+  </p>
+
+<script type="module">
+  import init, { Wilson } from "./wilson_web.js";
+
+  const $ = (id) => document.getElementById(id);
+  const status = (m) => { $("status").textContent = m; };
+
+  let mapBytes = null, dataBytes = null, running = null;
+
+  const readFile = (input) => new Promise((resolve) => {
+    const f = input.files && input.files[0];
+    if (!f) return resolve(null);
+    const r = new FileReader();
+    r.onload = () => resolve(new Uint8Array(r.result));
+    r.readAsArrayBuffer(f);
+  });
+
+  function refreshStartEnabled() {
+    $("start").disabled = !(mapBytes && dataBytes);
+  }
+
+  await init(); // load the wasm module
+
+  $("map").addEventListener("change", async (e) => {
+    mapBytes = await readFile(e.target); refreshStartEnabled();
+  });
+  $("data").addEventListener("change", async (e) => {
+    dataBytes = await readFile(e.target); refreshStartEnabled();
+  });
+
+  $("start").addEventListener("click", () => {
+    if (running) { clearTimeout(running); running = null; }
+    try {
+      const wilson = new Wilson(
+        mapBytes, dataBytes, Math.random() * 9007199254740991, Date.now() / 1000,
+      );
+      if ($("dissolve").checked) wilson.enable_dissolve();
+
+      const canvas = $("screen");
+      canvas.width = wilson.width();
+      canvas.height = wilson.height();
+      const ctx = canvas.getContext("2d");
+      status("Running. (Reload to pick different data.)");
+
+      const tick = () => {
+        const rgba = wilson.frame(Date.now() / 1000);
+        const img = new ImageData(new Uint8ClampedArray(rgba), wilson.width(), wilson.height());
+        ctx.putImageData(img, 0, 0);
+        running = setTimeout(tick, wilson.delay_ms());
+      };
+      tick();
+    } catch (err) {
+      status("Could not start: " + err);
+    }
+  });
+</script>
+</body>
+</html>
