@@ -19,6 +19,10 @@ use crate::surface::{Surface, TRANSPARENT};
 use crate::ttm_exec::detect_transparent;
 use crate::walk::{WalkFrame, Walker};
 
+/// How long the intro screen (`INTRO.SCR`) is held at startup, in engine ticks
+/// (≈4 s at 20 ms/tick), when the intro is enabled.
+const INTRO_TICKS: u16 = 200;
+
 /// The wall-clock inputs the director needs (injected so the runtime is testable).
 #[derive(Debug, Clone, Copy)]
 pub struct Clock {
@@ -89,6 +93,9 @@ pub struct Show {
     stage: Stage,
     /// A sound to emit on the next produced frame (the day-beat cue, `sound 0`).
     pending_sound: Option<u16>,
+    /// The original's intro screen (`INTRO.SCR`), shown once at startup if enabled
+    /// (the original's `Introduction` option). Consumed by the first `next_frame`.
+    intro: Option<Surface>,
 }
 
 impl Show {
@@ -132,6 +139,7 @@ impl Show {
             island: None,
             stage: Stage::Idle,
             pending_sound: None,
+            intro: None,
         };
         show.plan_new_run(archive);
         show
@@ -140,6 +148,25 @@ impl Show {
     /// Update the wall-clock inputs (call before a new run picks up a new day).
     pub fn set_clock(&mut self, clock: Clock) {
         self.clock = clock;
+    }
+
+    /// Queue the original's intro screen (`INTRO.SCR`) to be shown once at startup —
+    /// the original's `Introduction` option. No-op if the resource is missing, so it
+    /// degrades gracefully. Call right after [`Show::new`].
+    pub fn enable_intro(&mut self, archive: &Archive) {
+        let Some(scr) = archive.scr("INTRO.SCR") else {
+            return;
+        };
+        let mut surface = Surface::new(self.width, self.height, 0);
+        let w = i32::from(scr.width).min(i32::from(self.width));
+        let h = i32::from(scr.height).min(i32::from(self.height));
+        for sy in 0..h {
+            for sx in 0..w {
+                let p = scr.pixels[(sy * i32::from(scr.width) + sx) as usize];
+                surface.put_pixel(sx, sy, p);
+            }
+        }
+        self.intro = Some(surface);
     }
 
     /// The director's persisted day state — `(current_day, stored_yday)` — so a host
@@ -163,10 +190,14 @@ impl Show {
                 .scenes
                 .get(self.scene_idx)
                 .map(|s| (s.ads_name, s.ads_tag)),
-            stage: match self.stage {
-                Stage::Idle => "idle",
-                Stage::Walk(_) => "walk",
-                Stage::Play(_) => "play",
+            stage: if self.intro.is_some() {
+                "intro"
+            } else {
+                match self.stage {
+                    Stage::Idle => "idle",
+                    Stage::Walk(_) => "walk",
+                    Stage::Play(_) => "play",
+                }
             },
             offset: self.island.as_ref().map(Island::offset),
             on_island: self.run.on_island,
@@ -179,6 +210,14 @@ impl Show {
 
     /// Produce the next composited frame (the runtime never ends).
     pub fn next_frame(&mut self, archive: &Archive) -> Frame {
+        // The intro screen (`INTRO.SCR`) is shown once, before the first run, if enabled.
+        if let Some(surface) = self.intro.take() {
+            return Frame {
+                surface,
+                delay_ticks: INTRO_TICKS,
+                sounds: Vec::new(),
+            };
+        }
         for _ in 0..20_000 {
             enum Action {
                 Walk(WalkFrame),
@@ -521,6 +560,54 @@ mod tests {
             assert_eq!(f.surface.height, 480);
             assert!(f.delay_ticks > 0);
         }
+    }
+
+    #[test]
+    fn intro_is_shown_once_when_enabled() {
+        let mut arch = full_archive();
+        arch.screens.push((
+            "INTRO.SCR".to_string(),
+            Scr {
+                width: 640,
+                height: 480,
+                pixels: vec![7; 640 * 480],
+            },
+        ));
+        let pal = Palette {
+            colors: [[1u8; 3]; 256],
+        };
+        let clock = Clock {
+            yday: 200,
+            hour: 12,
+            month: 6,
+            day: 14,
+        };
+        let mut show = Show::new(&arch, &pal, 640, 480, Director::new(5, 200), clock, 42);
+        show.enable_intro(&arch);
+        assert!(show.intro.is_some());
+        // The first frame is the intro screen (held for INTRO_TICKS); the upper-left is the
+        // INTRO.SCR fill value (7), and it is consumed so it never shows again.
+        let f0 = show.next_frame(&arch);
+        assert_eq!(f0.delay_ticks, INTRO_TICKS);
+        assert_eq!(f0.surface.get(10, 10), Some(7));
+        assert!(show.intro.is_none(), "intro is shown only once");
+    }
+
+    #[test]
+    fn intro_missing_is_graceful() {
+        let arch = full_archive(); // no INTRO.SCR
+        let pal = Palette {
+            colors: [[1u8; 3]; 256],
+        };
+        let clock = Clock {
+            yday: 200,
+            hour: 12,
+            month: 6,
+            day: 14,
+        };
+        let mut show = Show::new(&arch, &pal, 640, 480, Director::new(5, 200), clock, 42);
+        show.enable_intro(&arch); // INTRO.SCR absent -> no-op
+        assert!(show.intro.is_none());
     }
 
     #[test]

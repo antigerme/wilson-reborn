@@ -10,7 +10,7 @@
 //! - `wilson --data <dir>` — load the data from `<dir>`.
 //! - `wilson` — auto-detects the data in the working directory or next to the executable.
 //! - `wilson --windowed --mute --speed <pct> --scale fit|stretch|integer|extend
-//!   --filter nearest|linear|xbr|xbrz --dedither` — options (`extend` fills widescreen).
+//!   --filter nearest|linear|xbr|xbrz --dedither --no-intro` — options (`extend` fills widescreen).
 //! - Windows screensaver verbs: `/s` (show), `/c` (config), `/p <hwnd>` (preview embedded
 //!   in the configuration pane — Windows only).
 
@@ -150,6 +150,9 @@ fn main() {
         .map(|d| d.as_nanos() as u64)
         .unwrap_or(0x9E37_79B9_7F4A_7C15);
     let mut show = Show::new(&archive, &palette, 640, 480, director, clock, seed);
+    if cfg.intro {
+        show.enable_intro(&archive); // the original's startup intro screen (INTRO.SCR)
+    }
 
     // Persist the story day whenever it advances, so the arc carries over to the next
     // run. `None` until the first frame establishes today's day.
@@ -171,13 +174,14 @@ fn main() {
     let mut dbg_first_frame = true; // log the first successful frame once
     if cfg.debug {
         eprintln!(
-            "[wilson:debug] on — filter={} scale={} speed={}% dedither={} daynight={} windowed={}",
+            "[wilson:debug] on — filter={} scale={} speed={}% dedither={} daynight={} windowed={} intro={}",
             cfg.filter.as_str(),
             cfg.scale.as_str(),
             cfg.speed,
             cfg.dedither,
             cfg.daynight.as_str(),
             cfg.windowed,
+            cfg.intro,
         );
         eprintln!("[wilson:debug] audio: {}", audio.debug_summary());
     }
@@ -493,9 +497,10 @@ fn print_config_info(cfg: &config::Config) {
     println!("  dedither: {}", cfg.dedither);
     println!("  daynight: {}", cfg.daynight.as_str());
     println!("  debug:    {}", cfg.debug);
+    println!("  intro:    {}", cfg.intro);
     println!("  stats:    {}", stats::Stats::load().summary());
     println!(
-        "Edit the file above, or pass --windowed/--mute/--dedither/--debug/--speed <pct>/\
+        "Edit the file above, or pass --windowed/--mute/--dedither/--debug/--no-intro/--speed <pct>/\
          --scale <mode>/--filter <nearest|linear|xbr|xbrz>/--daynight <original|real24h>."
     );
 }
@@ -551,6 +556,7 @@ fn print_help() {
     println!("  --dedither                       smooth the dithered sea/sky (default: off)");
     println!("  --debug                          diagnostics: stdout status + on-screen HUD");
     println!("  --daynight <original|real24h>    day/night cycle (default: original 8h)");
+    println!("  --no-intro                       skip the startup intro screen (default: shown)");
     println!("  --data <DIR>                     game data folder (default: auto-detect)");
     if cfg!(windows) {
         println!("\nWINDOWS SCREENSAVER VERBS (as the OS invokes a .scr):");
