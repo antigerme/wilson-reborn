@@ -11,7 +11,8 @@
 //! - `wilson` — auto-detects the data in the working directory or next to the executable.
 //! - `wilson --windowed --mute --speed <pct> --scale fit|stretch|integer|extend
 //!   --filter nearest|linear|xbr|xbrz --dedither --no-intro --day <1-11> --story
-//!   --story-secs <s>` — options (`extend` fills widescreen; `--story` plays the arc in order).
+//!   --story-secs <s> --transition none|dissolve` — options (`extend` fills widescreen;
+//!   `--story` plays the arc in order; `--transition dissolve` = the original's tiled dissolve).
 //! - Windows screensaver verbs: `/s` (show), `/c` (config), `/p <hwnd>` (preview embedded
 //!   in the configuration pane — Windows only).
 
@@ -169,6 +170,9 @@ fn main() {
     let mut show = Show::new(&archive, &palette, 640, 480, director, clock, seed);
     if cfg.intro {
         show.enable_intro(&archive); // the original's startup intro screen (INTRO.SCR)
+    }
+    if cfg.transition == config::Transition::Dissolve {
+        show.enable_dissolve(); // the original's dormant LFSR tiled dissolve, opt-in
     }
 
     // Persist the story day whenever it advances, so the arc carries over to the next
@@ -535,11 +539,18 @@ fn print_config_info(cfg: &config::Config) {
         }
     );
     println!("  story:    {} ({} s/day)", cfg.story, cfg.story_secs);
+    println!(
+        "  transition: {}",
+        match cfg.transition {
+            config::Transition::None => "none (hard cut)",
+            config::Transition::Dissolve => "dissolve",
+        }
+    );
     println!("  stats:    {}", stats::Stats::load().summary());
     println!(
         "Edit the file above, or pass --windowed/--mute/--dedither/--debug/--no-intro/--story/\
          --speed <pct>/--scale <mode>/--filter <nearest|linear|xbr|xbrz>/--daynight \
-         <original|real24h>/--day <1-11>/--story-secs <s>."
+         <original|real24h>/--day <1-11>/--story-secs <s>/--transition <none|dissolve>."
     );
 }
 
@@ -598,6 +609,7 @@ fn print_help() {
     println!("  --day <1-11>                     start the 11-day story arc at this day");
     println!("  --story                          play the whole arc in order (day 1->11->1...)");
     println!("  --story-secs <S>                 story mode: real seconds per day (default 90)");
+    println!("  --transition <none|dissolve>     scene transition (default: none = hard cut)");
     println!("  --data <DIR>                     game data folder (default: auto-detect)");
     if cfg!(windows) {
         println!("\nWINDOWS SCREENSAVER VERBS (as the OS invokes a .scr):");

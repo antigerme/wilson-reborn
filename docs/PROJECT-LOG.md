@@ -6,6 +6,25 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-18 — transição opt-in: o dissolve LFSR do próprio original
+
+A RE (KB10 §10.2) achou no binário do original um **dissolve dormente** (blocos em ordem
+pseudo-aleatória por LFSR, desligado: flag `[0x1ebf]≡0`, máscaras em `seg14:0x27fe`).
+Ressuscitado como **transição opt-in** (em vez de copiar o wipe do jc_reborn):
+- **`--transition dissolve`** (config `transition`, padrão `none` = corte seco **fiel**):
+  entre runs (vinhetas), revela a cena nova célula a célula sobre a anterior, em ~20 frames
+  de 16 ms, na **ordem LFSR do original** (`dissolve.rs`: `lfsr_order` usa as máscaras
+  `0x3..0x500`; largura do registrador = menor que cobre o nº de células; célula 16 px →
+  1200 células, dentro do limite de 11 bits do original).
+- Engine: `dissolve.rs` (puro, testado: LFSR é permutação completa; o dissolve chega exato ao
+  destino) + `Show` embrulha o `next_frame` e dispara nas fronteiras de run; **sem custo
+  quando desligado** (não clona `prev` por frame no padrão).
+- App: opção `transition` (parse/serialize/CLI/`/c`/help) + fiação no `main`.
+- `cargo fmt`/`clippy -D warnings`/`test` verdes (wilson-engine 74, wilson 55). Conclui as
+  três escolhas (RE + QoL de tempo + transições).
+
+---
+
 ## 2026-06-18 — QoL de tempo: `--day` + modo história (`--story`)
 
 Controles de tempo **opt-in** (padrão = tempo real, idêntico a antes), no app (engine
