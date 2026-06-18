@@ -11,6 +11,11 @@ All notable changes to **Wilson Reborn** are recorded here. The project follows 
   web build (`index.html` + the wasm/JS + a `HOW-TO-RUN.txt`). No game data is bundled (copyright);
   serve it over HTTP and supply your own `RESOURCE.*` / a `.zip`.
 
+### Fixed
+- **Windows preview pane**: the screensaver now fills the little monitor in the Screen Saver
+  settings (queries the pane's client size via `GetClientRect`) instead of sitting in the corner
+  with black bands.
+
 ## [0.3.0] — 2026-06-18
 
 A big polish pass over the **Web/WASM** build and the **Windows screensaver**, plus reverse-engineering

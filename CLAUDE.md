@@ -194,6 +194,9 @@ escritas) ⇒ o original **nunca** dissolve, nem no intro — padrão segue hard
 `#![windows_subsystem = "windows"]` (o `.scr` abria janela de **console** preta); (2) **Configurar**
 (`/c`) só fazia `println!` ⇒ agora `configure()` abre o `config.txt` no editor; (3) o **preview**
 (`/p`) tocava som ⇒ `audio_muted` silencia o preview. Validado por cross-compile `windows-gnu`
-(confirmação final no Windows do usuário). *Pendente possível:* o monitorzinho do preview ainda
-pode renderizar preto (embutir via `with_parent_window` é frágil; não testável fora do Windows).
+(confirmação final no Windows do usuário).
+**Fix preview (Windows, 2026-06-18):** o monitorzinho das Configurações **renderiza** (não fica
+preto), mas a janela filha estava fixa em 152×112 ⇒ faixas pretas à direita/embaixo no painel maior
+do Win11. Agora `apply_preview` consulta `GetClientRect(hwnd)` (FFI `user32`, sem dep nova) e
+**preenche o painel**. Cross-compile `windows-gnu` OK; runtime confirmado pelo usuário no Windows.
 **Próximo:** cortar a **v0.3.0** (empacotar tudo isso) ou outra frente (a combinar com o usuário).

@@ -6,6 +6,16 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-18 — Fix: preview do screensaver no Windows preenche o painel (sem faixas pretas)
+
+O usuário testou no Win11: o monitorzinho das Configurações **renderiza** (Johnny + ilha), mas com
+**faixas pretas à direita/embaixo** — a janela filha estava cravada em 152×112 (preview "clássico")
+dentro de um painel maior. Fix: `apply_preview` agora consulta `GetClientRect(hwnd)` (FFI direto do
+`user32`, **sem dep nova**) e usa o tamanho real do painel no `with_inner_size`, preenchendo tudo
+(fallback 152×112 se a query falhar). Cross-compile `windows-gnu` OK; runtime a confirmar no Windows.
+
+---
+
 ## 2026-06-18 — Release: publicar o bundle Web/WASM (traga-seus-dados) nos artefatos
 
 O usuário perguntou por que o web não saía nas releases. Faltava mesmo: o `release.yml` só gerava
