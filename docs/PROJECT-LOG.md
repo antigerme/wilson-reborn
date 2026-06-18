@@ -6,6 +6,23 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-18 — release v0.2.0 (primeira release pública empacotada)
+
+Primeira release pública: **v0.2.0** (tag em `14d881c`, com `Cargo.toml` bumpado
+0.1.0→0.2.0 via #66). O `release.yml` gerou e anexou os **5 artefatos** ao GitHub Release:
+`wilson.scr` + `wilson.exe` (Windows), `wilson-linux-x86_64.tar.gz`,
+`wilson-macos-arm64.tar.gz` + `WilsonReborn.saver.zip` (macOS).
+<https://github.com/antigerme/wilson-reborn/releases/tag/v0.2.0>
+
+**Lição de processo (para a próxima):** *bumpar a versão e **mergear** antes de **taguear***.
+Aqui a tag `v0.2.0` foi criada antes do merge do #66 (ficou no commit em fonte 0.1.0) e
+precisou de `git push -f origin v0.2.0` para mirar no commit 0.2.0 — o que fez o `release.yml`
+re-rodar e o `action-gh-release` **anexar** as release notes (changelog duplicado, ajustado
+manualmente). A versão **não** aparece no binário nem nos nomes dos artefatos ⇒ as builds são
+idênticas; o re-corte foi só por consistência da tag/notes.
+
+---
+
 ## 2026-06-18 — intro do original + ferramentas de RE salvas + MCI resolvido + KB em inglês
 
 Quatro entregas (seleção do usuário, dando seguimento à RE da entrada abaixo):
