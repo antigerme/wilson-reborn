@@ -16,7 +16,7 @@ use crate::ttm_exec::{detect_transparent, run_frame, FrameOutcome, TtmSlot, TtmT
 pub enum TtmStep {
     /// An `UPDATE` produced a frame; wait `delay_ticks` and play `sounds`.
     Frame {
-        /// Frame duration in engine ticks (1 tick = 20 ms).
+        /// Frame duration in engine ticks (1 tick = [`crate::MS_PER_TICK`] = 16 ms).
         delay_ticks: u16,
         /// Sound effect ids triggered during this frame.
         sounds: Vec<u16>,

@@ -66,7 +66,7 @@ fn main() {
     };
     let mut show = Show::new(&archive, &palette, 640, 480, director, clock, seed);
 
-    // Telemetry: total intended playback time (Σ delay·20 ms) and how often each story
+    // Telemetry: total intended playback time (Σ delay·16 ms) and how often each story
     // day was seen — so the summary shows the run actually progressed and was paced.
     let mut total_ms: u64 = 0;
     let mut day_hits = [0u32; 12]; // index by story day 1..=11
@@ -74,7 +74,7 @@ fn main() {
 
     for i in 0..total_frames {
         let frame = show.next_frame(&archive);
-        total_ms += u64::from(frame.delay_ticks) * 20;
+        total_ms += u64::from(frame.delay_ticks) * wilson_engine::MS_PER_TICK;
         let day = show.day_state().0 as usize;
         if day < day_hits.len() {
             day_hits[day] += 1;

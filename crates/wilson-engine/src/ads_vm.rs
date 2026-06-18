@@ -26,7 +26,7 @@ pub const MAX_TTM_SLOTS: usize = 10;
 pub struct AdsFrame {
     /// The composited indexed-color image for this frame.
     pub surface: Surface,
-    /// How long to display the frame, in engine ticks (1 tick = 20 ms).
+    /// How long to display the frame, in engine ticks (1 tick = [`crate::MS_PER_TICK`] = 16 ms).
     pub delay_ticks: u16,
     /// Sound effect ids triggered during this frame.
     pub sounds: Vec<u16>,

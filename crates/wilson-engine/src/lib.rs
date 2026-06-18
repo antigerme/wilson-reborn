@@ -8,6 +8,17 @@
 //! the animation logic can be unit-tested deterministically; a real rendering backend
 //! later turns [`Surface`] pixels into on-screen frames via a palette.
 
+/// Wall-clock duration of one engine tick, in milliseconds.
+///
+/// The original screensaver's animation clock fires every **16 ms** (~62.5 Hz): its
+/// scheduler derives a 4 ms master unit (`1000 / (13 × 18)`, from the ~18.2 Hz PC timer
+/// constant) and the animation callback runs every 4th one (`4 × 4 = 16 ms`), gated against
+/// the real `GetCurrentTime`. Verified by disassembly of the original `SCRANTIC.EXE` (`seg9`);
+/// see [`docs/knowledge-base/10`](https://github.com/antigerme/wilson-reborn/blob/main/docs/knowledge-base/10-engenharia-reversa-do-original.md).
+/// A TTM `wait N` delay is therefore `N × 16 ms`. (jc_reborn approximates this as 20 ms; we
+/// use the original's measured 16 ms.)
+pub const MS_PER_TICK: u64 = 16;
+
 pub mod ads_vm;
 pub mod clock;
 pub mod error;

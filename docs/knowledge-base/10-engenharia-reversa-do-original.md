@@ -11,10 +11,11 @@
 > constants/immediates of our logic in the binary; (4) an exhaustive histogram of **every**
 > TTM/ADS opcode used in the real `RESOURCE.001`, cross-checked with the executors; (5) a resource
 > inventory; (6) a content audit against the [bible](02-biblia-de-conteudo.md) and the
-> [parity audit](09-paridade-e-easter-eggs.md). Available disassembly tool:
-> only `objdump` (16-bit) — a deep disassembly of all the logic was not feasible,
-> so the observational logic is evaluated by **constants + behavior**, not instruction
-> by instruction.
+> [parity audit](09-paridade-e-easter-eggs.md); and (7) a **full instruction-level disassembly**
+> (capstone 16-bit, NE relocations resolved — §9) that resolved the remaining open questions
+> instruction-by-instruction (§10). *(§§1–8 below were written before that pass, when only
+> `objdump` was available and the observational logic was judged by constants + behaviour; §§9–10
+> supersede the few caveats that the deep disassembly later settled.)*
 
 ## 1. The original binary (NE structure)
 
@@ -35,7 +36,7 @@
 | Table | Result | Confidence |
 |---|---|---|
 | **`walk_data`** (walk animation) | **489/489 entries BYTE-IDENTICAL** to the original | **Binary proof** ✅ |
-| `calcpath` (pathfinding adjacency) | **does not exist** as a table in the EXE | Reconstruction (soft spot) ⚠️ |
+| `calcpath` (pathfinding adjacency) | **route table FOUND**: a 6×6 word-pointer matrix at `seg14:0x0A94` (file `0x18894`) + route streams (see §10.3) | **Binary proof** of the mechanism ✅ (waypoint bytes pending check ⚠️) |
 | `story_data` (63 scenes) + holiday/tide/drift/scheduling logic | constants **not** locatable as immediates | Port of jc_reborn; content matches the bible ⚠️ |
 
 ### 2.1 `walk_data` — byte-perfect ✅
@@ -49,12 +50,15 @@ the binary, via `extract_walk_data.c`) reproduces the **489** entries exactly: `
 > a 1-frame lag in the sprite. It was a grouping error — with the correct layout
 > (`sprite` **first**), it matches exactly. Recorded so as not to reopen it.
 
-### 2.2 `calcpath` — reconstruction, not verifiable ⚠️
-Our adjacency matrix `WALK_MATRIX[7][6][6]` **does not appear** in the binary in any tested
-form (bytes/words/transposed). This confirms what jc_reborn itself admits: the
-pathfinding was **reconstructed by observation**, not extracted. The original computes the routes
-by another mechanism (or stores them in a very different way). **There is no proof of byte-for-byte
-parity;** it is a plausible model. Resolving it would require disassembling the `calcpath` routine.
+### 2.2 `calcpath` — route table FOUND ✅ (mechanism confirmed; see §10.3)
+**Resolved by the 2026-06-18 deep dive.** Our `WALK_MATRIX[7][6][6]` does not appear as one
+contiguous block (which is why the earlier scan missed it), but the original **is** table-driven:
+a **6×6 matrix of word pointers** (start × dest spot, **1-based** — hence our `[7]`) at
+`seg14:0x0A94` (file `0x18894`), each pointing into a **route stream** (`seg14:0x0362–0x0AA2`)
+of marker-delimited waypoints. The lookup routine is `seg4:03ac` (`route_ptr = *(0x0A94 +
+start*12 + dest*2)`). So the **mechanism matches jc_reborn/ours** (table of routes, not geometric).
+**Pending:** resolve the 30 route streams and byte-compare them to our `WALK_MATRIX` waypoints.
+Full evidence (table dump, lookup disassembly) in §10.3.
 
 ### 2.3 `story_data` + story logic — port of jc_reborn ⚠️
 The constants of our logic (holiday ranges `mmdd` like `1028<mmdd<1101`; island drift
@@ -109,11 +113,11 @@ ACTIVITY…WALKSTUF; 42 `.TTM` names including the easter eggs `GJGULIVR`, `GJLI
 
 | Sev. | Item | Detail |
 |---|---|---|
-| **MEDIUM** | **Scene transitions without fade/wipe** | jc_reborn does `grFadeOut()` (5 wipe styles) **between scenes** and in the intro, via the *scene-runner* in C (not in the bytecode — that is why the `0xF010` no-op is correct). Our `Show::go_next_scene` (`show.rs:296`) does a **hard cut**. A **real visual** difference (not a loss of content). *Note: the evidence comes from jc_reborn (a reimplementation); that the 1992 original also did a fade is very likely, but I did not locate the fade routine in the binary.* |
+| ~~MEDIUM~~ resolved | Scene transitions | **The original does a HARD CUT** (single `StretchBlt`/`BitBlt`, `seg8:06ce`) — so our hard cut is **faithful, not a gap** (§10.2). jc_reborn's `grFadeOut()` wipe is the reimplementation's own embellishment. The original *does* carry a **dormant** LFSR dissolve (dead code, `[0x1ebf]≡0`) — the basis for our opt-in "dissolve" transition. |
 | ~~LOW~~ done | Unused intro/end screens | `INTRO.SCR` is now displayed once at startup (`Show::enable_intro`, default-on `intro` config / `--no-intro`, matching the original's `Introduction` toggle). `THEEND.SCR` still only appears as the day-11 TTM, not as a standalone closing sequence (like jc_reborn) — a minor presentation difference. |
 | LOW | `0x0080` DRAW_BACKGROUND = **undocumented** no-op | Handled correctly by the catch-all (like jc_reborn's stub, which says "no-op; frees slots"), but **190× across 36 files** and **castaway/dgds-viewer/JCOS treat it as a background redraw**. If one day a visual bug appears, it is the #1 divergence point to investigate (disassemble the original's `0x0080` handler). |
 | LOW | `0xA054` SAVE_ZONE = no-op | While the pair `0xA064` RESTORE_ZONE is implemented. Faithful to jc_reborn (there it is also a near-stub); used 1× (GJGULIVR.TTM). No known visible defect. |
-| (soft) | `calcpath`, holiday/drift/scheduling constants | Not verifiable in the binary (§2.2/§2.3) — they are jc_reborn's observational RE, faithfully ported. |
+| (soft) | holiday/drift/scheduling **boundary constants** | Not located as immediates (§2.3) — jc_reborn's observational RE, faithfully ported (behaviour matches the bible). *(`calcpath` is no longer here — its route table was **found**, §2.2/§10.3.)* |
 
 ## 7. Verdict
 
@@ -122,16 +126,17 @@ ACTIVITY…WALKSTUF; 42 `.TTM` names including the easter eggs `GJGULIVR`, `GJLI
   build; the 11-day arc, day-beats, easter eggs, 23 sounds and the 4 holidays (= the maximum that
   the data allows) are present and covered by tests. **The bible's "July 4" pending item
   is resolved (absent from the original).**
-- **On the observational LOGIC:** we are as faithful as the best reference (jc_reborn) —
-  `walk_data` is **byte-perfect**; `calcpath` and the holiday/drift boundaries are jc_reborn's
-  reconstruction, which we ported faithfully, but **byte-for-byte parity with the original cannot be
-  proven** without a complete disassembly (beyond the reach of `objdump`).
-- **Actionable parity improvements** (revised by the disassembly, §9): the only real
+- **On the observational LOGIC:** `walk_data` is **byte-perfect**, and the **`calcpath` route
+  table was found** in the binary (§10.3) — so the routing *mechanism* is now binary-confirmed
+  (waypoint bytes pending a future check). Only the **holiday/drift boundary constants** remain
+  unproven (not co-located immediates; behaviour matches the bible). The full **capstone
+  disassembly** (§9–§10) took this well beyond the earlier `objdump`-only reach.
+- **Actionable parity improvements** (revised by the disassembly, §9–§10): the only real
   binary-confirmed gap was the **intro** (a real resource with an `Introduction` toggle) —
-  now **implemented** (`Show::enable_intro`, default-on `intro` config / `--no-intro`, matching
-  the original's `Introduction` key). The **MCI** audio path turned out to be **dead code**
-  (§9.4) — not a gap. *(The "fade between scenes" was **downgraded** — see §9.3: it came from
-  jc_reborn, not confirmed in the original.)*
+  now **implemented** (`Show::enable_intro`, default-on `intro` config / `--no-intro`). The **MCI**
+  audio path is **dead code** (§9.4) — not a gap. **Scene transitions are a hard cut** in the
+  original (§10.2) — our hard cut is faithful; the dormant LFSR dissolve we found is the basis for
+  an *opt-in* effect. The **animation rate is 16 ms/tick** (§10.1), now adopted.
 
 ## 8. How to reproduce this analysis
 
@@ -173,11 +178,13 @@ WILSON_DATA_DIR=<dir> cargo test -p wilson-dgds --test real_data -- --nocapture
   that is **never opened/written** — there is no `MCI_OPEN` (0x803) or `MCI_PLAY` (0x806)
   anywhere in the binary. So there is **no MCI audio path** — our `sndPlaySound`-equivalent
   (`rodio` WAV) covers 100% of the live sound.
-- **Loop/time:** `SetTimer(…, 50 ms, …)` pumps `WM_TIMER` (0x0113), but the advance is **paced
-  by real time** (`GetCurrentTime`, `elapsed × rate[0x2e14]` in fixed-point /100000 via a 32-bit
-  helper `seg1:0302`) ⇒ **it is not a fixed 50 ms/frame** (it is frame-rate-independent). jc_reborn
-  approximates with a fixed 20 ms/tick; **the exact rate (`[0x2e14]`, set at init) was not nailed down** —
-  it is the only open timing number.
+- **Loop/time → RESOLVED: 16 ms/tick** (see §10.1). `SetTimer(…, 50 ms, …)` pumps `WM_TIMER`
+  (0x0113), but the advance is **paced by real time** (`GetCurrentTime`): a `seg9` scheduler derives
+  a **4 ms** master unit (`1000 / (13 × 18)` → `[0x45de]`, the ~18.2 Hz PC-timer constant) and the
+  animation callback runs every 4th one ⇒ **16 ms/tick** (~62.5 Hz), frame-rate-independent. (The
+  earlier suspect `[0x2e14]` was a red herring — statically 0, dead code.) jc_reborn approximates
+  20 ms/tick; **we now use the original's 16 ms** (`wilson_engine::MS_PER_TICK`). This was the last
+  open timing number — **closed.**
 - **Config:** the INI `[ScreenSaver.ScreenAntics]` in `SCRANTIC.INI`: `Sounds`, `Introduction`,
   `Password`/`PasswordProtection`, `CurrentMonth` (persistence).
 
@@ -198,10 +205,13 @@ slots"); castaway/dgds-viewer/JCOS are wrong to call it a "background redraw"; *
 no-op is correct vs the ORIGINAL.** *(The LOW doubt of §6 is resolved — it is not a gap.)*
 
 ### 9.3 Corrections to the items that came from jc_reborn (not from the original)
-- **Fade/wipe between scenes (was "MEDIUM") → DOWNGRADED to NOT-CONFIRMED.** In the binary **there is no
-  palette fade** (no palette APIs). A *wipe* via BitBlt is possible, but **was not
-  located** in the analyzed code. The fade evidence came from **jc_reborn** (a reimplementation)
-  — so **it may not be a gap**. Nailing it down requires analyzing the scene-transition path.
+- **Fade/wipe between scenes → RESOLVED: the shipped original does a HARD CUT** (see §10.2). Every
+  scene change and the intro present through one primitive (`seg8:06ce` = a single
+  `StretchBlt`/`BitBlt`), no fade/wipe. So **our hard cut is faithful** — not a gap. *Discovery:* the
+  binary **does** contain a transition effect — a random-order **LFSR tiled dissolve** (`seg12:198a`,
+  tap-mask table at `seg14:0x27fe`) — but it is **dead code**, gated by `[0x1ebf]` which is statically
+  0 (and its blit fn-ptrs are null). It was compiled in but disabled. (This is the basis for our
+  opt-in "dissolve" transition — resurrecting the original's own effect, not jc_reborn's wipe.)
 - **Intro (was "LOW") → CONFIRMED as a real resource:** `INTRO.SCR` + the config key
   **`Introduction`** (on/off) exist. We do not display the intro ⇒ **a real gap**,
   binary-confirmed.
@@ -221,7 +231,67 @@ no-op is correct vs the ORIGINAL.** *(The LOW doubt of §6 is resolved — it is
 The direct reverse engineering of the binary **strengthened** confidence: it confirmed the architecture and the
 set of opcodes, and **resolved `0x0080`** (our no-op is correct vs the original). The single
 binary-confirmed gap — the **intro** (a resource with an `Introduction` toggle) — has since been
-**implemented**. **MCI** was **resolved as dead code** (§9.4), not a gap. The **fade** was
-**downgraded** (not confirmed in the original). The **exact time rate** is the only open number.
-`calcpath` and the holiday/drift constants remain in the untraced logic (faithful to jc_reborn,
-without binary proof).
+**implemented**. **MCI** was **resolved as dead code** (§9.4), not a gap. The remaining open items were
+then **closed by the 2026-06-18 deep dive (§10):** the **exact time rate = 16 ms/tick** (§10.1),
+**scene transitions = hard cut** (and a dormant LFSR dissolve discovered, §10.2), and **`calcpath` is
+a real route table** at `seg14:0x0A94` (§10.3). Only the holiday/drift *boundary constants* remain
+untraced (behaviour matches the bible; faithful to jc_reborn, without per-byte proof).
+
+---
+
+## 10. Deep dive (2026-06-18) — three open questions resolved
+
+A second disassembly pass to close the remaining unknowns, each re-derived directly from the
+original binary (tools in [`../reverse-engineering/`](../reverse-engineering/README.md); raw
+listing kept local). Addresses are `segN:offset` (CODE) / `seg14` (DATA; file = offset + 0x17E00).
+
+### 10.1 Animation timing = **16 ms/tick** (was the last open number)
+The pacing is **not** in the `[0x2e14]` helper (that is statically 0 / dead). It lives in a small
+`seg9` timer scheduler. The rate is **hardcoded** (no `SCRANTIC.INI` override):
+- `seg9:076a` is called once with the literal **13** (`seg2:150a mov ax,0xd`). It computes
+  `1000 / (13 × 18)` — `imul dx(=0x12)` then `idiv` of `0x3e8(=1000)` — and stores **`[0x45de] = 4` ms**
+  (`seg9:0791`). The `18` is the classic ~18.2 Hz PC-timer constant.
+- The animation callback is registered with multiplier **4** (`seg2:1516 mov ax,4`); the scheduler does
+  `[0x45de] × 4` (`seg9:083d imul`) ⇒ **entry interval = 16 ms** (`seg9:0843`).
+- The pump (`seg9:089a`, from the `WM_TIMER` handler; `SetTimer` period = `0x32` = 50 ms) fires each
+  entry while its 32-bit next-fire stamp `≤ GetCurrentTime`, advancing `+16` ⇒ **frame-rate-independent
+  16 ms/tick** (~62.5 Hz). A TTM `wait N` is therefore `N × 16 ms`.
+
+⇒ We adopt **`wilson_engine::MS_PER_TICK = 16`** (was 20, jc_reborn's approximation). Confidence: **HIGH**
+(single call site, literal constants, full math verified). Note: `idiv` truncates `1000/234 = 4`, so the
+unit is exactly 16 ms with sub-frame jitter absorbed by gating on real time.
+
+### 10.2 Scene transitions = **hard cut** (+ a dormant LFSR dissolve)
+The universal present primitive **`seg8:06ce`** (called from seg2/3/5/11/12/13) rounds the rect to 8-px
+and does **one** `StretchBlt` (2× scale, ROP SRCCOPY) or `BitBlt` (1×) from the offscreen buffer to the
+screen — **no band loop, no per-frame reveal**. `INTRO.SCR` is presented the same way (`seg2:14e4`). So
+**every scene change and the intro are hard cuts** — our behaviour is faithful.
+- *Discovery:* a transition effect **exists but is disabled**. `seg12:198a` branches on `[0x1ebf]`
+  (`seg12:19c7`): if 0 → plain `seg8:06ce`; if ≠0 → a **random-order tiled dissolve** driven by an LFSR
+  (`shr`/`xor`), with per-cell blit fn-ptrs `[0x40b0]/[0x40b2]` and a per-frame timing gate. The LFSR
+  **tap-mask table** at `seg14:0x27fe` = `3, 6, C, 14, 30, 60, B8, 110, 240, 500` (textbook maximal-length
+  feedback masks for 2–11-bit registers). But `[0x1ebf]` is **statically 0 with zero writes anywhere**, and
+  the fn-ptrs are null — so the dissolve **never runs** (likely an authoring/debug feature left compiled-in).
+  Confidence: **HIGH**. ⇒ This is the basis for our **opt-in "dissolve" transition**: resurrecting the
+  original's own effect (default off = faithful hard cut).
+
+### 10.3 `calcpath` = a real **6×6 word-pointer route table**
+Routing is **table-driven** (not geometric). Lookup `seg4:03ac`, called as `route([0x30e0]=start,
+[0x30e2]=dest)`: `route_ptr = *(word*)(0x0A94 + start*12 + dest*2)` (`seg4:03c7 mov dx,0xc` row stride 12,
+`shl dx,1` for dest, base `0x0A94`). Indices are **1-based** (0 = invalid → why our reimpl uses `[7]`).
+The **route-pointer table** at `seg14:0x0A94` (file `0x18894`), 6×6 words, diagonal = 0:
+```
+        d1     d2     d3     d4     d5     d6
+ s1: 0000   0362   03a4   03ea   042c   046a
+ s2: 04b0   0000   04ea   0528   0566   05a0
+ s3: 05de   0620   0000   065a   0698   06d2
+ s4: 0714   0752   078c   0000   07c6   0800
+ s5: 083a   087c   08ba   08f8   0000   0936
+ s6: 0970   09b2   09f0   0a32   0a6c   0000
+```
+Each entry points into a **route stream** (`seg14:0x0362–0x0AA2`) of marker-delimited (`-1…-7`) `(value,
+value)` waypoint pairs consumed by the walk animator; per-spot 3-byte records are at `seg14:0x02DE`, and
+anim-base tables at `seg14:0x0347`/`0x034E`. There is **no single 252-entry contiguous matrix** (which is
+why §2.2's earlier scan missed it). Confidence: **HIGH** on table location/shape/lookup; **MEDIUM** on the
+exact per-pair field semantics. **Pending byte-check:** resolve the 30 streams and compare waypoint
+sequences to our `WALK_MATRIX` (a future increment).
