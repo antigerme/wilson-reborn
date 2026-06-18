@@ -29,7 +29,7 @@ fn release_generates_notes_in_exactly_one_job() {
 /// `Swatinem/rust-cache`, etc. otherwise log a deprecation warning on every run.
 #[test]
 fn workflows_force_node24_for_js_actions() {
-    for name in ["ci.yml", "release.yml"] {
+    for name in ["ci.yml", "release.yml", "pages.yml"] {
         let yml = workflow(name);
         assert!(
             yml.contains("FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true"),
@@ -39,15 +39,18 @@ fn workflows_force_node24_for_js_actions() {
     }
 }
 
-/// The release artifacts must never bundle the copyright game data — only the binaries.
+/// The publicly-published artifacts must never bundle the copyright game data — the release
+/// binaries and the GitHub Pages site are bring-your-own only.
 #[test]
-fn release_does_not_ship_game_data() {
-    let yml = workflow("release.yml");
-    for forbidden in ["RESOURCE.", "embed-data", ".wav", "dist.zip"] {
-        assert!(
-            !yml.contains(forbidden),
-            "release.yml must not reference `{forbidden}` (copyright data stays out of \
-             public release artifacts)"
-        );
+fn public_artifacts_do_not_ship_game_data() {
+    for name in ["release.yml", "pages.yml"] {
+        let yml = workflow(name);
+        for forbidden in ["RESOURCE.", "embed-data", ".wav", "dist.zip"] {
+            assert!(
+                !yml.contains(forbidden),
+                "{name} must not reference `{forbidden}` (copyright data stays out of \
+                 public artifacts)"
+            );
+        }
     }
 }

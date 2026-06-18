@@ -1,0 +1,75 @@
+# Deploy the bring-your-own Web/WASM page to GitHub Pages — a live, hostable version of the
+# screensaver. NO game data is baked in (copyright); visitors supply their own original data
+# files / a .zip, read locally in their browser. The build runs on PRs too (to catch breakage);
+# the deploy only happens off the default branch / manual dispatch.
+#
+# One-time setup: enable Pages with Settings → Pages → Build and deployment → Source =
+# "GitHub Actions". (The first deploy fails until this is set.)
+name: Pages
+
+on:
+  push:
+    branches: [main]
+    paths: ["crates/wilson-web/**", "Cargo.lock", ".github/workflows/pages.yml"]
+  pull_request:
+    paths: ["crates/wilson-web/**", ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time; let an in-progress deploy finish (don't cancel a live publish).
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  # Node 20 actions are deprecated — opt the JS actions into Node 24 (see workflow_lint).
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  build:
+    name: Build the web bundle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Rust toolchain (+ wasm32 target)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install wasm-bindgen-cli (version matching the wasm-bindgen crate)
+        run: |
+          ver=$(awk '/^name = "wasm-bindgen"$/{f=1} f && /^version = /{gsub(/[",]/,"",$3); print $3; exit}' Cargo.lock)
+          echo "installing wasm-bindgen-cli $ver"
+          cargo install wasm-bindgen-cli --version "$ver" --locked
+
+      - name: Build the bring-your-own web bundle
+        # No WILSON_EMBED_DATA ⇒ no game data is baked in (copyright-safe to host publicly).
+        run: bash crates/wilson-web/build-web.sh
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: crates/wilson-web/web
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    # Don't publish from pull requests — only from main / manual dispatch.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
