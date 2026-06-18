@@ -5,6 +5,9 @@
 # into the binaries (never written into the repo). The resulting binaries contain the
 # copyright game data — keep them for yourself, do not redistribute publicly.
 #
+# This builds the DESKTOP binaries only (Linux/Windows/macOS). The browser (WASM) build is
+# separate and never embeds data — see crates/wilson-web/build-web.sh.
+#
 # Usage:
 #   scripts/build-embedded.sh [--check] [--fetch-ia [--i-accept-legal-responsibility]] [<data-dir>] [out-dir]
 #     --check     only run the preflight diagnostic (no build, no download), then exit

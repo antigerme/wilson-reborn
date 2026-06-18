@@ -99,6 +99,11 @@ no Windows, rodar no Linux/macOS e publicar releases.
 > embed-data` — gera um único arquivo que roda sem `--data`. Os dados são copyright e **não**
 > são redistribuídos; por isso esse build não é publicado nas releases.
 
+> **Rodar no navegador (WASM):** a engine também compila para WebAssembly — veja
+> **[`crates/wilson-web`](crates/wilson-web/README.md)** (`build-web.sh`). Você escolhe seus
+> próprios `RESOURCE.MAP`/`RESOURCE.001` na página (lidos localmente — nada é enviado), então
+> nenhum dado é embutido. É um build **separado** do desktop (`scripts/build-embedded.sh`).
+
 ## Status
 
 ✅ **Engine completo em Rust + janela ao vivo** (o Johnny já roda na tela). Crates:
@@ -109,6 +114,7 @@ no Windows, rodar no Linux/macOS e publicar releases.
 - `wilson` — app de janela (winit + softbuffer) que carrega os **arquivos originais**
   (`--data` ou auto-detecção); som, config/opções, persistência do dia e estatísticas.
 - `wilson-saver` — a mesma engine exposta via FFI para o screensaver nativo do macOS.
+- `wilson-web` — a engine compilada para WebAssembly, roda no navegador (traga seus dados).
 
 Progresso e decisões em
 [`docs/knowledge-base/08-decisoes-e-status.md`](docs/knowledge-base/08-decisoes-e-status.md).
