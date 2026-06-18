@@ -81,6 +81,12 @@ cargo run -p wilson-engine --example render_run -- <dir> /tmp/out 27000 225 1
   feature "funcionando" sem evidência. (Pedido enfático do usuário, 2026-06-18 — regressão do som
   no web.) (Nota: navegadores **bloqueiam áudio até o 1º gesto** do usuário — não é bug; a página
   inicia o som no primeiro clique/tecla/toque e a UI mostra esse estado "aguardando".)
+- **⚠️ Web/WASM: validar num Chrome de verdade** com o harness Playwright em
+  [`crates/wilson-web/e2e`](crates/wilson-web/e2e/README.md) (`node run.mjs`) — dirige a página
+  como usuário. Build **embedded** (`WILSON_EMBED_DATA=… ../build-web.sh`) ⇒ teste **completo**
+  (renderiza + **som toca de verdade** após o gesto, `?seed=0&speed=400` determinístico); build
+  bring-your-own ⇒ **smoke** (carrega + wasm inicia + sem erros JS) — o smoke roda no **CI** (job
+  `web-e2e`), o completo é local (precisa dos dados copyright). (Pedido do usuário, 2026-06-18.)
 - **⚠️ Todo bug encontrado entra com teste de regressão que FALHA sem o fix** (verificar que
   falha antes de aplicar a correção) — para nunca reverter algo já corrigido. Vale também
   para invariantes de workflow/CI (ex.: lint do `release.yml`). (Pedido do usuário,

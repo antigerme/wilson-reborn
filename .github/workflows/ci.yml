@@ -131,3 +131,44 @@ jobs:
           cargo clippy --release --target wasm32-unknown-unknown -p wilson-web -- -D warnings
           # The embed-data path must also compile (a stub when WILSON_EMBED_DATA is unset).
           cargo clippy --release --target wasm32-unknown-unknown -p wilson-web --features embed-data -- -D warnings
+
+  # End-to-end smoke of the web page in a REAL headless Chrome (Playwright), driven like a user:
+  # build the bring-your-own bundle (no game data — it is copyright), then verify the page loads,
+  # the wasm module initialises, the picker is present, and no JS errors are raised. The FULL
+  # render+sound e2e needs the original data, so it runs locally (crates/wilson-web/e2e/README.md).
+  web-e2e:
+    name: E2E smoke (web, headless Chrome)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Rust toolchain (+ wasm32 target)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install wasm-bindgen-cli (version matching the wasm-bindgen crate)
+        run: |
+          ver=$(awk '/^name = "wasm-bindgen"$/{f=1} f && /^version = /{gsub(/[",]/,"",$3); print $3; exit}' Cargo.lock)
+          echo "installing wasm-bindgen-cli $ver"
+          cargo install wasm-bindgen-cli --version "$ver" --locked
+
+      - name: Build the bring-your-own web bundle
+        run: bash crates/wilson-web/build-web.sh
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Playwright + Chromium
+        working-directory: crates/wilson-web/e2e
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Run the headless-Chrome e2e smoke
+        working-directory: crates/wilson-web/e2e
+        run: node run.mjs

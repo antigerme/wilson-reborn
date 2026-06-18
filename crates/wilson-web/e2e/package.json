@@ -1,0 +1,7 @@
+{
+  "name": "wilson-web-e2e",
+  "private": true,
+  "type": "module",
+  "description": "Headless-Chrome end-to-end test of the Wilson Reborn web page (drives it like a user).",
+  "devDependencies": { "playwright": "^1.48.0" }
+}
