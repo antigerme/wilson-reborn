@@ -4,6 +4,13 @@
 All notable changes to **Wilson Reborn** are recorded here. The project follows the spirit of
 [Keep a Changelog](https://keepachangelog.com/); versions are git tags `vX.Y.Z`.
 
+## [Unreleased]
+
+### Added
+- **Web/WASM bundle in releases**: the release now ships **`wilson-web.zip`** — the bring-your-own
+  web build (`index.html` + the wasm/JS + a `HOW-TO-RUN.txt`). No game data is bundled (copyright);
+  serve it over HTTP and supply your own `RESOURCE.*` / a `.zip`.
+
 ## [0.3.0] — 2026-06-18
 
 A big polish pass over the **Web/WASM** build and the **Windows screensaver**, plus reverse-engineering
