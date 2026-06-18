@@ -144,15 +144,21 @@ A engine também roda **no navegador** via WebAssembly (crate [`wilson-web`](../
 Só precisa do `wasm-bindgen-cli`; o **target wasm é adicionado automaticamente** pelo script
 (via `rustup`). Há **dois modos**:
 
-**1. Traga seus dados** (padrão) — a página pede seus `RESOURCE.MAP`/`RESOURCE.001` (lidos
-localmente, nada é enviado). É o modo seguro pra hospedar:
+**1. Traga seus dados** (padrão) — **arraste** seus `RESOURCE.MAP`/`RESOURCE.001` (+ `SCRANTIC.EXE`
+p/ som) **ou um `scrantic-run.zip` / `scrantic-installer.zip`** (lidos localmente, nada é enviado).
+Dá pra **lembrar** os dados no navegador (IndexedDB) pra não reescolher. É o modo seguro pra hospedar:
 
 ```bash
 cargo install wasm-bindgen-cli          # a versão precisa casar com o crate wasm-bindgen
 ./crates/wilson-web/build-web.sh        # auto-adiciona o target wasm + gera crates/wilson-web/web/
 python3 -m http.server -d crates/wilson-web/web 8000
-# abra http://localhost:8000/ e escolha RESOURCE.MAP + RESOURCE.001 (+ SCRANTIC.EXE p/ som)
+# abra http://localhost:8000/ e arraste os arquivos OU o .zip (run ou instalador)
 ```
+
+**Opções na URL** (paridade com o desktop) — `?fullscreen` (tela cheia + fundo preto),
+`?speed=25–400`, `?day=1–11`, `?dissolve`, `?story[&story_secs=N]`, `?daynight=real`, `?intro=0`,
+`?mute`, `?volume=0–100`, `?seed=N`. Há botões **🔊/🔇 + volume** e **⛶ tela cheia**; a UI/cursor
+somem após alguns segundos parados.
 
 **2. Autossuficiente** (uso pessoal) — embute os `RESOURCE.*` **+ os sons** (do `SCRANTIC.EXE`)
 no `.wasm` (feature `embed-data`), então a página **abre e roda** sem seletor. Aponte

@@ -6,6 +6,26 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-18 — Web/WASM: tela cheia, parâmetros de URL, upload de ZIP e "lembrar dados"
+
+Pacote de melhorias do web (o usuário escolheu as quatro):
+- **Tela cheia + fundo preto**: botão **⛶** (Fullscreen API), `#stage` centraliza o canvas 4:3
+  em preto com letterbox; cursor/UI somem após 3 s parados (cara de screensaver); `?fullscreen`
+  entra em tela cheia no 1º gesto.
+- **Parâmetros de URL** (paridade com o desktop): nova struct `Options` no `wilson-web`
+  (`seed/day/speed/dissolve/intro/story/story_secs/real_daynight`); construtores viraram
+  `Wilson.create/from_zip/embedded(now, opts)`. `speed` escala `delay_ms`; **story mode** porta
+  o `story_clock` do desktop; intro ligado por padrão (como o original).
+- **Aceitar ZIP**: `Wilson.from_zip` lê o zip **no wasm** (crate `zip`, deflate via miniz_oxide)
+  e descomprime os membros DCL do instalador (`RESOURCE.00$`/`SCRANTIC.SC$`) via `wilson_dgds` —
+  aceita `scrantic-run.zip` e `scrantic-installer.zip`; + arrastar-e-soltar.
+- **Lembrar dados**: IndexedDB guarda os bytes (zip ou soltos) no navegador (opt-in, nunca sai
+  do PC); botão "Forget". + slider de **volume** (GainNode).
+- Validado: wasm + clippy nos dois configs, fmt, host clippy, `workflow_lint`, e **smoke test em
+  Node** com dados reais (create/from_zip/story/sons: 3000 frames, 64 cues, 23 sons, zip ok).
+
+---
+
 ## 2026-06-18 — Som no Web/WASM (Web Audio, ligado por padrão + botão de mute)
 
 Pedido do usuário: web com **som ligado por padrão**, com um botão na página pra desativar.
