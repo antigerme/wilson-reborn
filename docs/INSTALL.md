@@ -138,6 +138,31 @@ distribua publicamente o binário com dados embutidos — esse build é para uso
 já tem o jogo original. (Sem `WILSON_EMBED_DATA`, a feature compila um *stub* com um aviso e
 o binário não roda — útil só para o CI checar a compilação.)
 
+## Web (WASM) — rodar no navegador
+
+A engine também roda **no navegador** via WebAssembly (crate [`wilson-web`](../crates/wilson-web/README.md)).
+Ao contrário do `embed-data`, o web **não embute dados**: a página pede seus
+`RESOURCE.MAP`/`RESOURCE.001` (lidos localmente — nada é enviado). Só precisa do
+`wasm-bindgen-cli`; o **target wasm é adicionado automaticamente** pelo script (via `rustup`).
+
+```bash
+cargo install wasm-bindgen-cli          # a versão precisa casar com o crate wasm-bindgen
+./crates/wilson-web/build-web.sh        # auto-adiciona o target wasm + gera crates/wilson-web/web/
+python3 -m http.server -d crates/wilson-web/web 8000
+# abra http://localhost:8000/ e escolha RESOURCE.MAP + RESOURCE.001
+```
+
+Pelo empacotador é a flag **`--web`** (funciona até sem `<data-dir>`, já que o web não usa
+dados); ela coloca o bundle em `<out>/web/`:
+
+```bash
+scripts/build-embedded.sh --web                 # só o web (sem dados)
+scripts/build-embedded.sh --web <data-dir>      # desktop (com dados) + web
+```
+
+Os artefatos gerados (`wilson_web.js`/`_bg.wasm`) são git-ignored; só o `index.html` é
+versionado. Áudio é desktop-only por enquanto (o web é mudo).
+
 ## Ícone (Windows e macOS)
 
 Os binários Windows (`wilson.exe`/`wilson.scr`) já vêm com um **ícone próprio do Wilson

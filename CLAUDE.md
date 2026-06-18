@@ -147,4 +147,12 @@ ligado, flag `--no-intro`). A **knowledge-base foi traduzida para inglês** (11 
 **Release v0.2.0 (2026-06-18):** primeira release pública empacotada (tag `v*` → `release.yml`
 publica `wilson.scr`/`.exe` Windows + binários Linux/macOS + `.saver`). Processo: **bumpar a
 versão e mergear ANTES de taguear** (a v0.2.0 precisou de re-corte por ter sido tagueada antes
-do bump). **Próximo:** melhorias **sobre os dados originais** (a combinar com o usuário).
+do bump).
+**Melhorias pós-v0.2.0 (2026-06-18):** **QoL de tempo** (`--day N`, modo história `--story`),
+**transição opt-in** (`--transition dissolve`, o dissolve LFSR dormente do original),
+**Web/WASM** (crate `wilson-web`: engine no navegador, "traga seus `RESOURCE.*`"; build
+**separado** via `crates/wilson-web/build-web.sh` — o `build-embedded.sh` é só desktop), e
+**pathfinding byte-fiel** (`calcpath` portado dos route streams ponderados do original via
+`docs/reverse-engineering/extract_calcpath.py` → `calcpath_data.rs`; corrigiu de quebra um bug
+de RNG com seeds pequenas). **Próximo:** cortar a **v0.3.0** (empacotar tudo isso) ou outra
+frente (a combinar com o usuário).

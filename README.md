@@ -98,6 +98,12 @@ screensaver, run on Linux/macOS, and cut releases.
 > embed-data` — a single file that runs without `--data`. The data is copyrighted and is
 > **not** redistributed, so that build is never published in releases.
 
+> **Run it in a browser (WASM):** the engine also compiles to WebAssembly — see
+> **[`crates/wilson-web`](crates/wilson-web/README.md)**. Build it with
+> `crates/wilson-web/build-web.sh` (or `scripts/build-embedded.sh --web`). You pick your own
+> `RESOURCE.MAP`/`RESOURCE.001` in the page (read locally — nothing is uploaded), so no data is
+> bundled (unlike the desktop `embed-data` build).
+
 ## Status
 
 ✅ **Complete engine in Rust + live window** (Johnny already runs on screen). Crates:
@@ -108,6 +114,7 @@ screensaver, run on Linux/macOS, and cut releases.
 - `wilson` — window app (winit + softbuffer) loading the **original files** (`--data` or
   auto-detection); sound, config/options, day persistence and stats.
 - `wilson-saver` — the same engine exposed via FFI for a native macOS `.saver`.
+- `wilson-web` — the engine compiled to WebAssembly to run in a browser (bring your own data).
 
 Progress and decisions in
 [`docs/knowledge-base/08-decisoes-e-status.md`](docs/knowledge-base/08-decisoes-e-status.md).
