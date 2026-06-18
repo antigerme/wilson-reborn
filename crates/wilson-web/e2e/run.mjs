@@ -107,8 +107,8 @@ if (embedded) {
   console.log("mode: BRING-YOUR-OWN build — smoke test (no game data)");
 
   // The page loads in a real browser, the wasm module initialises (a failed `init()` would
-  // surface as a pageerror), and the data picker is present.
-  const ui = await page.evaluate(() => !!document.getElementById("files") && !!document.getElementById("start"));
+  // surface as a pageerror), and the data picker (file input) is present.
+  const ui = await page.evaluate(() => !!document.getElementById("files"));
   if (!ui) await fail("the data picker UI is missing (page/bundle broken?)");
   await page.waitForTimeout(1500); // let `await init()` settle so a wasm failure would have thrown
   console.log("OK ✅  page loads, wasm module initialises, picker present");

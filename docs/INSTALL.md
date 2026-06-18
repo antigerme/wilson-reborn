@@ -146,7 +146,8 @@ Só precisa do `wasm-bindgen-cli`; o **target wasm é adicionado automaticamente
 
 **1. Traga seus dados** (padrão) — **arraste** seus `RESOURCE.MAP`/`RESOURCE.001` (+ `SCRANTIC.EXE`
 p/ som) **ou um `scrantic-run.zip` / `scrantic-installer.zip`** (lidos localmente, nada é enviado).
-Dá pra **💾 Salvar** os dados no navegador (IndexedDB, opcional, com "Forget") pra não reescolher.
+Os dados ficam **salvos no navegador** (IndexedDB) e o screensaver **inicia sozinho** na próxima
+visita; use **📁** pra trocar os dados ou **Forget** pra limpar.
 É o modo seguro pra hospedar:
 
 ```bash
