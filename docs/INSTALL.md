@@ -141,9 +141,11 @@ o binário não roda — útil só para o CI checar a compilação.)
 ## Web (WASM) — rodar no navegador
 
 A engine também roda **no navegador** via WebAssembly (crate [`wilson-web`](../crates/wilson-web/README.md)).
-Ao contrário do `embed-data`, o web **não embute dados**: a página pede seus
-`RESOURCE.MAP`/`RESOURCE.001` (lidos localmente — nada é enviado). Só precisa do
-`wasm-bindgen-cli`; o **target wasm é adicionado automaticamente** pelo script (via `rustup`).
+Só precisa do `wasm-bindgen-cli`; o **target wasm é adicionado automaticamente** pelo script
+(via `rustup`). Há **dois modos**:
+
+**1. Traga seus dados** (padrão) — a página pede seus `RESOURCE.MAP`/`RESOURCE.001` (lidos
+localmente, nada é enviado). É o modo seguro pra hospedar:
 
 ```bash
 cargo install wasm-bindgen-cli          # a versão precisa casar com o crate wasm-bindgen
@@ -152,16 +154,25 @@ python3 -m http.server -d crates/wilson-web/web 8000
 # abra http://localhost:8000/ e escolha RESOURCE.MAP + RESOURCE.001
 ```
 
-Pelo empacotador é a flag **`--web`** (funciona até sem `<data-dir>`, já que o web não usa
-dados); ela coloca o bundle em `<out>/web/`:
+**2. Autossuficiente** (uso pessoal) — embute os `RESOURCE.*` no `.wasm` (feature `embed-data`),
+então a página **abre e roda** sem seletor. Aponte `WILSON_EMBED_DATA` (ou use o empacotador):
 
 ```bash
-scripts/build-embedded.sh --web                 # só o web (sem dados)
-scripts/build-embedded.sh --web <data-dir>      # desktop (com dados) + web
+WILSON_EMBED_DATA=<pasta-com-RESOURCE.*> ./crates/wilson-web/build-web.sh   # direto
+scripts/build-embedded.sh --web <data-dir>                                 # ou pelo empacotador
 ```
 
-Os artefatos gerados (`wilson_web.js`/`_bg.wasm`) são git-ignored; só o `index.html` é
-versionado. Áudio é desktop-only por enquanto (o web é mudo).
+Pelo empacotador, **`--web`** coloca o bundle em `<out>/web/` — **com** `<data-dir>` ele é
+autossuficiente (dados embutidos); **sem** `<data-dir>` é o modo "traga seus dados":
+
+```bash
+scripts/build-embedded.sh --web                 # só o web, traga-seus-dados
+scripts/build-embedded.sh --web <data-dir>      # desktop (embutido) + web (embutido)
+```
+
+> O bundle **autossuficiente** contém o jogo (copyright) — **uso pessoal, não hospede/redistribua.**
+> Os artefatos gerados (`wilson_web.js`/`_bg.wasm`) são git-ignored; só o `index.html` é
+> versionado. Áudio é desktop-only por enquanto (o web é mudo).
 
 ## Ícone (Windows e macOS)
 

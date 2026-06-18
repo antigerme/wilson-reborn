@@ -120,9 +120,14 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
+          components: clippy
 
       - name: Cache cargo artifacts
         uses: Swatinem/rust-cache@v2
 
-      - name: Build wilson-web for wasm32
-        run: cargo build --release --target wasm32-unknown-unknown -p wilson-web
+      - name: Clippy + build wilson-web for wasm32
+        run: |
+          # The host clippy can't lint this crate (it is wasm-only); do it here, both ways.
+          cargo clippy --release --target wasm32-unknown-unknown -p wilson-web -- -D warnings
+          # The embed-data path must also compile (a stub when WILSON_EMBED_DATA is unset).
+          cargo clippy --release --target wasm32-unknown-unknown -p wilson-web --features embed-data -- -D warnings

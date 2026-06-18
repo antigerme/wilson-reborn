@@ -6,13 +6,15 @@
 # copyright game data — keep them for yourself, do not redistribute publicly.
 #
 # By default it builds the DESKTOP binaries (data embedded). With --web it ALSO builds the
-# browser (WASM) bundle via crates/wilson-web/build-web.sh — the web build NEVER embeds data
-# (the page loads your RESOURCE.* locally), so --web works even without a <data-dir>.
+# browser (WASM) bundle via crates/wilson-web/build-web.sh: with a <data-dir> that bundle is
+# self-contained too (data baked in, personal use); without one it is "bring-your-own" (the
+# page loads your RESOURCE.* locally), so --web works even with no <data-dir>.
 #
 # Usage:
 #   scripts/build-embedded.sh [--check] [--web] [--fetch-ia [--i-accept-legal-responsibility]] [<data-dir>] [out-dir]
 #     --check     only run the preflight diagnostic (no build, no download), then exit
-#     --web       ALSO build the browser (WASM) bundle (needs wasm-bindgen-cli; no data embedded)
+#     --web       ALSO build the browser (WASM) bundle (needs wasm-bindgen-cli; embeds the data
+#                 when a <data-dir> is given, else bring-your-own)
 #     --fetch-ia  DOWNLOAD the original data from the Internet Archive instead of passing
 #                 <data-dir>. Opt-in only; it is COPYRIGHT data, for PERSONAL USE ONLY —
 #                 it prints a loud legal warning and asks you to type "I ACCEPT". It is
@@ -350,10 +352,15 @@ else
     echo "==> [desktop] skipped — no <data-dir> (the data-embedded desktop builds need it)."
 fi
 
-# --- Web (WASM) — optional, data-independent --------------------------------------
+# --- Web (WASM) — optional. With a data dir it inherits WILSON_EMBED_DATA (exported above)
+# and bakes the data in; otherwise build-web.sh produces the bring-your-own page. ----------
 if [ "$BUILD_WEB" -eq 1 ]; then
     echo
-    echo "==> [Web/WASM] building the browser bundle (no data embedded — bring-your-own in the page)"
+    if [ "$do_desktop" -eq 1 ]; then
+        echo "==> [Web/WASM] building a SELF-CONTAINED browser bundle (data embedded — personal use)"
+    else
+        echo "==> [Web/WASM] building the browser bundle (no data — bring-your-own in the page)"
+    fi
     if bash "$ROOT/crates/wilson-web/build-web.sh"; then
         mkdir -p "$OUT/web"
         cp "$ROOT/crates/wilson-web/web/index.html" \
