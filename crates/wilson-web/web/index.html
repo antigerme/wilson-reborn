@@ -14,122 +14,178 @@
     font: 15px/1.5 system-ui, sans-serif;
   }
   h1 { margin: .2rem; font-size: 1.1rem; font-weight: 600; }
+  /* The stage centres the 4:3 canvas on black; in fullscreen it fills the screen (letterbox). */
+  #stage {
+    display: flex; align-items: center; justify-content: center;
+    width: min(96vw, 128vh); aspect-ratio: 4 / 3; background: #000;
+    border: 1px solid #1e2536; border-radius: 6px; overflow: hidden;
+  }
+  #stage:fullscreen { width: 100vw; height: 100vh; max-width: none; border: 0; border-radius: 0; }
   #screen {
-    image-rendering: pixelated;            /* crisp 1992 pixels when scaled up */
-    width: min(96vw, 128vh);               /* keep the 4:3 aspect, fit the viewport */
-    aspect-ratio: 4 / 3; background: #000;
-    border: 1px solid #1e2536; border-radius: 6px;
+    image-rendering: pixelated;                 /* crisp 1992 pixels when scaled up */
+    max-width: 100%; max-height: 100%; aspect-ratio: 4 / 3; background: #000;
   }
-  #panel { display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; align-items: center; max-width: 96vw; }
+  #panel { display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; align-items: center; max-width: 96vw; justify-content: center; }
   label { display: inline-flex; gap: .4rem; align-items: center; }
-  #status { min-height: 1.2em; color: #f9e2af; }
+  #status { min-height: 1.2em; color: #f9e2af; text-align: center; }
   a { color: #89b4fa; }
-  .hint { opacity: .7; font-size: .85em; max-width: 60ch; text-align: center; }
-  /* Sound on/off toggle — shown once running, when sound is available. */
-  #sound {
-    position: fixed; top: 12px; right: 12px; z-index: 10;
-    font-size: 1.3rem; line-height: 1; padding: .35rem .55rem;
-    background: #1e2536cc; color: inherit; border: 1px solid #313a52;
-    border-radius: 8px; cursor: pointer; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  .hint { opacity: .7; font-size: .85em; max-width: 64ch; text-align: center; }
+  /* Floating controls (mute / volume / fullscreen), shown once running. */
+  #controls {
+    position: fixed; top: 12px; right: 12px; z-index: 10; display: flex; gap: .4rem; align-items: center;
+    background: #1e2536cc; border: 1px solid #313a52; border-radius: 10px; padding: .3rem .5rem;
+    -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); transition: opacity .3s;
   }
-  #sound:hover { background: #283050; }
+  #controls button { font-size: 1.2rem; line-height: 1; background: none; border: 0; color: inherit; cursor: pointer; padding: .1rem .25rem; }
+  #controls input[type=range] { width: 70px; accent-color: #89b4fa; }
+  /* Idle while running: hide the cursor and fade the controls (real-screensaver feel). */
+  body.running.idle { cursor: none; }
+  body.running.idle #controls { opacity: 0; }
+  #drop.drag { outline: 2px dashed #89b4fa; outline-offset: 4px; }
 </style>
 </head>
 <body>
-  <button id="sound" hidden title="Mute" aria-label="Mute sound">🔊</button>
+  <div id="controls" hidden>
+    <button id="mute" title="Mute" aria-label="Mute sound">🔊</button>
+    <input id="volume" type="range" min="0" max="100" value="100" title="Volume" aria-label="Volume" />
+    <button id="fs" title="Fullscreen (or press F11)" aria-label="Fullscreen">⛶</button>
+  </div>
 
   <h1>Wilson Reborn — the life of Johnny Castaway, in your browser</h1>
 
-  <canvas id="screen" width="640" height="480"></canvas>
+  <div id="stage"><canvas id="screen" width="640" height="480"></canvas></div>
 
   <div id="panel">
-    <label>RESOURCE.MAP <input id="map" type="file" /></label>
-    <label>RESOURCE.001 <input id="data" type="file" /></label>
-    <label title="The original's sound effects are embedded inside SCRANTIC.EXE — add it for audio (optional)">
-      SCRANTIC.EXE <input id="exe" type="file" />
+    <label id="drop" title="Drop RESOURCE.MAP + RESOURCE.001 (+ SCRANTIC.EXE for sound), or a .zip">
+      Data files / .zip <input id="files" type="file" multiple />
     </label>
-    <label title="The original's dormant tiled dissolve, resurrected">
-      <input id="dissolve" type="checkbox" /> dissolve transitions
-    </label>
+    <label title="The original's dormant tiled dissolve, resurrected"><input id="dissolve" type="checkbox" /> dissolve</label>
+    <label title="Keep the data in this browser (IndexedDB) so you don't pick it again. Nothing is uploaded."><input id="remember" type="checkbox" /> remember</label>
+    <button id="forget" hidden>Forget saved data</button>
     <button id="start" disabled>Start</button>
   </div>
 
   <div id="status"></div>
   <p class="hint">
-    The game data is copyright Sierra/Dynamix and is <strong>not</strong> bundled — pick your
-    own <code>RESOURCE.MAP</code> and <code>RESOURCE.001</code> (e.g. from the Internet
-    Archive's <code>scrantic-run.zip</code>). Add <code>SCRANTIC.EXE</code> for sound (optional).
-    Everything runs locally; nothing is uploaded.
+    The game data is copyright Sierra/Dynamix and is <strong>not</strong> bundled — drop your own
+    <code>RESOURCE.MAP</code> + <code>RESOURCE.001</code> (add <code>SCRANTIC.EXE</code> for sound), or a
+    <code>scrantic-run.zip</code> / <code>scrantic-installer.zip</code>. Everything runs locally; nothing is uploaded.
+    URL options: <code>?fullscreen&amp;speed=200&amp;day=5&amp;dissolve&amp;story&amp;daynight=real&amp;intro=0&amp;mute&amp;seed=…</code>
   </p>
 
 <script type="module">
-  import init, { Wilson, has_embedded_data } from "./wilson_web.js";
+  import init, { Wilson, Options, has_embedded_data } from "./wilson_web.js";
 
   const $ = (id) => document.getElementById(id);
   const status = (m) => { $("status").textContent = m; };
-  const seed = () => Math.random() * 9007199254740991;
+  const P = new URLSearchParams(location.search);
+  // A flag param is "true" when present and not explicitly =0/false/no.
+  const pflag = (name, dflt) => {
+    if (!P.has(name)) return dflt;
+    const v = (P.get(name) || "").toLowerCase();
+    return !(v === "0" || v === "false" || v === "no" || v === "off");
+  };
+  const pint = (name, lo, hi, dflt) => {
+    if (!P.has(name)) return dflt;
+    const n = parseInt(P.get(name), 10);
+    return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : dflt;
+  };
   let running = null;
 
-  // ---- audio: play the engine's per-frame sound cues via the Web Audio API ---------------
-  // On by default; the 🔊/🔇 button mutes/unmutes after the page opens. Browsers gate audio
-  // behind a user gesture, so the AudioContext only starts on the first click anywhere.
-  let audioCtx = null, muted = false, onAudioRunning = null;
-  const audioBuffers = new Map();              // sound id -> AudioBuffer (null = absent/pending)
+  // ---- options (mirror the desktop CLI), from URL params + the dissolve checkbox -----------
+  function buildOptions() {
+    const o = new Options();
+    o.seed = P.has("seed") ? Number(P.get("seed")) || 0 : Math.random() * 9007199254740991;
+    o.day = pint("day", 1, 11, 0);
+    o.speed = pint("speed", 25, 400, 0);
+    o.dissolve = P.has("dissolve") ? pflag("dissolve", false) : $("dissolve").checked;
+    o.intro = pflag("intro", true);
+    o.story = pflag("story", false);
+    o.story_secs = pint("story_secs", 1, 100000, 0);
+    o.real_daynight = ["real", "real24h", "24h"].includes((P.get("daynight") || "").toLowerCase());
+    return o;
+  }
+
+  // ---- audio: per-frame cues via the Web Audio API (on by default; mute + volume) ----------
+  let audioCtx = null, gain = null, muted = pflag("mute", false), volume = pint("volume", 0, 100, 100) / 100;
+  let onAudioRunning = null;
+  const audioBuffers = new Map();
 
   function ensureAudio() {
     if (!audioCtx) {
       const AC = window.AudioContext || window.webkitAudioContext;
-      if (AC) audioCtx = new AC();
+      if (AC) { audioCtx = new AC(); gain = audioCtx.createGain(); applyGain(); gain.connect(audioCtx.destination); }
     }
     if (audioCtx && audioCtx.state === "suspended") {
-      audioCtx.resume().then(() => { if (onAudioRunning) { onAudioRunning(); onAudioRunning = null; } })
-        .catch(() => {});
+      audioCtx.resume().then(() => { if (onAudioRunning) { onAudioRunning(); onAudioRunning = null; } }).catch(() => {});
     }
   }
-  document.addEventListener("click", ensureAudio);
-
-  function playBuffer(b) {
-    const src = audioCtx.createBufferSource();
-    src.buffer = b;
-    src.connect(audioCtx.destination);
-    src.start();
-  }
+  const applyGain = () => { if (gain) gain.gain.value = muted ? 0 : volume; };
+  function playBuffer(b) { const s = audioCtx.createBufferSource(); s.buffer = b; s.connect(gain); s.start(); }
   function playCue(wilson, id) {
     if (muted || !audioCtx || audioCtx.state !== "running") return;
     const buf = audioBuffers.get(id);
-    if (buf === undefined) {                   // first time we see this id: decode (once), then play
+    if (buf === undefined) {
       audioBuffers.set(id, null);
       const wav = wilson.sound_wav(id);
-      if (!wav || wav.length === 0) return;    // no sound loaded for this id
+      if (!wav || wav.length === 0) return;
       const ab = wav.buffer.slice(wav.byteOffset, wav.byteOffset + wav.byteLength);
-      audioCtx.decodeAudioData(ab)
-        .then((b) => { audioBuffers.set(id, b); if (!muted) playBuffer(b); })
-        .catch(() => {});
+      audioCtx.decodeAudioData(ab).then((b) => { audioBuffers.set(id, b); if (!muted) playBuffer(b); }).catch(() => {});
       return;
     }
     if (buf) playBuffer(buf);
   }
-
-  $("sound").addEventListener("click", () => {
-    muted = !muted;
-    const b = $("sound");
-    b.textContent = muted ? "🔇" : "🔊";
-    b.title = muted ? "Unmute" : "Mute";
+  $("mute").addEventListener("click", () => {
+    muted = !muted; applyGain();
+    $("mute").textContent = muted ? "🔇" : "🔊";
+    $("mute").title = muted ? "Unmute" : "Mute";
     if (!muted) ensureAudio();
   });
+  $("volume").value = String(Math.round(volume * 100));
+  $("volume").addEventListener("input", (e) => {
+    volume = (parseInt(e.target.value, 10) || 0) / 100;
+    if (volume > 0 && muted) { muted = false; $("mute").textContent = "🔊"; }
+    applyGain(); ensureAudio();
+  });
 
-  // Drive a built Wilson into the canvas on a timer (shared by both flows).
+  // ---- fullscreen (Fullscreen API ≈ F11) + idle hide --------------------------------------
+  const wantFullscreen = pflag("fullscreen", false) || pflag("fs", false);
+  function toggleFullscreen() {
+    const el = $("stage");
+    if (!document.fullscreenElement) (el.requestFullscreen || el.webkitRequestFullscreen)?.call(el)?.catch?.(() => {});
+    else (document.exitFullscreen || document.webkitExitFullscreen)?.call(document);
+  }
+  $("fs").addEventListener("click", toggleFullscreen);
+
+  let idleTimer = null;
+  const poke = () => {
+    document.body.classList.remove("idle");
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => document.body.classList.add("idle"), 3000);
+  };
+  document.addEventListener("mousemove", poke);
+  document.addEventListener("click", ensureAudio); // browsers gate audio behind a user gesture
+
+  // ---- run loop ---------------------------------------------------------------------------
   function run(wilson) {
     if (running) { clearTimeout(running); running = null; }
-    if ($("dissolve").checked) wilson.enable_dissolve();
     const canvas = $("screen");
     canvas.width = wilson.width();
     canvas.height = wilson.height();
     const ctx = canvas.getContext("2d");
 
-    const hasSound = wilson.has_sound();
-    $("sound").hidden = !hasSound;
-    if (hasSound) ensureAudio();               // works inside a click (bring-your-own Start); else awaits one
+    document.body.classList.add("running");
+    $("controls").hidden = false;
+    $("mute").hidden = !wilson.has_sound();
+    $("volume").hidden = !wilson.has_sound();
+    if (wilson.has_sound()) ensureAudio();
+    poke();
+
+    if (wantFullscreen) {
+      toggleFullscreen(); // works inside a user gesture (Start click); harmless otherwise
+      // Fallback for no-gesture starts (embedded auto-start): the first click goes fullscreen.
+      document.addEventListener("click", () => { if (!document.fullscreenElement) toggleFullscreen(); }, { once: true });
+    }
 
     const tick = () => {
       const rgba = wilson.frame(Date.now() / 1000);
@@ -138,7 +194,35 @@
       running = setTimeout(tick, wilson.delay_ms());
     };
     tick();
-    return hasSound;
+    return wilson.has_sound();
+  }
+
+  // ---- IndexedDB: optionally remember the user's data on this device ----------------------
+  const DB = "wilson", STORE = "data", KEY = "data";
+  const idb = () => new Promise((res, rej) => {
+    const r = indexedDB.open(DB, 1);
+    r.onupgradeneeded = () => r.result.createObjectStore(STORE);
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+  const idbGet = async () => { const db = await idb(); return new Promise((res, rej) => { const t = db.transaction(STORE).objectStore(STORE).get(KEY); t.onsuccess = () => res(t.result); t.onerror = () => rej(t.error); }); };
+  const idbPut = async (v) => { const db = await idb(); return new Promise((res, rej) => { const t = db.transaction(STORE, "readwrite").objectStore(STORE).put(v, KEY); t.onsuccess = () => res(); t.onerror = () => rej(t.error); }); };
+  const idbDel = async () => { const db = await idb(); return new Promise((res, rej) => { const t = db.transaction(STORE, "readwrite").objectStore(STORE).delete(KEY); t.onsuccess = () => res(); t.onerror = () => rej(t.error); }); };
+
+  const isZip = (b) => b && b.length > 3 && b[0] === 0x50 && b[1] === 0x4b && b[2] === 0x03 && b[3] === 0x04;
+
+  // Build a Wilson from a stored/picked data record ({zip} or {map,data,exe}).
+  function startFromData(d) {
+    const opts = buildOptions();
+    let wilson;
+    if (d.zip) {
+      wilson = Wilson.from_zip(d.zip, Date.now() / 1000, opts);
+    } else {
+      wilson = Wilson.create(d.map, d.data, Date.now() / 1000, opts);
+      if (d.exe) wilson.set_sound_data(d.exe);
+    }
+    run(wilson);
+    status("Running." + (wilson.has_sound() ? "" : " (no sound — add SCRANTIC.EXE or use a zip that has it)"));
   }
 
   await init(); // load the wasm module
@@ -147,47 +231,74 @@
     // Self-contained build: data (and sound) are baked into the wasm — no file picker.
     $("panel").hidden = true;
     try {
-      const wilson = Wilson.embedded(seed(), Date.now() / 1000);
-      const base = "Running (embedded data).";
-      if (run(wilson) && (!audioCtx || audioCtx.state !== "running")) {
-        status(base + " 🔊 Click anywhere to enable sound.");
-        onAudioRunning = () => status(base);   // drop the hint once audio actually starts
+      const wilson = Wilson.embedded(Date.now() / 1000, buildOptions());
+      const hasSound = run(wilson);
+      if (hasSound && (!audioCtx || audioCtx.state !== "running")) {
+        status("Running (embedded data). 🔊 Click anywhere to enable sound.");
+        onAudioRunning = () => status("Running (embedded data).");
       } else {
-        status(base);
+        status("Running (embedded data).");
       }
     } catch (err) {
       status("Could not start: " + err);
     }
   } else {
-    // Bring-your-own: read RESOURCE.MAP + RESOURCE.001 (+ optional SCRANTIC.EXE for sound).
-    let mapBytes = null, dataBytes = null, exeBytes = null;
-    const readFile = (input) => new Promise((resolve) => {
-      const f = input.files && input.files[0];
-      if (!f) return resolve(null);
-      const r = new FileReader();
-      r.onload = () => resolve(new Uint8Array(r.result));
-      r.readAsArrayBuffer(f);
-    });
-    const refresh = () => { $("start").disabled = !(mapBytes && dataBytes); };
-    $("map").addEventListener("change", async (e) => { mapBytes = await readFile(e.target); refresh(); });
-    $("data").addEventListener("change", async (e) => { dataBytes = await readFile(e.target); refresh(); });
-    $("exe").addEventListener("change", async (e) => { exeBytes = await readFile(e.target); });
-    $("start").addEventListener("click", () => {
-      try {
-        const wilson = new Wilson(mapBytes, dataBytes, seed(), Date.now() / 1000);
-        let note = "";
-        if (exeBytes) {
-          const n = wilson.set_sound_data(exeBytes);  // load the WAVs from SCRANTIC.EXE
-          note = n > 0 ? ` (${n} sounds)` : " (no sounds found in that file)";
-        } else {
-          note = " — add SCRANTIC.EXE for sound";
-        }
-        run(wilson);
-        status("Running" + note + ". (Reload to pick different data.)");
-      } catch (err) {
-        status("Could not start: " + err);
+    // Bring-your-own: loose files or a zip, with optional drag-and-drop + remember.
+    let pending = null; // the gathered data record, awaiting Start
+
+    async function gather(fileList) {
+      const d = {};
+      for (const f of fileList) {
+        const bytes = new Uint8Array(await f.arrayBuffer());
+        const nm = (f.name || "").toUpperCase();
+        if (nm.endsWith(".ZIP") || isZip(bytes)) d.zip = bytes;
+        else if (nm.includes("RESOURCE.MAP")) d.map = bytes;
+        else if (nm.endsWith(".001")) d.data = bytes;
+        else if (nm.includes("SCRANTIC") && (nm.endsWith(".EXE") || nm.endsWith(".SCR"))) d.exe = bytes;
       }
+      return d;
+    }
+    function ready(d) { return !!(d && (d.zip || (d.map && d.data))); }
+    function accept(d, label) {
+      pending = d;
+      $("start").disabled = !ready(d);
+      status(ready(d)
+        ? `Ready${label ? " (" + label + ")" : ""} — click Start.`
+        : "Need RESOURCE.MAP + RESOURCE.001 (or a .zip).");
+    }
+
+    async function onPicked(fileList) {
+      const d = await gather(fileList);
+      if (ready(d) && $("remember").checked) { try { await idbPut(d); } catch {} }
+      accept(d, d.zip ? "zip" : "files");
+    }
+
+    $("files").addEventListener("change", (e) => onPicked(e.target.files));
+
+    // Drag-and-drop anywhere on the page.
+    const drop = $("drop");
+    ["dragenter", "dragover"].forEach((ev) => document.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("drag"); }));
+    ["dragleave", "drop"].forEach((ev) => document.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("drag"); }));
+    document.addEventListener("drop", (e) => { if (e.dataTransfer?.files?.length) onPicked(e.dataTransfer.files); });
+
+    $("start").addEventListener("click", () => {
+      if (!ready(pending)) return;
+      try { startFromData(pending); } catch (err) { status("Could not start: " + err); }
     });
+
+    $("forget").addEventListener("click", async () => { try { await idbDel(); } catch {} $("forget").hidden = true; status("Saved data forgotten."); });
+
+    // On load: offer remembered data, if any.
+    try {
+      const saved = await idbGet();
+      if (ready(saved)) {
+        pending = saved;
+        $("remember").checked = true;
+        $("forget").hidden = false;
+        $("start").disabled = false;
+        status("Remembered data found — click Start (or pick different files).");
+      }
+    } catch {}
   }
 </script>
 </body>

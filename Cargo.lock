@@ -2097,6 +2097,7 @@ dependencies = [
  "wasm-bindgen",
  "wilson-dgds",
  "wilson-engine",
+ "zip",
 ]
 
 [[package]]

@@ -26,6 +26,9 @@ wilson-dgds = { path = "../wilson-dgds" }
 # compiles this crate as an empty lib (no JS/wasm deps, no cost). See `src/lib.rs`.
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "0.2"
+# Read-only zip (deflate via miniz_oxide ⇒ wasm-clean) so the page can take the Internet
+# Archive scrantic-run.zip / scrantic-installer.zip directly, like the desktop `--data`.
+zip = { version = "2", default-features = false, features = ["deflate"] }
 
 # build.rs (embed-data only) reuses wilson-dgds to resolve the data dir / installer.
 [build-dependencies]
