@@ -2060,7 +2060,7 @@ dependencies = [
 
 [[package]]
 name = "wilson"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "rodio",
  "softbuffer",
@@ -2073,18 +2073,18 @@ dependencies = [
 
 [[package]]
 name = "wilson-dgds"
-version = "0.2.0"
+version = "0.3.0"
 
 [[package]]
 name = "wilson-engine"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "wilson-dgds",
 ]
 
 [[package]]
 name = "wilson-saver"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "wilson-dgds",
  "wilson-engine",
@@ -2092,7 +2092,7 @@ dependencies = [
 
 [[package]]
 name = "wilson-web"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "wasm-bindgen",
  "wilson-dgds",
