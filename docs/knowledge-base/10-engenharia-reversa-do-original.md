@@ -1,143 +1,148 @@
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
-# 10 — Engenharia Reversa do Original (relatório de paridade)
+# 10 — Reverse Engineering of the Original (parity report)
 
-> **Objetivo:** responder, com evidência, à pergunta *"estamos esquecendo algo?"* —
-> comparando a implementação do Wilson Reborn diretamente contra o binário original
-> (`SCRANTIC.EXE`/`.SCR`) e contra os dados (`RESOURCE.001`). É RE **legítima de uma cópia
-> própria** para uma reimplementação interoperável (mesma base do ScummVM/jc_reborn/JCOS).
+> **Goal:** to answer, with evidence, the question *"are we forgetting something?"* —
+> by comparing the Wilson Reborn implementation directly against the original binary
+> (`SCRANTIC.EXE`/`.SCR`) and against the data (`RESOURCE.001`). It is **legitimate RE of one's
+> own copy** for an interoperable reimplementation (the same basis as ScummVM/jc_reborn/JCOS).
 >
-> **Método.** (1) Parse da estrutura NE (Win16) do `SCRANTIC.EXE`; (2) localização e
-> verificação **byte-a-byte** das tabelas hardcoded contra o nosso código; (3) busca de
-> constantes/imediatos da nossa lógica no binário; (4) histograma exaustivo de **todo**
-> opcode TTM/ADS usado no `RESOURCE.001` real, cruzado com os executores; (5) inventário de
-> recursos; (6) auditoria de conteúdo contra a [bíblia](02-biblia-de-conteudo.md) e a
-> [auditoria de paridade](09-paridade-e-easter-eggs.md). Ferramenta de disassembly
-> disponível: só `objdump` (16-bit) — disassembly profundo de toda a lógica não foi viável,
-> então a lógica observacional é avaliada por **constantes + comportamento**, não instrução
-> a instrução.
+> **Method.** (1) Parse the NE (Win16) structure of `SCRANTIC.EXE`; (2) locate and
+> verify **byte-for-byte** the hardcoded tables against our code; (3) search for
+> constants/immediates of our logic in the binary; (4) an exhaustive histogram of **every**
+> TTM/ADS opcode used in the real `RESOURCE.001`, cross-checked with the executors; (5) a resource
+> inventory; (6) a content audit against the [bible](02-biblia-de-conteudo.md) and the
+> [parity audit](09-paridade-e-easter-eggs.md). Available disassembly tool:
+> only `objdump` (16-bit) — a deep disassembly of all the logic was not feasible,
+> so the observational logic is evaluated by **constants + behavior**, not instruction
+> by instruction.
 
-## 1. O binário original (estrutura NE)
+## 1. The original binary (NE structure)
 
-`SCRANTIC.EXE` = `SCRANTIC.SCR` (um screensaver Windows 3.x é um `.exe` renomeado), formato
-**NE (16-bit segmentado)**, 295 952 bytes. Módulo interno: `SCRNATIC`.
+`SCRANTIC.EXE` = `SCRANTIC.SCR` (a Windows 3.x screensaver is a renamed `.exe`), format
+**NE (16-bit segmented)**, 295,952 bytes. Internal module: `SCRNATIC`.
 
-- **14 segmentos:** 13 de **código** + 1 de **dados** (#14, 18 368 bytes, file `0x17e00`).
-  As tabelas hardcoded (que **não** vêm do `RESOURCE.001`) vivem no segmento de dados.
-- **API importada:** `MMSYSTEM` (som), `GDI` (gráficos 2D), `KERNEL`, `USER`. Pontos de
-  entrada SCRNSAVE padrão (`ScreenSaverProc`, `ScreenSaverConfigureDialog`, diálogos de
-  senha do Win3.1). **Conclusão:** é um screensaver GDI+WAV comum — **nenhum subsistema
-  escondido** (sem rede, sem hardware especial, sem MIDI dedicado). Nossa stack (softbuffer
-  2D + `rodio` WAV) cobre a mesma superfície. Os diálogos de senha são um recurso morto do
-  Win3.1 — não é lacuna.
+- **14 segments:** 13 of **code** + 1 of **data** (#14, 18,368 bytes, file `0x17e00`).
+  The hardcoded tables (which do **not** come from `RESOURCE.001`) live in the data segment.
+- **Imported API:** `MMSYSTEM` (sound), `GDI` (2D graphics), `KERNEL`, `USER`. Standard
+  SCRNSAVE entry points (`ScreenSaverProc`, `ScreenSaverConfigureDialog`, Win3.1 password
+  dialogs). **Conclusion:** it is an ordinary GDI+WAV screensaver — **no hidden
+  subsystem** (no networking, no special hardware, no dedicated MIDI). Our stack (softbuffer
+  2D + `rodio` WAV) covers the same surface. The password dialogs are a dead Win3.1
+  feature — not a gap.
 
-## 2. Tabelas hardcoded — verificação contra o binário
+## 2. Hardcoded tables — verification against the binary
 
-| Tabela | Resultado | Confiança |
+| Table | Result | Confidence |
 |---|---|---|
-| **`walk_data`** (animação de caminhada) | **489/489 entradas BYTE-IDÊNTICAS** ao original | **Prova binária** ✅ |
-| `calcpath` (adjacência de pathfinding) | **não existe** como tabela no EXE | Reconstrução (soft spot) ⚠️ |
-| `story_data` (63 cenas) + lógica de feriado/maré/deriva/scheduling | constantes **não** localizáveis como imediatos | Port do jc_reborn; conteúdo bate com a bíblia ⚠️ |
+| **`walk_data`** (walk animation) | **489/489 entries BYTE-IDENTICAL** to the original | **Binary proof** ✅ |
+| `calcpath` (pathfinding adjacency) | **does not exist** as a table in the EXE | Reconstruction (soft spot) ⚠️ |
+| `story_data` (63 scenes) + holiday/tide/drift/scheduling logic | constants **not** locatable as immediates | Port of jc_reborn; content matches the bible ⚠️ |
 
-### 2.1 `walk_data` — byte-perfeito ✅
-Localizada no segmento de dados (file `0x188ea`). O struct original é **3 words por frame
-(stride 6)**: `(sprite_word, x+1, y)`, com **`flip` empacotado no bit 15 do `sprite_word`**.
-A nossa `WALK_DATA` (`[flip, x+1, y, sprite]`, herdada do jc_reborn — que a **extrai** do
-binário, via `extract_walk_data.c`) reproduz as **489** entradas exatamente: `x+1`, `y`,
-`sprite` e `flip` conferem em 100% das linhas. **Sem divergência.**
+### 2.1 `walk_data` — byte-perfect ✅
+Located in the data segment (file `0x188ea`). The original struct is **3 words per frame
+(stride 6)**: `(sprite_word, x+1, y)`, with **`flip` packed in bit 15 of the `sprite_word`**.
+Our `WALK_DATA` (`[flip, x+1, y, sprite]`, inherited from jc_reborn — which **extracts** it from
+the binary, via `extract_walk_data.c`) reproduces the **489** entries exactly: `x+1`, `y`,
+`sprite` and `flip` check out in 100% of the rows. **No divergence.**
 
-> Nota: numa primeira leitura agrupei os campos como `(x+1, y, sprite)` e *pareceu* haver
-> uma defasagem de 1 frame no sprite. Era erro de agrupamento — com o layout correto
-> (`sprite` **primeiro**), bate exatamente. Registrado para não reabrir.
+> Note: on a first reading I grouped the fields as `(x+1, y, sprite)` and it *seemed* there was
+> a 1-frame lag in the sprite. It was a grouping error — with the correct layout
+> (`sprite` **first**), it matches exactly. Recorded so as not to reopen it.
 
-### 2.2 `calcpath` — reconstrução, não verificável ⚠️
-A nossa matriz de adjacência `WALK_MATRIX[7][6][6]` **não aparece** no binário em nenhuma
-forma testada (bytes/words/transposta). Isso confirma o que o próprio jc_reborn admite: o
-pathfinding foi **reconstruído por observação**, não extraído. O original computa as rotas
-por outro mecanismo (ou armazena de forma muito diferente). **Não há prova de paridade
-byte-a-byte;** é um modelo plausível. Resolver exigiria desassemblar a rotina `calcpath`.
+### 2.2 `calcpath` — reconstruction, not verifiable ⚠️
+Our adjacency matrix `WALK_MATRIX[7][6][6]` **does not appear** in the binary in any tested
+form (bytes/words/transposed). This confirms what jc_reborn itself admits: the
+pathfinding was **reconstructed by observation**, not extracted. The original computes the routes
+by another mechanism (or stores them in a very different way). **There is no proof of byte-for-byte
+parity;** it is a plausible model. Resolving it would require disassembling the `calcpath` routine.
 
-### 2.3 `story_data` + lógica de história — port do jc_reborn ⚠️
-As constantes da nossa lógica (faixas de feriado `mmdd` como `1028<mmdd<1101`; ranges de
-deriva da ilha `-222+rnd(109)` etc.) **não foram localizadas como imediatos co-locados** no
-código — só o offset `-272` (LEFT_ISLAND) aparece. Ou seja: o original expressa essas
-comparações de outra forma (provavelmente `mês`/`dia` separados, não o `mmdd` que o jc_reborn
-reformulou). **O comportamento bate com a bíblia**, mas as fronteiras exatas (ex.: Halloween
-incluir ou não 28/out) são do jc_reborn, **não provadas no binário.** As 63 cenas e o mapa
-dia→cena (os *day-beats*) são o arco documentado (teste `day_beats_match_the_story`).
+### 2.3 `story_data` + story logic — port of jc_reborn ⚠️
+The constants of our logic (holiday ranges `mmdd` like `1028<mmdd<1101`; island drift
+ranges `-222+rnd(109)` etc.) **were not located as co-located immediates** in the
+code — only the offset `-272` (LEFT_ISLAND) appears. That is: the original expresses these
+comparisons in another way (probably `month`/`day` separately, not the `mmdd` that jc_reborn
+reformulated). **The behavior matches the bible**, but the exact boundaries (e.g.: whether Halloween
+includes Oct 28 or not) are jc_reborn's, **not proven in the binary.** The 63 scenes and the
+day→scene map (the *day-beats*) are the documented arc (test `day_beats_match_the_story`).
 
-## 3. Cobertura de opcodes (sobre o `RESOURCE.001` real)
+## 3. Opcode coverage (over the real `RESOURCE.001`)
 
-**Tudo que os dados realmente usam é tratado** — nada é silenciosamente ignorado.
+**Everything the data actually uses is handled** — nothing is silently ignored.
 
-- **TTM: 30 opcodes distintos usados → 30 tratados.** Implementados (com efeito): PURGE,
+- **TTM: 30 distinct opcodes used → 30 handled.** Implemented (with effect): PURGE,
   UPDATE, SET_DELAY, SET_BMP_SLOT, GOTO_TAG, SET_COLORS, TIMER, SET_CLIP_ZONE,
-  COPY_ZONE_TO_BG (38×), DRAW_PIXEL/LINE/RECT/CIRCLE, **DRAW_SPRITE (12 546×)**,
-  DRAW_SPRITE_FLIP (2 822×), CLEAR_SCREEN, **PLAY_SAMPLE (535×)**, LOAD_SCREEN, LOAD_IMAGE,
-  RESTORE_ZONE, TAG/LOCAL_TAG. No-ops fiéis ao jc_reborn: SET_PALETTE_SLOT, SET_FRAME1,
-  SAVE_IMAGE1, SAVE_ZONE, DRAW_SCREEN, LOAD_PALETTE, `TTM_UNKNOWN_1`, e **`0x0080`
+  COPY_ZONE_TO_BG (38×), DRAW_PIXEL/LINE/RECT/CIRCLE, **DRAW_SPRITE (12,546×)**,
+  DRAW_SPRITE_FLIP (2,822×), CLEAR_SCREEN, **PLAY_SAMPLE (535×)**, LOAD_SCREEN, LOAD_IMAGE,
+  RESTORE_ZONE, TAG/LOCAL_TAG. No-ops faithful to jc_reborn: SET_PALETTE_SLOT, SET_FRAME1,
+  SAVE_IMAGE1, SAVE_ZONE, DRAW_SCREEN, LOAD_PALETTE, `TTM_UNKNOWN_1`, and **`0x0080`
   DRAW_BACKGROUND (190×)**.
-- **ADS: 18 opcodes usados → 18 tratados** (+66 *tags*). Contagens de argumentos conferem
-  (o stream nunca dessincroniza; os 10 ADS decodificam limpos). No-ops fiéis: `IF_UNKNOWN_1`,
-  `UNKNOWN_6`, `FADE_OUT` (no bytecode).
+- **ADS: 18 opcodes used → 18 handled** (+66 *tags*). The argument counts check out
+  (the stream never desyncs; the 10 ADS decode cleanly). Faithful no-ops: `IF_UNKNOWN_1`,
+  `UNKNOWN_6`, `FADE_OUT` (in the bytecode).
 
-## 4. Inventário de recursos — tudo parseia
+## 4. Resource inventory — everything parses
 
-179 entradas no mapa → **1 PAL, 116 BMP, 10 SCR, 41 TTM, 10 ADS, 1 pulada** (`FILES.VIN`,
-não-recurso, ignorada também pelo jc_reborn). **0 referências `RES:` quebradas; 66/66 tags
-de cena ADS constroem e tocam.** Inventário idêntico ao nosso (as 10 `.ADS` de
-ACTIVITY…WALKSTUF; 42 nomes `.TTM` incluindo os easter eggs `GJGULIVR`, `GJLILIPU`,
+179 entries in the map → **1 PAL, 116 BMP, 10 SCR, 41 TTM, 10 ADS, 1 skipped** (`FILES.VIN`,
+non-resource, ignored by jc_reborn too). **0 broken `RES:` references; 66/66 ADS scene
+tags build and play.** An inventory identical to ours (the 10 `.ADS` from
+ACTIVITY…WALKSTUF; 42 `.TTM` names including the easter eggs `GJGULIVR`, `GJLILIPU`,
 `SHARK1`, `SJMSSGE`, `SBREAKUP`, `THEEND`).
 
-## 5. Conteúdo vs a bíblia
+## 5. Content vs the bible
 
-- **Arco de 11 dias (Mary + Suzy):** presente e exercitado (long-run viu d1–d11); day-beats
-  batem com `story.c`.
-- **Easter eggs / cenas raras:** presentes e alcançáveis — THE END (dia 11), Gulliver
-  (`GJGULIVR`, usa SAVE/RESTORE_ZONE), cargueiro gigante (`VISITOR#3`, usa COPY_ZONE_TO_BG),
-  tubarão (`SHARK1`), nativos (`GJNAT1/3`), "Terminator" (`GJVIS5/6`). Gags como
-  fantasma/bolas de prata/relógio real são sub-sequências dentro do bytecode (rodam quando
-  o script roda).
-- **23 efeitos sonoros:** confirmados (22 ids referenciados por TTM `PLAY_SAMPLE` + o cue de
-  transição de dia `sound 0` do diretor). O id 17 existe como WAV mas **nenhum TTM o
-  referencia — igual no original** (não é lacuna nossa).
-- **4 feriados:** `HOLIDAY.BMP` tem **exatamente 4 sub-imagens** → os dados só conseguem
-  desenhar 4 props (Halloween/StPatrick/Natal/Ano-Novo). **4 de Julho está genuinamente
-  ausente dos dados originais** — a pendência da bíblia fica **resolvida: não há nada a
-  reproduzir.**
+- **11-day arc (Mary + Suzy):** present and exercised (a long-run saw d1–d11); the day-beats
+  match `story.c`.
+- **Easter eggs / rare scenes:** present and reachable — THE END (day 11), Gulliver
+  (`GJGULIVR`, uses SAVE/RESTORE_ZONE), giant cargo ship (`VISITOR#3`, uses COPY_ZONE_TO_BG),
+  shark (`SHARK1`), natives (`GJNAT1/3`), "Terminator" (`GJVIS5/6`). Gags like
+  ghost/silver balls/real clock are sub-sequences within the bytecode (they run when
+  the script runs).
+- **23 sound effects:** confirmed (22 ids referenced by TTM `PLAY_SAMPLE` + the director's day-transition
+  cue `sound 0`). Id 17 exists as a WAV but **no TTM references
+  it — same as in the original** (it is not a gap of ours).
+- **4 holidays:** `HOLIDAY.BMP` has **exactly 4 sub-images** → the data can only
+  draw 4 props (Halloween/StPatrick/Christmas/New-Year). **July 4 is genuinely
+  absent from the original data** — the bible's pending item is **resolved: there is nothing to
+  reproduce.**
 
-## 6. Lacunas / o que podemos estar deixando passar
+## 6. Gaps / what we might be missing
 
-| Sev. | Item | Detalhe |
+| Sev. | Item | Detail |
 |---|---|---|
-| **MÉDIA** | **Transições de cena sem fade/wipe** | O jc_reborn faz `grFadeOut()` (5 estilos de wipe) **entre cenas** e no intro, via o *scene-runner* em C (não no bytecode — por isso o no-op de `0xF010` está certo). Nosso `Show::go_next_scene` (`show.rs:296`) faz **corte seco**. Diferença **visual real** (não é perda de conteúdo). *Obs.: a evidência vem do jc_reborn (reimplementação); que o original de 1992 também fazia fade é muito provável, mas não localizei a rotina de fade no binário.* |
-| BAIXA | Telas de intro/fim não usadas | `INTRO.SCR` nunca é exibida; `THEEND.SCR` só aparece como o TTM do dia 11, não como sequência de encerramento autônoma (como o jc_reborn). Diferença de apresentação. |
-| BAIXA | `0x0080` DRAW_BACKGROUND = no-op **não documentado** | Tratado corretamente pelo catch-all (igual ao stub do jc_reborn, que diz "no-op; libera slots"), mas **190× em 36 arquivos** e **castaway/dgds-viewer/JCOS o tratam como redesenho de fundo**. Se algum dia um bug visual aparecer, é o ponto de divergência nº 1 a investigar (desassemblar o handler `0x0080` do original). |
-| BAIXA | `0xA054` SAVE_ZONE = no-op | Enquanto o par `0xA064` RESTORE_ZONE é implementado. Fiel ao jc_reborn (lá também é quase-stub); usado 1× (GJGULIVR.TTM). Sem defeito visível conhecido. |
-| (soft) | `calcpath`, constantes de feriado/deriva/scheduling | Não verificáveis no binário (§2.2/§2.3) — são a RE observacional do jc_reborn, fielmente portada. |
+| **MEDIUM** | **Scene transitions without fade/wipe** | jc_reborn does `grFadeOut()` (5 wipe styles) **between scenes** and in the intro, via the *scene-runner* in C (not in the bytecode — that is why the `0xF010` no-op is correct). Our `Show::go_next_scene` (`show.rs:296`) does a **hard cut**. A **real visual** difference (not a loss of content). *Note: the evidence comes from jc_reborn (a reimplementation); that the 1992 original also did a fade is very likely, but I did not locate the fade routine in the binary.* |
+| ~~LOW~~ done | Unused intro/end screens | `INTRO.SCR` is now displayed once at startup (`Show::enable_intro`, default-on `intro` config / `--no-intro`, matching the original's `Introduction` toggle). `THEEND.SCR` still only appears as the day-11 TTM, not as a standalone closing sequence (like jc_reborn) — a minor presentation difference. |
+| LOW | `0x0080` DRAW_BACKGROUND = **undocumented** no-op | Handled correctly by the catch-all (like jc_reborn's stub, which says "no-op; frees slots"), but **190× across 36 files** and **castaway/dgds-viewer/JCOS treat it as a background redraw**. If one day a visual bug appears, it is the #1 divergence point to investigate (disassemble the original's `0x0080` handler). |
+| LOW | `0xA054` SAVE_ZONE = no-op | While the pair `0xA064` RESTORE_ZONE is implemented. Faithful to jc_reborn (there it is also a near-stub); used 1× (GJGULIVR.TTM). No known visible defect. |
+| (soft) | `calcpath`, holiday/drift/scheduling constants | Not verifiable in the binary (§2.2/§2.3) — they are jc_reborn's observational RE, faithfully ported. |
 
-## 7. Veredito
+## 7. Verdict
 
-- **Sobre os DADOS originais: alta confiança de que não falta nada.** 100% dos opcodes
-  TTM (30/30) e ADS (18/18) usados são tratados; 179/179 recursos parseiam; 66/66 cenas
-  constroem; arco de 11 dias, day-beats, easter eggs, 23 sons e os 4 feriados (= o máximo que
-  os dados permitem) estão presentes e cobertos por teste. **A pendência do "4 de Julho" da
-  bíblia está resolvida (ausente do original).**
-- **Sobre a LÓGICA observacional:** somos tão fiéis quanto a melhor referência (jc_reborn) —
-  `walk_data` é **byte-perfeita**; `calcpath` e as fronteiras de feriado/deriva são a
-  reconstrução do jc_reborn, que portamos fielmente, mas **não dá para provar paridade
-  byte-a-byte com o original** sem um disassembly completo (fora do alcance do `objdump`).
-- **Melhorias de paridade acionáveis** (revisadas pelo disassembly, §9): o **intro**
-  (recurso real com toggle `Introduction`, que não exibimos) e o caminho de áudio **MCI**
-  (`mciSendCommand`). *(O "fade entre cenas" foi **rebaixado** — ver §9.3: vinha do jc_reborn,
-  não confirmado no original.)*
+- **On the original DATA: high confidence that nothing is missing.** 100% of the TTM
+  (30/30) and ADS (18/18) opcodes used are handled; 179/179 resources parse; 66/66 scenes
+  build; the 11-day arc, day-beats, easter eggs, 23 sounds and the 4 holidays (= the maximum that
+  the data allows) are present and covered by tests. **The bible's "July 4" pending item
+  is resolved (absent from the original).**
+- **On the observational LOGIC:** we are as faithful as the best reference (jc_reborn) —
+  `walk_data` is **byte-perfect**; `calcpath` and the holiday/drift boundaries are jc_reborn's
+  reconstruction, which we ported faithfully, but **byte-for-byte parity with the original cannot be
+  proven** without a complete disassembly (beyond the reach of `objdump`).
+- **Actionable parity improvements** (revised by the disassembly, §9): the only real
+  binary-confirmed gap was the **intro** (a real resource with an `Introduction` toggle) —
+  now **implemented** (`Show::enable_intro`, default-on `intro` config / `--no-intro`, matching
+  the original's `Introduction` key). The **MCI** audio path turned out to be **dead code**
+  (§9.4) — not a gap. *(The "fade between scenes" was **downgraded** — see §9.3: it came from
+  jc_reborn, not confirmed in the original.)*
 
-## 8. Como reproduzir esta análise
+## 8. How to reproduce this analysis
 
-Com uma cópia própria do original em `<dir>` (ver [INSTALL](../INSTALL.md)):
+With your own copy of the original in `<dir>` (see [INSTALL](../INSTALL.md)):
 ```bash
-# tabelas + estrutura: scripts ad-hoc de parse NE (segmentos, segmento de dados) e
-#   comparação byte-a-byte de WALK_DATA em <dir>/SCRANTIC.EXE, offset 0x188ea, stride 6.
-# cobertura/inventário/conteúdo:
+# structure + disassembly (segments, imports, relocations, per-segment .asm): the two
+#   reproducible tools in ../reverse-engineering/ (NE parser + capstone disassembler):
+SCRANTIC_EXE=<dir>/SCRANTIC.EXE WINE_SPECS_DIR=<specs> python3 ../reverse-engineering/ne.py
+SCRANTIC_EXE=<dir>/SCRANTIC.EXE python3 ../reverse-engineering/disasm.py   # → $DISASM_OUT/seg*.asm
+# tables: byte-for-byte comparison of WALK_DATA in <dir>/SCRANTIC.EXE, offset 0x188ea, stride 6.
+# coverage/inventory/content:
 WILSON_DATA_DIR=<dir> cargo run -p wilson-engine --example audit
 WILSON_DATA_DIR=<dir> cargo test -p wilson-engine real_data_long_run_invariants -- --nocapture
 WILSON_DATA_DIR=<dir> cargo test -p wilson-dgds --test real_data -- --nocapture
@@ -145,65 +150,78 @@ WILSON_DATA_DIR=<dir> cargo test -p wilson-dgds --test real_data -- --nocapture
 
 ---
 
-## 9. Disassembly completo do binário (capstone) — direto do original
+## 9. Complete disassembly of the binary (capstone) — straight from the original
 
-> Pass profundo a pedido do usuário e **sem depender do jc_reborn**. Ferramenta: disassembler
-> recursivo próprio (**capstone** 16-bit) com as **relocações NE resolvidas** (mapas de
-> ordinais das `.spec` do Wine) → cada chamada de API e `call` interno fica rotulado. **255
-> funções, 25 732 instruções, ~75% do código** por descida recursiva (o resto é o CRT da
-> Borland, *procs* de callback do Windows e tabelas de dados). A listagem crua é mantida
-> **local** (é obra derivada do código copyright — não vai pro repo); aqui ficam só os fatos.
+> A deep pass at the user's request and **without depending on jc_reborn**. Tool: our own recursive
+> disassembler (**capstone** 16-bit) with the **NE relocations resolved** (ordinal maps
+> from Wine's `.spec` files) → each API call and internal `call` is labeled. **255
+> functions, 25,732 instructions, ~75% of the code** via recursive descent (the rest is the Borland
+> CRT, Windows callback *procs* and data tables). The tools are committed and reproducible
+> in [`../reverse-engineering/`](../reverse-engineering/README.md) (`ne.py` + `disasm.py`);
+> the raw listing they emit is kept **local** (it is a derivative work of the copyright code —
+> it does not go to the repo); only the facts are here.
 
-### 9.1 Arquitetura (confirmada no binário)
-- **Gráficos:** composição em DCs off-screen (`CreateCompatibleDC`/`Bitmap`, `SelectObject`
-  ×59, `BitBlt` ×19) + **`StretchBlt` ×11 = escala pra tela** (o original escala, como nós).
-  Primitivas vetoriais GDI (`LineTo`/`MoveTo`/`Rectangle`/`Ellipse`/`CreatePen`) = os opcodes
-  TTM de desenho. **NENHUMA API de paleta** (`CreatePalette`/`RealizePalette`/`AnimatePalette`
-  ausentes) ⇒ **sem animação de paleta**; nossa abordagem (`.PAL` → RGB → blit) confere.
-- **Som:** `sndPlaySound` (MMSYSTEM.2) pros WAVs (`WAVESFX%d`) — **e também `mciSendCommand`**
-  (MCI) em `seg5:0085` (segundo caminho de áudio; não temos).
-- **Loop/tempo:** `SetTimer(…, 50 ms, …)` bombeia `WM_TIMER` (0x0113), mas o avanço é **paceado
-  por tempo real** (`GetCurrentTime`, `elapsed × rate[0x2e14]` em ponto-fixo /100000 via helper
-  de 32 bits `seg1:0302`) ⇒ **não é 50 ms/quadro fixo** (é frame-rate-independente). O jc_reborn
-  aproxima com 20 ms/tick fixo; **o rate exato (`[0x2e14]`, definido na init) não foi cravado** —
-  é o único número de timing em aberto.
-- **Config:** INI `[ScreenSaver.ScreenAntics]` em `SCRANTIC.INI`: `Sounds`, `Introduction`,
-  `Password`/`PasswordProtection`, `CurrentMonth` (persistência).
+### 9.1 Architecture (confirmed in the binary)
+- **Graphics:** composition in off-screen DCs (`CreateCompatibleDC`/`Bitmap`, `SelectObject`
+  ×59, `BitBlt` ×19) + **`StretchBlt` ×11 = scale to the screen** (the original scales, like us).
+  GDI vector primitives (`LineTo`/`MoveTo`/`Rectangle`/`Ellipse`/`CreatePen`) = the
+  TTM drawing opcodes. **NO palette API** (`CreatePalette`/`RealizePalette`/`AnimatePalette`
+  absent) ⇒ **no palette animation**; our approach (`.PAL` → RGB → blit) checks out.
+- **Sound:** `sndPlaySound` (MMSYSTEM.2) for the WAVs (`WAVESFX%d`) — the only **live** audio
+  path. `mciSendCommand` is imported but is **dead code** (see §9.4): its single call site
+  (`seg5:00ab`) only ever issues `MCI_CLOSE` (`mov ax, 0x804`) on a device id (`[0x35ee]`)
+  that is **never opened/written** — there is no `MCI_OPEN` (0x803) or `MCI_PLAY` (0x806)
+  anywhere in the binary. So there is **no MCI audio path** — our `sndPlaySound`-equivalent
+  (`rodio` WAV) covers 100% of the live sound.
+- **Loop/time:** `SetTimer(…, 50 ms, …)` pumps `WM_TIMER` (0x0113), but the advance is **paced
+  by real time** (`GetCurrentTime`, `elapsed × rate[0x2e14]` in fixed-point /100000 via a 32-bit
+  helper `seg1:0302`) ⇒ **it is not a fixed 50 ms/frame** (it is frame-rate-independent). jc_reborn
+  approximates with a fixed 20 ms/tick; **the exact rate (`[0x2e14]`, set at init) was not nailed down** —
+  it is the only open timing number.
+- **Config:** the INI `[ScreenSaver.ScreenAntics]` in `SCRANTIC.INI`: `Sounds`, `Introduction`,
+  `Password`/`PasswordProtection`, `CurrentMonth` (persistence).
 
-### 9.2 Interpretador TTM (`seg12`) — opcodes lidos do binário
-Despacho por **busca linear em tabelas de opcodes** (opcode em `[0x46da]`; interpretador de
-**dois passes**, flag `[0x46d8]`; slots de bitmap em `[0x2638]`/`[0x263e]`). As próprias tabelas:
-- família **C**, `seg12:0x00fc`: `c01f c02f c031 … c0f4 c102 cf01 cf11` (16 variantes; os dados
-  só usam `c051`=PLAY_SAMPLE — tratamos o subconjunto usado);
-- família **A**, `0x03bc`: `a002 a0a4 a104 … a5a7 a601 a704 af02 af1f af2f`;
-- **A0xx zona**, `0x1900`: `a014 a024 … a054(SAVE) a064(RESTORE) a094 a0b5`;
-- **baixos**, `0x12bd`: `0010 0020 0070 0080 0090 00c0 00e0 0110 0400`;
-- alias: o interpretador **remapeia** `0x1301→0xc051` e `0x1311→0xc061`.
+### 9.2 TTM interpreter (`seg12`) — opcodes read from the binary
+Dispatch by **linear search in opcode tables** (the opcode in `[0x46da]`; a **two-pass**
+interpreter, flag `[0x46d8]`; bitmap slots in `[0x2638]`/`[0x263e]`). The tables themselves:
+- the **C** family, `seg12:0x00fc`: `c01f c02f c031 … c0f4 c102 cf01 cf11` (16 variants; the data
+  only uses `c051`=PLAY_SAMPLE — we handle the used subset);
+- the **A** family, `0x03bc`: `a002 a0a4 a104 … a5a7 a601 a704 af02 af1f af2f`;
+- **A0xx zone**, `0x1900`: `a014 a024 … a054(SAVE) a064(RESTORE) a094 a0b5`;
+- **low**, `0x12bd`: `0010 0020 0070 0080 0090 00c0 00e0 0110 0400`;
+- alias: the interpreter **remaps** `0x1301→0xc051` and `0x1311→0xc061`.
 
-**`0x0080` (DRAW_BACKGROUND) — RESOLVIDO:** o handler (`seg12:0806`) **libera o handle GDI do
-slot de bitmap atual** (`call seg6:1845` = wrapper de `DeleteObject`) e zera o slot —
-**gerência de memória, ZERO saída visual.** Logo: o jc_reborn estava **certo** ("frees image
-slots"); castaway/dgds-viewer/JCOS erram ao chamá-lo de "redesenho de fundo"; **e o nosso
-no-op está correto vs o ORIGINAL.** *(A dúvida LOW da §6 fica resolvida — não é lacuna.)*
+**`0x0080` (DRAW_BACKGROUND) — RESOLVED:** the handler (`seg12:0806`) **frees the GDI handle of the
+current bitmap slot** (`call seg6:1845` = a `DeleteObject` wrapper) and zeroes the slot —
+**memory management, ZERO visual output.** Therefore: jc_reborn was **right** ("frees image
+slots"); castaway/dgds-viewer/JCOS are wrong to call it a "background redraw"; **and our
+no-op is correct vs the ORIGINAL.** *(The LOW doubt of §6 is resolved — it is not a gap.)*
 
-### 9.3 Correções aos itens que vinham do jc_reborn (não do original)
-- **Fade/wipe entre cenas (era "MÉDIA") → REBAIXADO p/ NÃO-CONFIRMADO.** No binário **não há
-  fade de paleta** (sem APIs de paleta). Um *wipe* via BitBlt é possível, mas **não foi
-  localizado** no código analisado. A evidência de fade vinha do **jc_reborn** (reimplementação)
-  — então **pode não ser lacuna**. Cravar exige analisar o caminho de transição de cena.
-- **Intro (era "BAIXA") → CONFIRMADO como recurso real:** existe `INTRO.SCR` + a chave de
-  config **`Introduction`** (liga/desliga). Não exibimos o intro ⇒ **lacuna real**,
-  binário-confirmada.
+### 9.3 Corrections to the items that came from jc_reborn (not from the original)
+- **Fade/wipe between scenes (was "MEDIUM") → DOWNGRADED to NOT-CONFIRMED.** In the binary **there is no
+  palette fade** (no palette APIs). A *wipe* via BitBlt is possible, but **was not
+  located** in the analyzed code. The fade evidence came from **jc_reborn** (a reimplementation)
+  — so **it may not be a gap**. Nailing it down requires analyzing the scene-transition path.
+- **Intro (was "LOW") → CONFIRMED as a real resource:** `INTRO.SCR` + the config key
+  **`Introduction`** (on/off) exist. We do not display the intro ⇒ **a real gap**,
+  binary-confirmed.
 
-### 9.4 Novos achados (só no binário)
-- **`mciSendCommand`** — caminho de áudio MCI além do `sndPlaySound` (não reproduzido).
-- **Relógio em tempo real** — formato `"%2d:%02d %cm"` ⇒ um gag mostra a hora real do PC.
-- Família **C completa** (`c01f…c0f4`, 16 variantes de PLAY_SAMPLE) — tratamos só a usada.
+### 9.4 New findings (only in the binary)
+- **`mciSendCommand` — RESOLVED as dead code (NOT a gap).** It is imported, but the **only**
+  call site (`seg5:00ab`) issues just `MCI_CLOSE` (`mov ax, 0x804`), guarded by
+  `cmp [0x35ee], 0` / `je`. The device id `[0x35ee]` is **only ever read** there (the disassembly
+  has no write to it) and there is **no `MCI_OPEN` (0x803) nor `MCI_PLAY` (0x806)** anywhere —
+  so nothing is ever opened or played via MCI, and even the close never fires. It is vestigial
+  cleanup scaffolding; **`sndPlaySound` is the sole live audio path**, which we reproduce. So
+  the earlier "MCI path we lack" is **not a gap**.
+- **Real-time clock** — format `"%2d:%02d %cm"` ⇒ a gag shows the PC's real time.
+- The **complete C** family (`c01f…c0f4`, 16 variants of PLAY_SAMPLE) — we handle only the used one.
 
-### 9.5 Veredito pós-disassembly
-A reengenharia direta do binário **fortaleceu** a confiança: confirmou a arquitetura e o
-conjunto de opcodes, e **resolveu o `0x0080`** (nosso no-op está certo vs o original). Lacunas
-reais binário-confirmadas: **intro** (recurso com toggle, não exibido) e o caminho **MCI**.
-O **fade** foi **rebaixado** (não confirmado no original). O **rate de tempo exato** é o único
-número em aberto. `calcpath` e as constantes de feriado/deriva seguem na lógica não-traçada
-(fiéis ao jc_reborn, sem prova binária).
+### 9.5 Post-disassembly verdict
+The direct reverse engineering of the binary **strengthened** confidence: it confirmed the architecture and the
+set of opcodes, and **resolved `0x0080`** (our no-op is correct vs the original). The single
+binary-confirmed gap — the **intro** (a resource with an `Introduction` toggle) — has since been
+**implemented**. **MCI** was **resolved as dead code** (§9.4), not a gap. The **fade** was
+**downgraded** (not confirmed in the original). The **exact time rate** is the only open number.
+`calcpath` and the holiday/drift constants remain in the untraced logic (faithful to jc_reborn,
+without binary proof).
