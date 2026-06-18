@@ -16,6 +16,12 @@ use crate::scale::{Filter, ScaleMode};
 const SPEED_MIN: u32 = 25;
 const SPEED_MAX: u32 = 400;
 
+/// The story arc is 11 days; `0` means "auto" (resume/today).
+const MAX_STORY_DAY: u8 = 11;
+/// Bounds for the story-mode per-day cadence, in real seconds.
+const STORY_SECS_MIN: u32 = 5;
+const STORY_SECS_MAX: u32 = 86_400;
+
 /// The app's runtime options.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Config {
@@ -40,6 +46,14 @@ pub struct Config {
     /// Show the original's intro screen (`INTRO.SCR`) once at startup (default on, like the
     /// original's `Introduction` option). Disable with `--no-intro`.
     pub intro: bool,
+    /// Start the 11-day story arc at this day (1–11); `0` = auto (resume the persisted day,
+    /// or today). A one-off override (`--day N`), not persisted.
+    pub day: u8,
+    /// Story mode: play the whole 11-day arc in order (1 → 11 → 1 …) on a fixed cadence,
+    /// instead of one day per real calendar day (`--story`). Starts at day 1.
+    pub story: bool,
+    /// In story mode, how many real seconds each story day is shown (`--story-secs`).
+    pub story_secs: u32,
 }
 
 impl Default for Config {
@@ -54,6 +68,9 @@ impl Default for Config {
             daynight: DayNight::Original,
             debug: false,
             intro: true,
+            day: 0,
+            story: false,
+            story_secs: crate::timectl::DEFAULT_STORY_DAY_SECS,
         }
     }
 }
@@ -136,6 +153,21 @@ impl Config {
                         c.intro = b;
                     }
                 }
+                "day" => {
+                    if let Ok(n) = value.parse::<u8>() {
+                        c.day = n.min(MAX_STORY_DAY);
+                    }
+                }
+                "story" => {
+                    if let Some(b) = parse_bool(value) {
+                        c.story = b;
+                    }
+                }
+                "story_secs" => {
+                    if let Ok(n) = value.parse::<u32>() {
+                        c.story_secs = n.clamp(STORY_SECS_MIN, STORY_SECS_MAX);
+                    }
+                }
                 _ => {}
             }
         }
@@ -163,7 +195,13 @@ impl Config {
              # debug: true shows diagnostics (stdout status line + on-screen HUD overlay).\n\
              debug={}\n\
              # intro: true shows the original's intro screen (INTRO.SCR) once at startup.\n\
-             intro={}\n",
+             intro={}\n\
+             # day: start the 11-day arc at this day (1–{MAX_STORY_DAY}); 0 = auto (resume/today).\n\
+             day={}\n\
+             # story: true plays the whole arc in order (day 1→11→1…) on a fixed cadence.\n\
+             story={}\n\
+             # story_secs: in story mode, real seconds per story day ({STORY_SECS_MIN}–{STORY_SECS_MAX}).\n\
+             story_secs={}\n",
             self.windowed,
             self.mute,
             self.speed,
@@ -173,12 +211,15 @@ impl Config {
             self.daynight.as_str(),
             self.debug,
             self.intro,
+            self.day,
+            self.story,
+            self.story_secs,
         )
     }
 
     /// Apply CLI overrides: `--windowed`, `--mute`, `--dedither`, `--debug`, `--no-intro`,
-    /// `--speed <pct>`, `--scale <mode>`, `--filter <nearest|linear|xbr|xbrz>`. Unknown flags
-    /// are ignored.
+    /// `--story`, `--speed <pct>`, `--scale <mode>`, `--filter <nearest|linear|xbr|xbrz>`,
+    /// `--day <1-11>`, `--story-secs <s>`. Unknown flags are ignored.
     pub fn apply_args(&mut self, args: &[String]) {
         let mut i = 0;
         while i < args.len() {
@@ -188,6 +229,19 @@ impl Config {
                 "--dedither" => self.dedither = true,
                 "--debug" => self.debug = true,
                 "--no-intro" => self.intro = false,
+                "--story" => self.story = true,
+                "--day" => {
+                    if let Some(n) = args.get(i + 1).and_then(|v| v.parse::<u8>().ok()) {
+                        self.day = n.min(MAX_STORY_DAY);
+                        i += 1;
+                    }
+                }
+                "--story-secs" => {
+                    if let Some(n) = args.get(i + 1).and_then(|v| v.parse::<u32>().ok()) {
+                        self.story_secs = n.clamp(STORY_SECS_MIN, STORY_SECS_MAX);
+                        i += 1;
+                    }
+                }
                 "--speed" => {
                     if let Some(n) = args.get(i + 1).and_then(|v| v.parse::<u32>().ok()) {
                         self.speed = n.clamp(SPEED_MIN, SPEED_MAX);
@@ -254,6 +308,9 @@ mod tests {
         assert!(!c.dedither); // keep the authentic dither by default
         assert!(!c.debug); // no diagnostics by default
         assert!(c.intro); // the intro screen is shown by default (like the original)
+        assert_eq!(c.day, 0); // auto: resume the persisted/real day
+        assert!(!c.story); // real calendar by default, not story mode
+        assert_eq!(c.story_secs, crate::timectl::DEFAULT_STORY_DAY_SECS);
     }
 
     #[test]
@@ -268,6 +325,9 @@ mod tests {
             daynight: DayNight::Real24h,
             debug: true,
             intro: false,
+            day: 7,
+            story: true,
+            story_secs: 120,
         };
         assert_eq!(Config::parse(&c.serialize()), c);
     }
@@ -292,6 +352,16 @@ mod tests {
     }
 
     #[test]
+    fn story_options_are_clamped() {
+        assert_eq!(Config::parse("day=99\n").day, MAX_STORY_DAY); // clamp to the 11-day arc
+        assert_eq!(Config::parse("story_secs=1\n").story_secs, STORY_SECS_MIN);
+        assert_eq!(
+            Config::parse("story_secs=999999\n").story_secs,
+            STORY_SECS_MAX
+        );
+    }
+
+    #[test]
     fn cli_overrides_win() {
         let mut c = Config::default();
         let args: Vec<String> = [
@@ -309,6 +379,11 @@ mod tests {
             "--daynight",
             "real24h",
             "--no-intro",
+            "--story",
+            "--day",
+            "5",
+            "--story-secs",
+            "120",
         ]
         .iter()
         .map(|s| s.to_string())
@@ -323,6 +398,9 @@ mod tests {
         assert!(c.debug);
         assert_eq!(c.daynight, DayNight::Real24h);
         assert!(!c.intro); // --no-intro
+        assert!(c.story); // --story
+        assert_eq!(c.day, 5); // --day 5
+        assert_eq!(c.story_secs, 120); // --story-secs 120
     }
 
     #[test]

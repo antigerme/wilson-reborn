@@ -10,7 +10,8 @@
 //! - `wilson --data <dir>` — load the data from `<dir>`.
 //! - `wilson` — auto-detects the data in the working directory or next to the executable.
 //! - `wilson --windowed --mute --speed <pct> --scale fit|stretch|integer|extend
-//!   --filter nearest|linear|xbr|xbrz --dedither --no-intro` — options (`extend` fills widescreen).
+//!   --filter nearest|linear|xbr|xbrz --dedither --no-intro --day <1-11> --story
+//!   --story-secs <s>` — options (`extend` fills widescreen; `--story` plays the arc in order).
 //! - Windows screensaver verbs: `/s` (show), `/c` (config), `/p <hwnd>` (preview embedded
 //!   in the configuration pane — Windows only).
 
@@ -24,6 +25,7 @@ mod font;
 mod scale;
 mod state;
 mod stats;
+mod timectl;
 
 use std::num::NonZeroU32;
 use std::rc::Rc;
@@ -137,14 +139,29 @@ fn main() {
         (archive, palette, audio)
     };
 
-    let clock = clock::now();
-    // Resume the 11-day story arc from the last session, if we saved one, and apply the
-    // configured day/night cycle.
-    let director = match state::DayState::load() {
-        Some(s) => Director::new(s.current_day, s.stored_yday),
-        None => Director::new(1, clock.yday),
-    }
-    .with_daynight(cfg.daynight);
+    let real = clock::now();
+    // Time controls (QoL, opt-in): `--story` plays the whole arc in order from a synthetic
+    // clock; `--day N` starts at a chosen day. Both are one-off — in those modes we do NOT
+    // persist the day, so the real saved arc isn't clobbered. Default: resume the persisted
+    // day (or today), real wall-clock time, and apply the configured day/night cycle.
+    let persist_day = !cfg.story && cfg.day == 0;
+    let (director, clock) = if cfg.story {
+        // Day 1, stored_yday 0: the story clock (day-index 0 at t=0) keeps the first run on
+        // day 1, then advances the arc as its day-index ticks.
+        (
+            Director::new(1, 0),
+            timectl::story_clock(real, 0, cfg.story_secs),
+        )
+    } else if cfg.day != 0 {
+        (Director::new(cfg.day, real.yday), real)
+    } else {
+        let d = match state::DayState::load() {
+            Some(s) => Director::new(s.current_day, s.stored_yday),
+            None => Director::new(1, real.yday),
+        };
+        (d, real)
+    };
+    let director = director.with_daynight(cfg.daynight);
     let seed = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_nanos() as u64)
@@ -270,9 +287,18 @@ fn main() {
                             // original.
                             let frame_start = Instant::now();
                             surface.resize(w, h).expect("resize surface");
-                            // Refresh the wall clock so the story day rolls over at midnight
-                            // even within a single long-running session.
-                            show.set_clock(clock::now());
+                            // Refresh the clock so the day rolls over within a long session.
+                            // Story mode feeds a synthetic clock (the arc in order); otherwise
+                            // it is the real wall clock (rolls over at midnight).
+                            show.set_clock(if cfg.story {
+                                timectl::story_clock(
+                                    clock::now(),
+                                    session_start.elapsed().as_secs(),
+                                    cfg.story_secs,
+                                )
+                            } else {
+                                clock::now()
+                            });
                             let frame = show.next_frame(&archive);
                             for &id in &frame.sounds {
                                 let outcome = audio.play(id);
@@ -281,7 +307,9 @@ fn main() {
                                 }
                             }
                             let (day, yday) = show.day_state();
-                            if last_saved != Some((day, yday)) {
+                            // Persist the day only in real-time mode — `--story`/`--day` are
+                            // one-off overrides and must not clobber the saved real arc.
+                            if persist_day && last_saved != Some((day, yday)) {
                                 state::DayState {
                                     current_day: day,
                                     stored_yday: yday,
@@ -498,10 +526,20 @@ fn print_config_info(cfg: &config::Config) {
     println!("  daynight: {}", cfg.daynight.as_str());
     println!("  debug:    {}", cfg.debug);
     println!("  intro:    {}", cfg.intro);
+    println!(
+        "  day:      {}",
+        if cfg.day == 0 {
+            "auto".to_string()
+        } else {
+            cfg.day.to_string()
+        }
+    );
+    println!("  story:    {} ({} s/day)", cfg.story, cfg.story_secs);
     println!("  stats:    {}", stats::Stats::load().summary());
     println!(
-        "Edit the file above, or pass --windowed/--mute/--dedither/--debug/--no-intro/--speed <pct>/\
-         --scale <mode>/--filter <nearest|linear|xbr|xbrz>/--daynight <original|real24h>."
+        "Edit the file above, or pass --windowed/--mute/--dedither/--debug/--no-intro/--story/\
+         --speed <pct>/--scale <mode>/--filter <nearest|linear|xbr|xbrz>/--daynight \
+         <original|real24h>/--day <1-11>/--story-secs <s>."
     );
 }
 
@@ -557,6 +595,9 @@ fn print_help() {
     println!("  --debug                          diagnostics: stdout status + on-screen HUD");
     println!("  --daynight <original|real24h>    day/night cycle (default: original 8h)");
     println!("  --no-intro                       skip the startup intro screen (default: shown)");
+    println!("  --day <1-11>                     start the 11-day story arc at this day");
+    println!("  --story                          play the whole arc in order (day 1->11->1...)");
+    println!("  --story-secs <S>                 story mode: real seconds per day (default 90)");
     println!("  --data <DIR>                     game data folder (default: auto-detect)");
     if cfg!(windows) {
         println!("\nWINDOWS SCREENSAVER VERBS (as the OS invokes a .scr):");

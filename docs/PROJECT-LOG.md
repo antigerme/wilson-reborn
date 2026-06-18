@@ -6,6 +6,23 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-18 — QoL de tempo: `--day` + modo história (`--story`)
+
+Controles de tempo **opt-in** (padrão = tempo real, idêntico a antes), no app (engine
+intacto — só recebe o `Clock`):
+- **`--day N`** (config `day`, 1–11): começa o arco de 11 dias no dia N. Override de uma vez
+  (não persiste, pra não sujar o dia real salvo).
+- **`--story`** (config `story`): **modo história** — toca o arco inteiro em ordem
+  (dia 1→11→1…), avançando um dia a cada `story_secs` (`--story-secs`, padrão 90 s); dentro de
+  cada dia a hora varre 0→23 (mostra dia/noite). Feriados mantêm a **data real**.
+- Implementado em `timectl.rs` (`story_clock`, função pura testada) + plumbing em `config.rs`
+  (parse/serialize/CLI/`/c`/help) e fiação no `main.rs` (dia inicial, relógio sintético, e
+  **não persistir** o dia nesses modos).
+- "Acelerar tempo" = modo história (acelera o arco) + o `--speed` já existente (acelera a
+  animação). `cargo fmt`/`clippy -D warnings`/`test` verdes (wilson 55, workspace OK).
+
+---
+
 ## 2026-06-18 — release v0.2.0 (primeira release pública empacotada)
 
 Primeira release pública: **v0.2.0** (tag em `14d881c`, com `Cargo.toml` bumpado
