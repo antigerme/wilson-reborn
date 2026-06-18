@@ -5,12 +5,14 @@
 # into the binaries (never written into the repo). The resulting binaries contain the
 # copyright game data — keep them for yourself, do not redistribute publicly.
 #
-# This builds the DESKTOP binaries only (Linux/Windows/macOS). The browser (WASM) build is
-# separate and never embeds data — see crates/wilson-web/build-web.sh.
+# By default it builds the DESKTOP binaries (data embedded). With --web it ALSO builds the
+# browser (WASM) bundle via crates/wilson-web/build-web.sh — the web build NEVER embeds data
+# (the page loads your RESOURCE.* locally), so --web works even without a <data-dir>.
 #
 # Usage:
-#   scripts/build-embedded.sh [--check] [--fetch-ia [--i-accept-legal-responsibility]] [<data-dir>] [out-dir]
+#   scripts/build-embedded.sh [--check] [--web] [--fetch-ia [--i-accept-legal-responsibility]] [<data-dir>] [out-dir]
 #     --check     only run the preflight diagnostic (no build, no download), then exit
+#     --web       ALSO build the browser (WASM) bundle (needs wasm-bindgen-cli; no data embedded)
 #     --fetch-ia  DOWNLOAD the original data from the Internet Archive instead of passing
 #                 <data-dir>. Opt-in only; it is COPYRIGHT data, for PERSONAL USE ONLY —
 #                 it prints a loud legal warning and asks you to type "I ACCEPT". It is
@@ -42,16 +44,20 @@ IA_SHA256="111c384aa44fc810c0453f524d8c02dee58ea3358ee788316b2fc1f2059afc56"
 CHECK_ONLY=0
 FETCH_IA=0
 IA_ACCEPTED=0
+BUILD_WEB=0
 POSITIONAL=()
 for a in "$@"; do
     case "$a" in
         --check | -n | --dry-run) CHECK_ONLY=1 ;;
+        --web) BUILD_WEB=1 ;;
         --fetch-ia) FETCH_IA=1 ;;
         --i-accept-legal-responsibility) IA_ACCEPTED=1 ;;
         -h | --help)
             cat <<'USAGE'
-Usage: scripts/build-embedded.sh [--check] [--fetch-ia [--i-accept-legal-responsibility]] [<data-dir>] [out-dir]
+Usage: scripts/build-embedded.sh [--check] [--web] [--fetch-ia [--i-accept-legal-responsibility]] [<data-dir>] [out-dir]
   --check      only run the preflight diagnostic (no build, no download), then exit
+  --web        ALSO build the browser (WASM) bundle (needs wasm-bindgen-cli; embeds no data;
+               works even without a <data-dir>)
   --fetch-ia   download the ORIGINAL data from the Internet Archive instead of passing
                <data-dir>. Opt-in; COPYRIGHT data; PERSONAL USE ONLY. Prints a loud legal
                warning and asks you to type "I ACCEPT". NEVER runs in CI.
@@ -61,7 +67,7 @@ Usage: scripts/build-embedded.sh [--check] [--fetch-ia [--i-accept-legal-respons
   out-dir      output dir (default: target/embedded)
 
 Builds (from Linux): Linux x86_64 (native) + Windows x86_64 (.exe/.scr via mingw-w64).
-macOS must be built on a Mac (see docs/INSTALL.md).
+macOS must be built on a Mac (see docs/INSTALL.md). With --web, also the wasm32 browser bundle.
 USAGE
             exit 0
             ;;
@@ -262,10 +268,28 @@ else
     echo "                           → Fedora:        sudo dnf install -y mingw64-gcc"
     echo "                           → Debian/Ubuntu: sudo apt-get install -y gcc-mingw-w64-x86-64"
 fi
+# Web (WASM) prerequisite — only relevant with --web. The wasm32 target itself is auto-added
+# by build-web.sh (when rustup is present); here we just flag the wasm-bindgen CLI.
+wasm_bindgen_ok=0
+have wasm-bindgen && wasm_bindgen_ok=1
+if [ "$BUILD_WEB" -eq 1 ]; then
+    if [ "$wasm_bindgen_ok" -eq 1 ]; then
+        echo "  [ok] wasm-bindgen        $(command -v wasm-bindgen) (for --web)"
+    else
+        echo "  [--] wasm-bindgen        missing (for --web) → cargo install wasm-bindgen-cli"
+    fi
+fi
 # Plan summary.
 win_plan="build"
 [ "$win_target_ok" -eq 1 ] && [ "$mingw_ok" -eq 1 ] || win_plan="SKIP (see above)"
-echo "  ── plan: Linux = build · Windows = $win_plan · macOS = manual (on a Mac)"
+desktop_plan="build"
+[ "$data_ok" -eq 1 ] || desktop_plan="SKIP (no data)"
+web_plan="off (pass --web)"
+if [ "$BUILD_WEB" -eq 1 ]; then
+    web_plan="build"
+    [ "$wasm_bindgen_ok" -eq 1 ] || web_plan="SKIP (no wasm-bindgen)"
+fi
+echo "  ── plan: Linux = $desktop_plan · Windows = $win_plan · macOS = manual · Web = $web_plan"
 echo
 
 if [ "$CHECK_ONLY" -eq 1 ]; then
@@ -273,51 +297,78 @@ if [ "$CHECK_ONLY" -eq 1 ]; then
     exit 0
 fi
 
-# ---- from here we actually build; require the data dir ---------------------------
-if [ "$data_ok" -ne 1 ]; then
-    echo "error: '${DATA:-<none>}/RESOURCE.MAP' not found — point <data-dir> at your original data" >&2
-    echo "       (or use --fetch-ia to download it; run with --check to see the full preflight)" >&2
+# ---- decide what to build: the data-embedded DESKTOP builds need the data; the WEB build
+# does not (the page loads your RESOURCE.* locally), so --web works even without a data dir.
+do_desktop=0
+[ "$data_ok" -eq 1 ] && do_desktop=1
+if [ "$do_desktop" -ne 1 ] && [ "$BUILD_WEB" -ne 1 ]; then
+    echo "error: '${DATA:-<none>}/RESOURCE.MAP' not found — point <data-dir> at your original" >&2
+    echo "       data (or use --fetch-ia to download it, or --web to build just the browser" >&2
+    echo "       bundle, which needs no data). Run with --check to see the full preflight." >&2
     exit 1
 fi
-DATA_ABS="$(cd "$DATA" && pwd)"
 mkdir -p "$OUT"
-export WILSON_EMBED_DATA="$DATA_ABS"
-echo "==> Embedding data from: $DATA_ABS"
-echo "==> Output dir:          $OUT"
 
-# --- Linux (native) ---------------------------------------------------------------
-echo
-echo "==> [Linux] building native embedded binary"
-[ "$alsa_ok" -eq 1 ] || echo "    (warning: ALSA dev not detected — this may fail in alsa-sys; see preflight)"
-cargo build --release -p wilson --features embed-data --manifest-path "$ROOT/Cargo.toml"
-cp "$ROOT/target/release/wilson" "$OUT/wilson-linux-x86_64"
-echo "    ok -> $OUT/wilson-linux-x86_64"
+if [ "$do_desktop" -eq 1 ]; then
+    DATA_ABS="$(cd "$DATA" && pwd)"
+    export WILSON_EMBED_DATA="$DATA_ABS"
+    echo "==> Embedding data from: $DATA_ABS"
+    echo "==> Output dir:          $OUT"
 
-# --- Windows (cross via mingw-w64) ------------------------------------------------
-echo
-if [ "$win_target_ok" -ne 1 ]; then
-    echo "==> [Windows] skipped — target '$WIN_TARGET' not installed (see preflight)."
-elif [ "$mingw_ok" -ne 1 ]; then
-    echo "==> [Windows] skipped — mingw linker not found (see preflight)."
+    # --- Linux (native) -----------------------------------------------------------
+    echo
+    echo "==> [Linux] building native embedded binary"
+    [ "$alsa_ok" -eq 1 ] || echo "    (warning: ALSA dev not detected — this may fail in alsa-sys; see preflight)"
+    cargo build --release -p wilson --features embed-data --manifest-path "$ROOT/Cargo.toml"
+    cp "$ROOT/target/release/wilson" "$OUT/wilson-linux-x86_64"
+    echo "    ok -> $OUT/wilson-linux-x86_64"
+
+    # --- Windows (cross via mingw-w64) --------------------------------------------
+    echo
+    if [ "$win_target_ok" -ne 1 ]; then
+        echo "==> [Windows] skipped — target '$WIN_TARGET' not installed (see preflight)."
+    elif [ "$mingw_ok" -ne 1 ]; then
+        echo "==> [Windows] skipped — mingw linker not found (see preflight)."
+    else
+        echo "==> [Windows] building cross embedded binary (.exe + .scr)"
+        # Static mingw runtime so the .exe/.scr is standalone (no libwinpthread/libgcc DLLs).
+        CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=x86_64-w64-mingw32-gcc \
+            RUSTFLAGS="${RUSTFLAGS:-} -C target-feature=+crt-static" \
+            cargo build --release -p wilson --features embed-data \
+            --target "$WIN_TARGET" --manifest-path "$ROOT/Cargo.toml"
+        cp "$ROOT/target/$WIN_TARGET/release/wilson.exe" "$OUT/wilson.exe"
+        cp "$OUT/wilson.exe" "$OUT/wilson.scr"
+        echo "    ok -> $OUT/wilson.exe and $OUT/wilson.scr"
+    fi
+
+    # --- macOS --------------------------------------------------------------------
+    echo
+    echo "==> [macOS] not built from Linux. On a Mac, run:"
+    echo "      WILSON_EMBED_DATA='$DATA_ABS' cargo build --release -p wilson --features embed-data"
+    echo "      # and crates/wilson-saver/macos/build-saver.sh for an embedded .saver"
 else
-    echo "==> [Windows] building cross embedded binary (.exe + .scr)"
-    # Static mingw runtime so the .exe/.scr is standalone (no libwinpthread/libgcc DLLs).
-    CARGO_TARGET_X86_64_PC_WINDOWS_GNU_LINKER=x86_64-w64-mingw32-gcc \
-        RUSTFLAGS="${RUSTFLAGS:-} -C target-feature=+crt-static" \
-        cargo build --release -p wilson --features embed-data \
-        --target "$WIN_TARGET" --manifest-path "$ROOT/Cargo.toml"
-    cp "$ROOT/target/$WIN_TARGET/release/wilson.exe" "$OUT/wilson.exe"
-    cp "$OUT/wilson.exe" "$OUT/wilson.scr"
-    echo "    ok -> $OUT/wilson.exe and $OUT/wilson.scr"
+    echo "==> [desktop] skipped — no <data-dir> (the data-embedded desktop builds need it)."
 fi
 
-# --- macOS ------------------------------------------------------------------------
-echo
-echo "==> [macOS] not built from Linux. On a Mac, run:"
-echo "      WILSON_EMBED_DATA='$DATA_ABS' cargo build --release -p wilson --features embed-data"
-echo "      # and crates/wilson-saver/macos/build-saver.sh for an embedded .saver"
+# --- Web (WASM) — optional, data-independent --------------------------------------
+if [ "$BUILD_WEB" -eq 1 ]; then
+    echo
+    echo "==> [Web/WASM] building the browser bundle (no data embedded — bring-your-own in the page)"
+    if bash "$ROOT/crates/wilson-web/build-web.sh"; then
+        mkdir -p "$OUT/web"
+        cp "$ROOT/crates/wilson-web/web/index.html" \
+            "$ROOT/crates/wilson-web/web/wilson_web.js" \
+            "$ROOT/crates/wilson-web/web/wilson_web_bg.wasm" "$OUT/web/"
+        echo "    ok -> $OUT/web/  (serve it: python3 -m http.server -d '$OUT/web')"
+    else
+        echo "    [Web/WASM] skipped — see the message above (e.g. 'cargo install wasm-bindgen-cli')."
+    fi
+fi
 
 echo
 echo "==> Done. Files in: $OUT"
 ls -1 "$OUT" 2>/dev/null | sed 's/^/    /'
-echo "    NOTE: these binaries embed the copyright game data — personal use only, do not redistribute."
+if [ "$do_desktop" -eq 1 ]; then
+    echo "    NOTE: the desktop binaries embed the copyright game data — personal use only, do not"
+    echo "          redistribute. (The web/ bundle embeds NO data — it loads your RESOURCE.* locally.)"
+fi

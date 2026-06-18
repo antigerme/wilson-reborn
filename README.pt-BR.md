@@ -100,9 +100,10 @@ no Windows, rodar no Linux/macOS e publicar releases.
 > são redistribuídos; por isso esse build não é publicado nas releases.
 
 > **Rodar no navegador (WASM):** a engine também compila para WebAssembly — veja
-> **[`crates/wilson-web`](crates/wilson-web/README.md)** (`build-web.sh`). Você escolhe seus
+> **[`crates/wilson-web`](crates/wilson-web/README.md)**. Gere com
+> `crates/wilson-web/build-web.sh` (ou `scripts/build-embedded.sh --web`). Você escolhe seus
 > próprios `RESOURCE.MAP`/`RESOURCE.001` na página (lidos localmente — nada é enviado), então
-> nenhum dado é embutido. É um build **separado** do desktop (`scripts/build-embedded.sh`).
+> nenhum dado é embutido (diferente do `embed-data` do desktop).
 
 ## Status
 

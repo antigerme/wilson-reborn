@@ -99,9 +99,10 @@ screensaver, run on Linux/macOS, and cut releases.
 > **not** redistributed, so that build is never published in releases.
 
 > **Run it in a browser (WASM):** the engine also compiles to WebAssembly — see
-> **[`crates/wilson-web`](crates/wilson-web/README.md)** (`build-web.sh`). You pick your own
+> **[`crates/wilson-web`](crates/wilson-web/README.md)**. Build it with
+> `crates/wilson-web/build-web.sh` (or `scripts/build-embedded.sh --web`). You pick your own
 > `RESOURCE.MAP`/`RESOURCE.001` in the page (read locally — nothing is uploaded), so no data is
-> bundled. This is a **separate** build from the desktop one (`scripts/build-embedded.sh`).
+> bundled (unlike the desktop `embed-data` build).
 
 ## Status
 
