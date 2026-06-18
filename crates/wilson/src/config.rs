@@ -219,9 +219,10 @@ impl Config {
     }
 
     /// How long to show a frame of `ticks` engine ticks, in milliseconds, scaled by
-    /// the configured speed (1 tick = 20 ms at 100%).
+    /// the configured speed (1 tick = [`wilson_engine::MS_PER_TICK`] = 16 ms at 100%, the
+    /// original's measured rate).
     pub fn frame_delay_ms(&self, ticks: u16) -> u64 {
-        u64::from(ticks) * 20 * 100 / u64::from(self.speed)
+        u64::from(ticks) * wilson_engine::MS_PER_TICK * 100 / u64::from(self.speed)
     }
 }
 
@@ -337,10 +338,10 @@ mod tests {
     #[test]
     fn frame_delay_scales_with_speed() {
         let mut c = Config::default();
-        assert_eq!(c.frame_delay_ms(6), 120); // 6 ticks * 20 ms at 100%
+        assert_eq!(c.frame_delay_ms(6), 96); // 6 ticks * 16 ms at 100% (the original's rate)
         c.speed = 200;
-        assert_eq!(c.frame_delay_ms(6), 60); // twice as fast
+        assert_eq!(c.frame_delay_ms(6), 48); // twice as fast
         c.speed = 50;
-        assert_eq!(c.frame_delay_ms(6), 240); // half speed
+        assert_eq!(c.frame_delay_ms(6), 192); // half speed
     }
 }

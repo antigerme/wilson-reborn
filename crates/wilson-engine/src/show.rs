@@ -20,8 +20,8 @@ use crate::ttm_exec::detect_transparent;
 use crate::walk::{WalkFrame, Walker};
 
 /// How long the intro screen (`INTRO.SCR`) is held at startup, in engine ticks
-/// (≈4 s at 20 ms/tick), when the intro is enabled.
-const INTRO_TICKS: u16 = 200;
+/// (≈4 s at [`crate::MS_PER_TICK`] = 16 ms/tick), when the intro is enabled.
+const INTRO_TICKS: u16 = 250;
 
 /// The wall-clock inputs the director needs (injected so the runtime is testable).
 #[derive(Debug, Clone, Copy)]
@@ -41,7 +41,7 @@ pub struct Clock {
 pub struct Frame {
     /// The composited indexed-color image.
     pub surface: Surface,
-    /// How long to display it, in engine ticks (1 tick = 20 ms).
+    /// How long to display it, in engine ticks (1 tick = [`crate::MS_PER_TICK`] = 16 ms).
     pub delay_ticks: u16,
     /// Sound effect ids triggered this frame.
     pub sounds: Vec<u16>,
@@ -829,15 +829,16 @@ mod tests {
     }
 
     #[test]
-    fn real_data_timing_is_paced_like_jc_reborn() {
+    fn real_data_timing_is_paced_like_the_original() {
         // Gated: only runs when WILSON_DATA_DIR points at the original data.
         //
-        // jc_reborn waits `grUpdateDelay * 20 ms` between display updates, where
-        // `grUpdateDelay` is the shortest pending thread delay (`ads.c`). Our engine
-        // mirrors this: `AdsFrame::delay_ticks == mini`, and the host waits
-        // `ticks * 20 ms` (`config::frame_delay_ms`). This asserts the *engine* emits a
-        // human-visible pace — so once the host honours `delay_ticks` (the winit loop
-        // must not redraw faster than the timer) the playback speed matches the original.
+        // The original waits `delay_ticks × 16 ms` between display updates (its animation
+        // clock fires every 16 ms — verified by disassembly, see `crate::MS_PER_TICK` and
+        // KB10). Our engine mirrors this: `AdsFrame::delay_ticks == mini` (the shortest
+        // pending thread delay), and the host waits `ticks × MS_PER_TICK`
+        // (`config::frame_delay_ms`). This asserts the *engine* emits a human-visible pace —
+        // so once the host honours `delay_ticks` (the winit loop must not redraw faster than
+        // the timer) the playback speed matches the original.
         let Some(dir) = std::env::var_os("WILSON_DATA_DIR") else {
             return;
         };
@@ -868,15 +869,24 @@ mod tests {
             total_ticks += u64::from(f.delay_ticks);
             max_ticks = max_ticks.max(f.delay_ticks);
         }
-        let total_ms = total_ticks * 20;
+        let total_ms = total_ticks * crate::MS_PER_TICK;
         let avg_ms = total_ms as f64 / f64::from(N);
         eprintln!(
             "real-data pace: {N} frames over {:.1}s, avg {avg_ms:.0} ms/frame, max {} ms",
             total_ms as f64 / 1000.0,
-            u32::from(max_ticks) * 20
+            u32::from(max_ticks) * crate::MS_PER_TICK as u32
         );
         // A real, contemplative pace — not the uncapped spin of the old winit loop.
         assert!(avg_ms >= 50.0, "engine pace too fast: {avg_ms:.0} ms/frame");
+    }
+
+    #[test]
+    fn tick_is_16ms_the_original_rate() {
+        // Regression guard for the disassembly finding (KB10 §9.1): the original's animation
+        // clock fires every 16 ms — its scheduler derives a 4 ms master unit (1000/(13×18))
+        // and the animation callback runs every 4th one (4×4 = 16 ms), gated on real time.
+        // This is the original's rate, NOT jc_reborn's 20 ms approximation; don't revert it.
+        assert_eq!(crate::MS_PER_TICK, 16);
     }
 
     /// FNV-1a hash of a surface's pixels — a cheap frame fingerprint for liveness
@@ -936,7 +946,7 @@ mod tests {
                 window.clear();
             }
         }
-        let avg_ms = total_ticks as f64 * 20.0 / f64::from(N);
+        let avg_ms = total_ticks as f64 * crate::MS_PER_TICK as f64 / f64::from(N);
         assert!(
             avg_ms >= 40.0,
             "fixture pace too fast: {avg_ms:.0} ms/frame"
@@ -1009,11 +1019,11 @@ mod tests {
             all.insert(frame_hash(&f.surface));
             days.insert(show.day_state().0);
         }
-        let avg_ms = total_ticks as f64 * 20.0 / f64::from(N);
+        let avg_ms = total_ticks as f64 * crate::MS_PER_TICK as f64 / f64::from(N);
         eprintln!(
             "long-run: {N} frames, {:.0}s playback, avg {avg_ms:.0} ms/frame, \
              {} distinct frames, days seen {:?}",
-            total_ticks as f64 * 20.0 / 1000.0,
+            total_ticks as f64 * crate::MS_PER_TICK as f64 / 1000.0,
             all.len(),
             {
                 let mut d: Vec<u8> = days.iter().copied().collect();

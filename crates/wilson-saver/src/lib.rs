@@ -127,7 +127,7 @@ pub unsafe extern "C" fn wilson_saver_next_frame(
     let rgba = frame.surface.to_rgba(&ctx.palette);
     let n = rgba.len().min(FRAME_BYTES);
     std::slice::from_raw_parts_mut(out, FRAME_BYTES)[..n].copy_from_slice(&rgba[..n]);
-    u32::from(frame.delay_ticks) * 20 // one engine tick = 20 ms
+    u32::from(frame.delay_ticks) * wilson_engine::MS_PER_TICK as u32 // 1 tick = 16 ms (original)
 }
 
 /// Release a runtime handle. A null pointer is ignored.
