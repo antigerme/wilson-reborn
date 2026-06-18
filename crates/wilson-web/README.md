@@ -7,7 +7,8 @@ as the desktop app, no server. Two modes:
 - **Bring your own data** (default): drop your `RESOURCE.MAP` + `RESOURCE.001` (and
   `SCRANTIC.EXE` for sound), **or a `scrantic-run.zip` / `scrantic-installer.zip`** — read
   **locally** (nothing uploaded). It's **saved on this device** (IndexedDB) and **auto-starts** —
-  a return visit just opens and runs. Use **📁** to load different data or **Forget** to clear it.
+  a return visit just opens and runs. **🗑 Forget** clears it and returns to the picker (to load
+  different data).
   Safe to host.
 - **Self-contained** (`embed-data` feature, personal use): the `RESOURCE.*` (+ sounds) are baked
   into the `.wasm` at build time, so the page just runs — no file picker.

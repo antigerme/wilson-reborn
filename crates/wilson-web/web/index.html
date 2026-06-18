@@ -7,6 +7,8 @@
 <title>Wilson Reborn — web</title>
 <style>
   :root { color-scheme: dark; }
+  /* `hidden` must win over the `display:flex` on #stage/#controls/#panel (id beats [hidden]). */
+  [hidden] { display: none !important; }
   body {
     margin: 0; min-height: 100vh; display: flex; flex-direction: column;
     align-items: center; justify-content: center; gap: 1rem;
@@ -56,10 +58,10 @@
 </head>
 <body>
   <div id="controls" hidden>
-    <button id="changedata" title="Load different data" aria-label="Load different data" hidden>📁</button>
     <button id="mute" title="Mute" aria-label="Mute sound">🔊</button>
     <input id="volume" type="range" min="0" max="100" value="100" title="Volume" aria-label="Volume" />
     <button id="fs" title="Fullscreen (or press F11)" aria-label="Fullscreen">⛶</button>
+    <button id="forget" title="Forget saved data and choose other data" aria-label="Forget saved data" hidden>🗑</button>
   </div>
 
   <h1>Wilson Reborn — the life of Johnny Castaway, in your browser</h1>
@@ -71,7 +73,6 @@
       <strong>Drop your data to start</strong> — <code>RESOURCE.*</code> or a <code>.zip</code>
       <input id="files" type="file" multiple />
     </label>
-    <button id="forget" hidden>Forget saved data</button>
   </div>
 
   <div id="status"></div>
@@ -79,8 +80,8 @@
     The game data is copyright Sierra/Dynamix and is <strong>not</strong> bundled — drop your own
     <code>RESOURCE.MAP</code> + <code>RESOURCE.001</code> (add <code>SCRANTIC.EXE</code> for sound), or a
     <code>scrantic-run.zip</code> / <code>scrantic-installer.zip</code>. Everything runs locally; nothing is uploaded.
-    It's <strong>saved on this device</strong> and starts automatically next time — use <strong>📁</strong> to
-    load different data or <strong>Forget</strong> it.
+    It's <strong>saved on this device</strong> and starts automatically next time — use <strong>🗑 Forget</strong>
+    to clear it and load different data.
     URL options (mirror the desktop): <code>?fullscreen &amp; scale=fit|stretch|integer &amp; filter=linear|nearest &amp;
     speed=200 &amp; day=5 &amp; dissolve &amp; story &amp; daynight=real &amp; intro=0 &amp; intro_secs=3 &amp; mute &amp; volume=50 &amp; seed=…</code>
   </p>
@@ -352,8 +353,8 @@
   } else {
     // Bring-your-own: drop loose files or a .zip. The data is saved on this device by default
     // (IndexedDB) and the screensaver auto-starts — so a return visit just opens and runs.
-    // Advanced options are URL params (?dissolve, ?scale, ?filter, ?speed, …); 📁 / Forget manage
-    // the saved data.
+    // Advanced options are URL params (?dissolve, ?scale, ?filter, ?speed, …); 🗑 Forget clears the
+    // saved data and returns to the picker (where you can load different data).
     async function gather(fileList) {
       const d = {};
       for (const f of fileList) {
@@ -372,10 +373,18 @@
     // start too) or from the saved-data auto-start on load.
     async function use(d, persist) {
       if (persist) { try { await idbPut(d); } catch {} } // saved on this device, by default
-      $("panel").hidden = true;
-      $("changedata").hidden = false;
-      $("forget").hidden = false;
-      try { startFromData(d); } catch (err) { status("Could not start: " + err); $("panel").hidden = false; }
+      $("panel").hidden = true;   // hide the picker prompt
+      $("stage").hidden = false;  // show the screensaver area
+      $("forget").hidden = false; // expose 🗑 Forget in the controls
+      try { startFromData(d); } catch (err) { status("Could not start: " + err); promptForData(); }
+    }
+
+    // Show the picker prompt (no big empty stage) — used on first visit and after Forget.
+    function promptForData() {
+      $("stage").hidden = true;
+      $("panel").hidden = false;
+      $("controls").hidden = true;
+      status("Drop your Johnny Castaway data (RESOURCE.* or a .zip) to begin.");
     }
 
     async function onPicked(fileList) {
@@ -391,19 +400,17 @@
     ["dragleave", "drop"].forEach((ev) => document.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("drag"); }));
     document.addEventListener("drop", (e) => { if (e.dataTransfer?.files?.length) onPicked(e.dataTransfer.files); });
 
-    // 📁 toggles the picker (load different data / Forget) while it keeps running behind.
-    $("changedata").addEventListener("click", () => { $("panel").hidden = !$("panel").hidden; });
+    // 🗑 Forget: clear the saved data and reload back to the picker (then load different data).
     $("forget").addEventListener("click", async () => {
       try { await idbDel(); } catch {}
-      $("forget").hidden = true;
-      status("Saved data forgotten — it won't auto-start next time.");
+      location.reload();
     });
 
-    // On load: if data is already saved, just run (open → start). Otherwise prompt for it.
+    // On load: if data is already saved, just run (open → start). Otherwise show the picker.
     let saved = null;
     try { saved = await idbGet(); } catch {}
     if (ready(saved)) use(saved, false);
-    else status("Drop your Johnny Castaway data (RESOURCE.* or a .zip) to begin.");
+    else promptForData();
   }
 </script>
 </body>
