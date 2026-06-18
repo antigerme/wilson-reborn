@@ -6,6 +6,27 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-18 — engenharia reversa do original + relatório de lacunas (KB 10)
+
+RE do `SCRANTIC.EXE` (NE Win16) contra a nossa implementação, pra responder "estamos
+esquecendo algo?". Resultado em
+[`knowledge-base/10`](knowledge-base/10-engenharia-reversa-do-original.md):
+- **`walk_data`: 489/489 entradas byte-idênticas** ao binário (layout
+  `sprite_word(flip=bit15) | x+1 | y`, stride 6, no segmento de dados em `0x188ea`).
+- **Cobertura completa**: 30/30 opcodes TTM + 18/18 ADS usados nos dados são tratados;
+  179/179 recursos parseiam; 66/66 cenas constroem; arco de 11 dias, day-beats, easter eggs,
+  23 sons e os 4 feriados (= máximo dos dados) presentes. **"4 de Julho" resolvido: ausente
+  do original (`HOLIDAY.BMP` tem só 4 sub-imagens).**
+- **API**: MMSYSTEM+GDI+KERNEL+USER (screensaver SCRNSAVE padrão) — nada escondido.
+- **Lacuna MÉDIA**: transições de cena **sem fade/wipe** (corte seco em `show.rs:296`; o
+  jc_reborn faz `grFadeOut`). Baixas: intro/fim autônomos não usados; `0x0080`/`0xA054`
+  no-ops (fiéis ao jc_reborn). **Soft spots não verificáveis no binário**: `calcpath`
+  (reconstrução) e as constantes de feriado/deriva/scheduling (reformulação do jc_reborn).
+- Veredito: **alta confiança de paridade sobre os dados**; a lógica observacional é tão fiel
+  quanto a melhor referência. `cargo test --workspace` verde (167).
+
+---
+
 ## 2026-06-17 — ícone do macOS (`.saver`)
 
 O bundle `WilsonReborn.saver` agora inclui o **nosso** ícone como `wilson.icns`
