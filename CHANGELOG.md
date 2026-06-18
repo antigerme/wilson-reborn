@@ -15,6 +15,13 @@ All notable changes to **Wilson Reborn** are recorded here. The project follows 
   data, run it. No game data is hosted (copyright-safe). *(One-time: enable Pages → Source =
   GitHub Actions.)*
 
+### Changed
+- **Web page UX (bring-your-own): zero-friction.** Picked data is now **saved on this device by
+  default** and the screensaver **auto-starts** — a return visit just opens and runs. Removed the
+  **Start**, **Save**, and **dissolve** controls from the page (advanced options stay as URL params,
+  e.g. `?dissolve`); added a **📁** button to load different data and kept **Forget**. Also: CI now
+  runs **once per PR** (no duplicate push+pull_request runs).
+
 ### Fixed
 - **Windows preview pane**: the screensaver now fills the little monitor in the Screen Saver
   settings (queries the pane's client size via `GetClientRect`) instead of sitting in the corner
