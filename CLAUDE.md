@@ -150,9 +150,18 @@ versão e mergear ANTES de taguear** (a v0.2.0 precisou de re-corte por ter sido
 do bump).
 **Melhorias pós-v0.2.0 (2026-06-18):** **QoL de tempo** (`--day N`, modo história `--story`),
 **transição opt-in** (`--transition dissolve`, o dissolve LFSR dormente do original),
-**Web/WASM** (crate `wilson-web`: engine no navegador, "traga seus `RESOURCE.*`"; build
+**Web/WASM** (crate `wilson-web`: engine no navegador — traga seus `RESOURCE.*` soltos **ou um
+`.zip`** run/instalador, ou embutido; **som** ligado por padrão 🔊+volume (Web Audio), **tela
+cheia ⛶** com fundo preto + **Wake Lock**, **opções na URL** espelhando o desktop
+[`?fullscreen/scale/filter/speed/day/dissolve/story/daynight/intro/mute/volume/seed`] com
+**`scale=fit`+`filter=linear` por padrão** como o desktop, e **salvar os dados no navegador**
+(IndexedDB, opt-in, com "Forget"); API `Options` + `Wilson.create/from_zip/embedded`; build
 **separado** via `crates/wilson-web/build-web.sh` — o `build-embedded.sh` é só desktop), e
 **pathfinding byte-fiel** (`calcpath` portado dos route streams ponderados do original via
 `docs/reverse-engineering/extract_calcpath.py` → `calcpath_data.rs`; corrigiu de quebra um bug
-de RNG com seeds pequenas). **Próximo:** cortar a **v0.3.0** (empacotar tudo isso) ou outra
-frente (a combinar com o usuário).
+de RNG com seeds pequenas).
+**Fix (2026-06-18):** o **intro passava rápido demais no desktop** — o loop winit avançava o
+engine em todo `RedrawRequested` (inclusive os espontâneos do SO), atropelando o `WaitUntil`;
+agora `pace::FramePacer` trava o avanço por deadline (teste de regressão fail-first). RE
+confirmou que o original **não tem timer de intro** (hard-cut, fica até a 1ª cena carregar).
+**Próximo:** cortar a **v0.3.0** (empacotar tudo isso) ou outra frente (a combinar com o usuário).

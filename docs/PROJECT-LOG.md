@@ -6,6 +6,24 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-18 — Web: igualar o look do desktop (fit+linear), scale/filter, Wake Lock, salvar claro
+
+Feedback do usuário sobre o web (tudo em `index.html`, sem Rust):
+- **Look igual ao desktop:** o web abria com `image-rendering: pixelated` (nearest/cru); o desktop
+  usa **`scale=Fit` + `filter=Linear`** (suave). Agora o padrão do web é **fit + linear** (canvas
+  `object-fit: contain` + `image-rendering: auto`), e há **`?scale=fit|stretch|integer`** e
+  **`?filter=linear|nearest`** (integer dimensiona ×N inteiro via JS no resize).
+- **Wake Lock:** ao entrar em tela cheia, segura `navigator.wakeLock.request('screen')` (libera ao
+  sair; re-adquire ao voltar o foco). A tela não dorme durante o screensaver em fullscreen.
+- **UX de salvar:** o checkbox "remember" não era descobrível (salvava sozinho, sem confirmação).
+  Trocado por um botão explícito **💾 Save in browser** (com "✓ Saved" + status) + **Forget**.
+- **Docs alinhados** (pergunta do usuário "os .md batem?"): `CLAUDE.md`, `README(.pt-BR).md`,
+  `ARCHITECTURE.md` (agora com o web no pipeline **e** o tick corrigido 20→**16 ms** + nota do
+  `FramePacer`), `knowledge-base/08`, `wilson-web/README.md` e `INSTALL.md`.
+- Validado: `node --check` no módulo, ids HTML×JS consistentes, sem refs órfãs.
+
+---
+
 ## 2026-06-18 — Fix: intro (e primeiros frames) passavam rápido demais no desktop
 
 Bug reportado pelo usuário: o intro (`INTRO.SCR`) sumia em **menos de 1 s**, apesar do engine

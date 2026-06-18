@@ -100,9 +100,12 @@ screensaver, run on Linux/macOS, and cut releases.
 
 > **Run it in a browser (WASM):** the engine also compiles to WebAssembly — see
 > **[`crates/wilson-web`](crates/wilson-web/README.md)**. Build it with
-> `crates/wilson-web/build-web.sh` (or `scripts/build-embedded.sh --web`). You pick your own
-> `RESOURCE.MAP`/`RESOURCE.001` in the page (read locally — nothing is uploaded), so no data is
-> bundled (unlike the desktop `embed-data` build).
+> `crates/wilson-web/build-web.sh` (or `scripts/build-embedded.sh --web`). Drop your own
+> `RESOURCE.MAP`/`RESOURCE.001` (or a `scrantic-run.zip` / `scrantic-installer.zip`) — read
+> locally, nothing uploaded — and optionally **save** it in the browser to skip the picker next
+> time. Sound is on by default (🔊 + volume), there's a **⛶ fullscreen** button (screen kept
+> awake), and URL options mirror the desktop CLI (`?fullscreen&scale=fit&filter=linear&speed=200`
+> `&day=5&dissolve&story&daynight=real&intro=0`). No data is bundled (unlike `embed-data`).
 
 ## Status
 

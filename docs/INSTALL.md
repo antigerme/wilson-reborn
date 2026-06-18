@@ -146,7 +146,8 @@ Só precisa do `wasm-bindgen-cli`; o **target wasm é adicionado automaticamente
 
 **1. Traga seus dados** (padrão) — **arraste** seus `RESOURCE.MAP`/`RESOURCE.001` (+ `SCRANTIC.EXE`
 p/ som) **ou um `scrantic-run.zip` / `scrantic-installer.zip`** (lidos localmente, nada é enviado).
-Dá pra **lembrar** os dados no navegador (IndexedDB) pra não reescolher. É o modo seguro pra hospedar:
+Dá pra **💾 Salvar** os dados no navegador (IndexedDB, opcional, com "Forget") pra não reescolher.
+É o modo seguro pra hospedar:
 
 ```bash
 cargo install wasm-bindgen-cli          # a versão precisa casar com o crate wasm-bindgen
@@ -156,9 +157,10 @@ python3 -m http.server -d crates/wilson-web/web 8000
 ```
 
 **Opções na URL** (paridade com o desktop) — `?fullscreen` (tela cheia + fundo preto),
-`?speed=25–400`, `?day=1–11`, `?dissolve`, `?story[&story_secs=N]`, `?daynight=real`, `?intro=0`,
-`?mute`, `?volume=0–100`, `?seed=N`. Há botões **🔊/🔇 + volume** e **⛶ tela cheia**; a UI/cursor
-somem após alguns segundos parados.
+`?scale=fit|stretch|integer` e `?filter=linear|nearest` (**padrão `fit`+`linear`, igual ao
+desktop**), `?speed=25–400`, `?day=1–11`, `?dissolve`, `?story[&story_secs=N]`, `?daynight=real`,
+`?intro=0`, `?mute`, `?volume=0–100`, `?seed=N`. Há botões **🔊/🔇 + volume** e **⛶ tela cheia**
+(que mantém a tela acordada via **Wake Lock**); a UI/cursor somem após alguns segundos parados.
 
 **2. Autossuficiente** (uso pessoal) — embute os `RESOURCE.*` **+ os sons** (do `SCRANTIC.EXE`)
 no `.wasm` (feature `embed-data`), então a página **abre e roda** sem seletor. Aponte

@@ -32,6 +32,11 @@ RESOURCE.MAP + RESOURCE.001  (original 1992 game data — copyright, not version
 ```
 
 `wilson-saver` is the same engine exposed via FFI for the native macOS screensaver.
+`wilson-web` is the same engine compiled to **wasm32**: the browser supplies the bytes (the
+user's `RESOURCE.*` — loose files or a `.zip` — or compile-time-embedded data), JS calls
+`Wilson::frame` on a timer and draws the returned RGBA into a `<canvas>`. Same pipeline, no
+server, with sound (Web Audio), fullscreen, and desktop-mirrored options — see
+[`crates/wilson-web`](../crates/wilson-web/README.md).
 
 ## The frame-production loop (the heart)
 
@@ -48,13 +53,14 @@ RESOURCE.MAP + RESOURCE.001  (original 1992 game data — copyright, not version
 
 ## Timing (the part that has bitten us)
 
-- Unit: **1 tick = 20 ms**. The frame carries `delay_ticks`; the app waits
-  `frame_delay_ms(ticks) = ticks * 20 * 100 / speed` ms (`config.rs`).
-- This is **identical** to `jc_reborn`: `eventsWaitTick(delay)` does `delay *= 20`
-  (`events.c`), with `grUpdateDelay = mini` (`ads.c`).
-- ⚠️ The pacing is only correct if the app **honors** `delay_ticks`. The winit loop must
-  redraw **only** when the timer fires (`StartCause::ResumeTimeReached`), never on every
-  `AboutToWait` (that bypasses `WaitUntil` and runs too fast). See `main.rs`.
+- Unit: **1 tick = 16 ms** (`wilson_engine::MS_PER_TICK`, re-derived from the binary — see
+  KB10 §10.1; was 20 ms, jc_reborn's approximation). The frame carries `delay_ticks`; the app
+  waits `frame_delay_ms(ticks) = ticks * 16 * 100 / speed` ms (`config.rs`).
+- ⚠️ The pacing is only correct if the app **honors** `delay_ticks`. The winit loop redraws
+  when our timer fires (`StartCause::ResumeTimeReached`), never on every `AboutToWait` (that
+  bypasses `WaitUntil` and runs too fast) — **and** gates engine-advance on a per-frame deadline
+  (`pace::FramePacer`) so spurious OS redraws (the startup burst, resizes, scale changes) can't
+  race ahead and make the intro / first frames flash by. See `main.rs`.
 
 ## Island drift (the "balloon off-screen" part)
 
