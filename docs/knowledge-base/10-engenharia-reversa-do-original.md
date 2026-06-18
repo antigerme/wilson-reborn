@@ -266,7 +266,12 @@ unit is exactly 16 ms with sub-frame jitter absorbed by gating on real time.
 The universal present primitive **`seg8:06ce`** (called from seg2/3/5/11/12/13) rounds the rect to 8-px
 and does **one** `StretchBlt` (2× scale, ROP SRCCOPY) or `BitBlt` (1×) from the offscreen buffer to the
 screen — **no band loop, no per-frame reveal**. `INTRO.SCR` is presented the same way (`seg2:14e4`). So
-**every scene change and the intro are hard cuts** — our behaviour is faithful.
+**every scene change and the intro are hard cuts** — our behaviour is faithful. *Intro timing:* at
+`seg2:1502` the original blits `INTRO.SCR` to the screen and **the very next instruction** (`seg2:150a`)
+starts the 16 ms timer and enters the loop — there is **no intro hold timer**; the title simply stays
+up until the first scene is drawn (on 1992 disk hardware that load took a few seconds). So a fixed hold
+is our approximation; the desktop now gates engine-advance on a per-frame deadline (`pace::FramePacer`)
+so spurious OS redraws can't make the intro/first frames flash by (regression fixed 2026-06-18).
 - *Discovery:* a transition effect **exists but is disabled**. `seg12:198a` branches on `[0x1ebf]`
   (`seg12:19c7`): if 0 → plain `seg8:06ce`; if ≠0 → a **random-order tiled dissolve** driven by an LFSR
   (`shr`/`xor`), with per-cell blit fn-ptrs `[0x40b0]/[0x40b2]` and a per-frame timing gate. The LFSR
