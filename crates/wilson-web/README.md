@@ -15,7 +15,8 @@ Sound is **on by default** (🔊/🔇 + volume). A **⛶ fullscreen** button kee
 black-letterboxed and holds a **Screen Wake Lock**; the UI/cursor fade when idle. The display
 matches the desktop defaults (**`scale=fit` + `filter=linear`**). URL options mirror the desktop
 CLI: `?fullscreen&scale=fit|stretch|integer&filter=linear|nearest&speed=200&day=5&dissolve&story`
-`&story_secs=60&daynight=real&intro=0&mute&volume=50&seed=…`.
+`&story_secs=60&daynight=real&intro=0&intro_secs=3&mute&volume=50&seed=…`. (`?dissolve` also
+dissolves the intro→first-scene; the intro hold is `?intro_secs`, default 3 s.)
 
 > The game data is **copyright** Sierra/Dynamix and is **never** committed here. For the
 > self-contained build you supply your own originals (read only at build time); the resulting

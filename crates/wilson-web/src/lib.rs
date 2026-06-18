@@ -57,6 +57,8 @@ pub struct Options {
     /// Show the original's intro screen (`INTRO.SCR`) once at startup (on by default, like the
     /// original's `Introduction` option).
     pub intro: bool,
+    /// How long to hold the intro screen, in seconds; `0` ⇒ default (3). Clamped to `1..=30`.
+    pub intro_secs: u32,
     /// Play the whole arc in order (day 1 → 11 → 1 …) on a fixed cadence, ignoring real days.
     pub story: bool,
     /// Story-mode cadence: real seconds per story day; `0` ⇒ [`DEFAULT_STORY_DAY_SECS`].
@@ -77,6 +79,7 @@ impl Options {
             speed: 0,
             dissolve: false,
             intro: true,
+            intro_secs: 0,
             story: false,
             story_secs: 0,
             real_daynight: false,
@@ -280,7 +283,12 @@ impl Wilson {
             show.enable_dissolve();
         }
         if opts.intro {
-            show.enable_intro(&archive);
+            let secs = if opts.intro_secs == 0 {
+                3
+            } else {
+                opts.intro_secs.clamp(1, 30)
+            };
+            show.enable_intro(&archive, wilson_engine::intro_ticks_from_secs(secs));
         }
 
         let sounds = match exe {

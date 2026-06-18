@@ -280,6 +280,13 @@ so spurious OS redraws can't make the intro/first frames flash by (regression fi
   the fn-ptrs are null — so the dissolve **never runs** (likely an authoring/debug feature left compiled-in).
   Confidence: **HIGH**. ⇒ This is the basis for our **opt-in "dissolve" transition**: resurrecting the
   original's own effect (default off = faithful hard cut).
+  - *Re-verified (2026-06-18) by a **whole-binary** byte scan* (not just the 74.5% recursive disasm): the
+    word `0x1ebf` appears in **10 instructions — all reads** (9× `cmp byte [0x1ebf], 0` gating the dissolve
+    in `seg7`/`seg12`, 1× `mov al,[0x1ebf]`); **0 writes** (no `a2/a3/c6 06/c7 06/88 06/89 06 …`). So the
+    gate is provably never set ⇒ the dissolve is dead **everywhere, including leaving the intro** (`INTRO.SCR`
+    hard-cuts into the first scene). A user's memory of "the intro always dissolved" is the *coded-but-disabled*
+    effect, not the shipped behaviour. (We expose it **opt-in**, and `--transition dissolve`/`?dissolve` now
+    also covers the intro→first-scene boundary.)
 
 ### 10.3 `calcpath` = a real **6×6 word-pointer route table**
 Routing is **table-driven** (not geometric). Lookup `seg4:03ac`, called as `route([0x30e0]=start,

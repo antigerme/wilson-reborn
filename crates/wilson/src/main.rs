@@ -10,8 +10,8 @@
 //! - `wilson --data <dir>` — load the data from `<dir>`.
 //! - `wilson` — auto-detects the data in the working directory or next to the executable.
 //! - `wilson --windowed --mute --speed <pct> --scale fit|stretch|integer|extend
-//!   --filter nearest|linear|xbr|xbrz --dedither --no-intro --day <1-11> --story
-//!   --story-secs <s> --transition none|dissolve` — options (`extend` fills widescreen;
+//!   --filter nearest|linear|xbr|xbrz --dedither --no-intro --intro-secs <s> --day <1-11>
+//!   --story --story-secs <s> --transition none|dissolve` — options (`extend` fills widescreen;
 //!   `--story` plays the arc in order; `--transition dissolve` = the original's tiled dissolve).
 //! - Windows screensaver verbs: `/s` (show), `/c` (config — opens the settings file),
 //!   `/p <hwnd>` (preview embedded in the configuration pane — Windows only).
@@ -176,7 +176,11 @@ fn main() {
         .unwrap_or(0x9E37_79B9_7F4A_7C15);
     let mut show = Show::new(&archive, &palette, 640, 480, director, clock, seed);
     if cfg.intro {
-        show.enable_intro(&archive); // the original's startup intro screen (INTRO.SCR)
+        // the original's startup intro screen (INTRO.SCR), held for the configured seconds
+        show.enable_intro(
+            &archive,
+            wilson_engine::intro_ticks_from_secs(cfg.intro_secs),
+        );
     }
     if cfg.transition == config::Transition::Dissolve {
         show.enable_dissolve(); // the original's dormant LFSR tiled dissolve, opt-in
@@ -604,7 +608,7 @@ fn print_config_info(cfg: &config::Config) {
     println!("  dedither: {}", cfg.dedither);
     println!("  daynight: {}", cfg.daynight.as_str());
     println!("  debug:    {}", cfg.debug);
-    println!("  intro:    {}", cfg.intro);
+    println!("  intro:    {} ({} s)", cfg.intro, cfg.intro_secs);
     println!(
         "  day:      {}",
         if cfg.day == 0 {
@@ -681,6 +685,9 @@ fn print_help() {
     println!("  --debug                          diagnostics: stdout status + on-screen HUD");
     println!("  --daynight <original|real24h>    day/night cycle (default: original 8h)");
     println!("  --no-intro                       skip the startup intro screen (default: shown)");
+    println!(
+        "  --intro-secs <S>                 how long to hold the intro screen (1-30; default 3)"
+    );
     println!("  --day <1-11>                     start the 11-day story arc at this day");
     println!("  --story                          play the whole arc in order (day 1->11->1...)");
     println!("  --story-secs <S>                 story mode: real seconds per day (default 90)");
