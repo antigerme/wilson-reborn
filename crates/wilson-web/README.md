@@ -6,14 +6,16 @@ as the desktop app, no server. Two modes:
 
 - **Bring your own data** (default): drop your `RESOURCE.MAP` + `RESOURCE.001` (and
   `SCRANTIC.EXE` for sound), **or a `scrantic-run.zip` / `scrantic-installer.zip`** — read
-  **locally** (nothing uploaded). Optionally *remembered* in the browser (IndexedDB) so you
-  don't pick it again. Safe to host.
+  **locally** (nothing uploaded). Optionally **💾 Save** it in the browser (IndexedDB, opt-in,
+  with *Forget*) so you don't pick it again. Safe to host.
 - **Self-contained** (`embed-data` feature, personal use): the `RESOURCE.*` (+ sounds) are baked
   into the `.wasm` at build time, so the page just runs — no file picker.
 
-Sound is **on by default** (🔊/🔇 + volume). A **⛶ fullscreen** button (black-letterboxed) and
-URL options mirror the desktop CLI:
-`?fullscreen&speed=200&day=5&dissolve&story&story_secs=60&daynight=real&intro=0&mute&volume=50&seed=…`.
+Sound is **on by default** (🔊/🔇 + volume). A **⛶ fullscreen** button keeps the canvas
+black-letterboxed and holds a **Screen Wake Lock**; the UI/cursor fade when idle. The display
+matches the desktop defaults (**`scale=fit` + `filter=linear`**). URL options mirror the desktop
+CLI: `?fullscreen&scale=fit|stretch|integer&filter=linear|nearest&speed=200&day=5&dissolve&story`
+`&story_secs=60&daynight=real&intro=0&mute&volume=50&seed=…`.
 
 > The game data is **copyright** Sierra/Dynamix and is **never** committed here. For the
 > self-contained build you supply your own originals (read only at build time); the resulting

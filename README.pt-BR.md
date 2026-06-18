@@ -101,9 +101,12 @@ no Windows, rodar no Linux/macOS e publicar releases.
 
 > **Rodar no navegador (WASM):** a engine também compila para WebAssembly — veja
 > **[`crates/wilson-web`](crates/wilson-web/README.md)**. Gere com
-> `crates/wilson-web/build-web.sh` (ou `scripts/build-embedded.sh --web`). Você escolhe seus
-> próprios `RESOURCE.MAP`/`RESOURCE.001` na página (lidos localmente — nada é enviado), então
-> nenhum dado é embutido (diferente do `embed-data` do desktop).
+> `crates/wilson-web/build-web.sh` (ou `scripts/build-embedded.sh --web`). Arraste seus próprios
+> `RESOURCE.MAP`/`RESOURCE.001` (ou um `scrantic-run.zip` / `scrantic-installer.zip`) — lidos
+> localmente, nada é enviado — e, se quiser, **salve** no navegador pra não reescolher depois.
+> Som ligado por padrão (🔊 + volume), botão de **⛶ tela cheia** (mantém a tela acordada) e
+> opções na URL espelhando o desktop (`?fullscreen&scale=fit&filter=linear&speed=200&day=5&`
+> `dissolve&story&daynight=real&intro=0`). Nenhum dado é embutido (diferente do `embed-data`).
 
 ## Status
 

@@ -14,17 +14,23 @@
     font: 15px/1.5 system-ui, sans-serif;
   }
   h1 { margin: .2rem; font-size: 1.1rem; font-weight: 600; }
-  /* The stage centres the 4:3 canvas on black; in fullscreen it fills the screen (letterbox). */
+  /* The stage centres the canvas on black; in fullscreen it fills the screen. The canvas is
+     scaled per the `scale` mode (fit = letterbox, the desktop default; stretch = fill;
+     integer = crisp ×N, sized by JS) using the `filter` sampling (linear = smooth, the
+     desktop default; nearest = crisp 1992 pixels). */
   #stage {
     display: flex; align-items: center; justify-content: center;
     width: min(96vw, 128vh); aspect-ratio: 4 / 3; background: #000;
     border: 1px solid #1e2536; border-radius: 6px; overflow: hidden;
   }
-  #stage:fullscreen { width: 100vw; height: 100vh; max-width: none; border: 0; border-radius: 0; }
+  #stage:fullscreen { width: 100vw; height: 100vh; max-width: none; border: 0; border-radius: 0; aspect-ratio: auto; }
   #screen {
-    image-rendering: pixelated;                 /* crisp 1992 pixels when scaled up */
-    max-width: 100%; max-height: 100%; aspect-ratio: 4 / 3; background: #000;
+    width: 100%; height: 100%; object-fit: contain;  /* scale=fit (default): letterbox, keep 4:3 */
+    image-rendering: auto;                            /* filter=linear (default): smooth, like the desktop */
+    background: #000;
   }
+  #stage.scale-stretch #screen { object-fit: fill; }           /* ignore aspect ratio, fill the stage */
+  #stage.filt-nearest #screen { image-rendering: pixelated; }  /* crisp/retro 1992 pixels */
   #panel { display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; align-items: center; max-width: 96vw; justify-content: center; }
   label { display: inline-flex; gap: .4rem; align-items: center; }
   #status { min-height: 1.2em; color: #f9e2af; text-align: center; }
@@ -60,9 +66,9 @@
       Data files / .zip <input id="files" type="file" multiple />
     </label>
     <label title="The original's dormant tiled dissolve, resurrected"><input id="dissolve" type="checkbox" /> dissolve</label>
-    <label title="Keep the data in this browser (IndexedDB) so you don't pick it again. Nothing is uploaded."><input id="remember" type="checkbox" /> remember</label>
-    <button id="forget" hidden>Forget saved data</button>
     <button id="start" disabled>Start</button>
+    <button id="save" hidden title="Keep this data in your browser (IndexedDB) so you don't pick it again. Nothing is uploaded — it stays on this device.">💾 Save in browser</button>
+    <button id="forget" hidden>Forget saved data</button>
   </div>
 
   <div id="status"></div>
@@ -70,7 +76,9 @@
     The game data is copyright Sierra/Dynamix and is <strong>not</strong> bundled — drop your own
     <code>RESOURCE.MAP</code> + <code>RESOURCE.001</code> (add <code>SCRANTIC.EXE</code> for sound), or a
     <code>scrantic-run.zip</code> / <code>scrantic-installer.zip</code>. Everything runs locally; nothing is uploaded.
-    URL options: <code>?fullscreen&amp;speed=200&amp;day=5&amp;dissolve&amp;story&amp;daynight=real&amp;intro=0&amp;mute&amp;seed=…</code>
+    You can optionally <strong>💾 Save</strong> it in this browser to skip the picker next time.
+    URL options (mirror the desktop): <code>?fullscreen &amp; scale=fit|stretch|integer &amp; filter=linear|nearest &amp;
+    speed=200 &amp; day=5 &amp; dissolve &amp; story &amp; daynight=real &amp; intro=0 &amp; mute &amp; volume=50 &amp; seed=…</code>
   </p>
 
 <script type="module">
@@ -157,6 +165,54 @@
   }
   $("fs").addEventListener("click", toggleFullscreen);
 
+  // ---- scale & filter (mirror the desktop defaults: scale=fit + filter=linear) ------------
+  const scaleMode = (P.get("scale") || "fit").toLowerCase(); // fit | stretch | integer
+  const filterMode = ["nearest", "crisp", "pixel", "none"].includes((P.get("filter") || "").toLowerCase())
+    ? "nearest"
+    : "linear"; // linear (smooth) is the desktop default
+  const stage = $("stage");
+  function applyScale() {
+    stage.classList.toggle("scale-stretch", scaleMode === "stretch");
+    stage.classList.toggle("filt-nearest", filterMode === "nearest");
+    const screen = $("screen");
+    if (scaleMode === "integer") {
+      // Largest integer multiple of 640×480 that fits the stage (crisp ×N, centred).
+      const r = stage.getBoundingClientRect();
+      const k = Math.max(1, Math.floor(Math.min(r.width / 640, r.height / 480)));
+      screen.style.width = k * 640 + "px";
+      screen.style.height = k * 480 + "px";
+    } else {
+      screen.style.width = "";
+      screen.style.height = "";
+    }
+  }
+  applyScale();
+  window.addEventListener("resize", applyScale);
+
+  // ---- keep the screen awake while in fullscreen (Screen Wake Lock API) -------------------
+  let wakeLock = null;
+  async function acquireWakeLock() {
+    try {
+      if ("wakeLock" in navigator && document.fullscreenElement && !wakeLock) {
+        wakeLock = await navigator.wakeLock.request("screen");
+        wakeLock.addEventListener?.("release", () => { wakeLock = null; });
+      }
+    } catch {}
+  }
+  function releaseWakeLock() {
+    try { wakeLock?.release(); } catch {}
+    wakeLock = null;
+  }
+  document.addEventListener("fullscreenchange", () => {
+    applyScale();
+    if (document.fullscreenElement) acquireWakeLock();
+    else releaseWakeLock();
+  });
+  // Wake locks drop when the tab is hidden; re-acquire on return if still fullscreen.
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && document.fullscreenElement) acquireWakeLock();
+  });
+
   let idleTimer = null;
   const poke = () => {
     document.body.classList.remove("idle");
@@ -197,7 +253,7 @@
     return wilson.has_sound();
   }
 
-  // ---- IndexedDB: optionally remember the user's data on this device ----------------------
+  // ---- IndexedDB: optionally save the user's data on this device (explicit, opt-in) -------
   const DB = "wilson", STORE = "data", KEY = "data";
   const idb = () => new Promise((res, rej) => {
     const r = indexedDB.open(DB, 1);
@@ -243,7 +299,7 @@
       status("Could not start: " + err);
     }
   } else {
-    // Bring-your-own: loose files or a zip, with optional drag-and-drop + remember.
+    // Bring-your-own: loose files or a zip, with optional drag-and-drop + save-in-browser.
     let pending = null; // the gathered data record, awaiting Start
 
     async function gather(fileList) {
@@ -259,18 +315,20 @@
       return d;
     }
     function ready(d) { return !!(d && (d.zip || (d.map && d.data))); }
-    function accept(d, label) {
+    function accept(d) {
       pending = d;
-      $("start").disabled = !ready(d);
-      status(ready(d)
-        ? `Ready${label ? " (" + label + ")" : ""} — click Start.`
+      const ok = ready(d);
+      $("start").disabled = !ok;
+      // Offer to persist the picked data — an explicit, confirmed action, never automatic.
+      $("save").hidden = !ok;
+      if (ok) { $("save").disabled = false; $("save").textContent = "💾 Save in browser"; }
+      status(ok
+        ? `Ready (${d.zip ? "zip" : "files"}) — click Start.`
         : "Need RESOURCE.MAP + RESOURCE.001 (or a .zip).");
     }
 
     async function onPicked(fileList) {
-      const d = await gather(fileList);
-      if (ready(d) && $("remember").checked) { try { await idbPut(d); } catch {} }
-      accept(d, d.zip ? "zip" : "files");
+      accept(await gather(fileList));
     }
 
     $("files").addEventListener("change", (e) => onPicked(e.target.files));
@@ -286,17 +344,41 @@
       try { startFromData(pending); } catch (err) { status("Could not start: " + err); }
     });
 
-    $("forget").addEventListener("click", async () => { try { await idbDel(); } catch {} $("forget").hidden = true; status("Saved data forgotten."); });
+    // Save / forget the data in this browser (IndexedDB) — explicit, with confirmation.
+    $("save").addEventListener("click", async () => {
+      if (!ready(pending)) return;
+      try {
+        await idbPut(pending);
+        $("save").textContent = "✓ Saved";
+        $("save").disabled = true;
+        $("forget").hidden = false;
+        status("✓ Saved in this browser — it'll load automatically next time.");
+      } catch (e) {
+        status("Could not save: " + e);
+      }
+    });
+    $("forget").addEventListener("click", async () => {
+      try { await idbDel(); } catch {}
+      $("forget").hidden = true;
+      if (ready(pending)) {
+        $("save").hidden = false;
+        $("save").disabled = false;
+        $("save").textContent = "💾 Save in browser";
+      }
+      status("Saved data forgotten.");
+    });
 
-    // On load: offer remembered data, if any.
+    // On load: offer saved data, if any (already persisted, so present it as saved).
     try {
       const saved = await idbGet();
       if (ready(saved)) {
         pending = saved;
-        $("remember").checked = true;
-        $("forget").hidden = false;
         $("start").disabled = false;
-        status("Remembered data found — click Start (or pick different files).");
+        $("save").hidden = false;
+        $("save").textContent = "✓ Saved";
+        $("save").disabled = true;
+        $("forget").hidden = false;
+        status("Saved data found — click Start (or pick different files).");
       }
     } catch {}
   }
