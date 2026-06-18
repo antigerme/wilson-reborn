@@ -13,8 +13,13 @@
 //!   --filter nearest|linear|xbr|xbrz --dedither --no-intro --day <1-11> --story
 //!   --story-secs <s> --transition none|dissolve` — options (`extend` fills widescreen;
 //!   `--story` plays the arc in order; `--transition dissolve` = the original's tiled dissolve).
-//! - Windows screensaver verbs: `/s` (show), `/c` (config), `/p <hwnd>` (preview embedded
-//!   in the configuration pane — Windows only).
+//! - Windows screensaver verbs: `/s` (show), `/c` (config — opens the settings file),
+//!   `/p <hwnd>` (preview embedded in the configuration pane — Windows only).
+
+// A screensaver is a GUI program: on Windows, link it for the "windows" subsystem so the
+// `.scr` doesn't pop a black console window when launched from the Screen Saver settings.
+// Kept in debug builds so `--debug` logging still has a console to print to.
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 #[cfg(not(feature = "embed-data"))]
 mod assets;
@@ -90,7 +95,7 @@ fn main() {
     let action = screensaver_action(&args);
     match action {
         Action::Configure => {
-            print_config_info(&cfg);
+            configure(&cfg);
             return;
         }
         Action::Preview(_) if !cfg!(windows) => {
@@ -110,7 +115,8 @@ fn main() {
     #[cfg(feature = "embed-data")]
     let (archive, palette, audio) = {
         let (archive, palette) = embedded::archive_and_palette();
-        let audio = audio::Audio::from_sounds(embedded::sound_bytes(), cfg.mute);
+        let audio =
+            audio::Audio::from_sounds(embedded::sound_bytes(), audio_muted(cfg.mute, is_preview));
         (archive, palette, audio)
     };
     #[cfg(not(feature = "embed-data"))]
@@ -137,7 +143,7 @@ fn main() {
         };
         // Sound effects: soundN.wav in the data dir, else extracted from SCRANTIC.EXE/.SCR
         // there. Degrades to silence without the `audio` feature, a device, or mute.
-        let audio = audio::Audio::new(Some(data_dir.as_path()), cfg.mute);
+        let audio = audio::Audio::new(Some(data_dir.as_path()), audio_muted(cfg.mute, is_preview));
         (archive, palette, audio)
     };
 
@@ -527,6 +533,36 @@ fn parse_hwnd(s: &str) -> Option<isize> {
     }
 }
 
+/// Whether audio should be silenced: when muted by config, **or** in the Windows preview pane
+/// (the little monitor in the Screen Saver settings must never play sound).
+fn audio_muted(cfg_mute: bool, is_preview: bool) -> bool {
+    cfg_mute || is_preview
+}
+
+/// Handle the screensaver **Configure** verb (`/c`). Our settings live in a text file
+/// (`config.txt`, with a commented option for each setting). On Windows a `.scr` has no
+/// console, so open that file in the default editor for the user to edit; elsewhere (where a
+/// console exists) print the current settings.
+fn configure(cfg: &config::Config) {
+    #[cfg(windows)]
+    if let Some(path) = config::config_file() {
+        // The file is already seeded in `main`; open it so the user can edit the options.
+        // Prefer Notepad (always present, handles the path verbatim); fall back to the shell's
+        // default handler.
+        if std::process::Command::new("notepad")
+            .arg(&path)
+            .spawn()
+            .is_err()
+        {
+            let _ = std::process::Command::new("cmd")
+                .args(["/C", "start", "", &path.display().to_string()])
+                .spawn();
+        }
+        return;
+    }
+    print_config_info(cfg);
+}
+
 /// Apply the Windows preview-window settings: make the window a borderless child of the
 /// preview pane (`hwnd`). A no-op on other platforms (where `/p` isn't used).
 fn apply_preview(builder: WindowBuilder, hwnd: isize) -> WindowBuilder {
@@ -653,7 +689,7 @@ fn print_help() {
     if cfg!(windows) {
         println!("\nWINDOWS SCREENSAVER VERBS (as the OS invokes a .scr):");
         println!("  /s                               show the screensaver (same as no args)");
-        println!("  /c                               show the configuration");
+        println!("  /c                               configure (opens the settings file)");
         println!("  /p <HWND>                        preview inside the configuration pane");
         println!("  /?, /help                        show this help");
     }
@@ -822,6 +858,25 @@ mod tests {
             Action::Preview(5678)
         );
         assert_eq!(screensaver_action(&args(&["-p"])), Action::Preview(0));
+    }
+
+    #[test]
+    fn preview_pane_is_always_silent() {
+        // Regression: the little preview monitor in the Screen Saver settings ran the engine
+        // with sound. It must be muted regardless of the config's mute setting.
+        assert!(
+            audio_muted(false, true),
+            "preview must be silent even when not muted"
+        );
+        assert!(
+            audio_muted(true, true),
+            "preview stays silent when muted too"
+        );
+        assert!(
+            audio_muted(true, false),
+            "config mute still mutes a normal run"
+        );
+        assert!(!audio_muted(false, false), "a normal run plays sound");
     }
 
     #[test]
