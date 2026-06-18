@@ -1,120 +1,120 @@
-# 09 — Auditoria de paridade e easter eggs
+# 09 — Parity and easter eggs audit
 
-> Resposta direta a "**não perder nenhum recurso**": confronta a [bíblia de
-> conteúdo](02-biblia-de-conteudo.md) (tudo que o original tem) com o que o Wilson
-> Reborn já faz. Atualizar quando recursos forem (re)implementados.
+> A direct answer to "**lose no resource**": it compares the [content
+> bible](02-biblia-de-conteudo.md) (everything the original has) with what Wilson
+> Reborn already does. Update when resources are (re)implemented.
 
-> **Pivô 2026-06-15:** o **pack recriado foi removido**. O Wilson Reborn agora usa
-> **100% os arquivos originais**, então o caminho `--data` (paridade total abaixo) é o
-> **único** caminho — e é a experiência completa. As menções ao "pack recriado" / coluna
-> **R** abaixo ficam só como registro histórico.
+> **Pivot 2026-06-15:** the **recreated pack was removed**. Wilson Reborn now uses
+> **100% the original files**, so the `--data` path (total parity below) is the
+> **only** path — and it is the complete experience. The mentions of the "recreated pack" / the
+> **R** column below remain only as a historical record.
 
-## Conclusão em 30 segundos
+## Conclusion in 30 seconds
 
-O conteúdo vem **100% dos arquivos originais** (`--data`): **paridade TOTAL**. O engine
-**interpreta os scripts originais** (`.ADS`/`.TTM` do `RESOURCE.001`), então **todos os
-63 cenas, gags, easter eggs, visitantes e beats de enredo aparecem exatamente como no
-original** — não reimplementamos cada gag, nós **executamos os mesmos bytecodes**.
-Validado de ponta a ponta (ver [08](08-decisoes-e-status.md), teste `real_data`).
+The content comes **100% from the original files** (`--data`): **TOTAL parity**. The engine
+**interprets the original scripts** (`.ADS`/`.TTM` from `RESOURCE.001`), so **all the
+63 scenes, gags, easter eggs, visitors and plot beats appear exactly as in the
+original** — we do not reimplement each gag, we **execute the same bytecodes**.
+Validated end to end (see [08](08-decisoes-e-status.md), the `real_data` test).
 
-### Cobertura de opcodes — 100% (auditado 2026-06-15)
+### Opcode coverage — 100% (audited 2026-06-15)
 
-Auditamos **todos** os opcodes que os dados reais usam (41 TTM + 10 ADS) vs o que o
-engine trata:
-- **ADS:** 100% coberto.
-- **TTM:** 100% coberto. Os opcodes de "zona salva" **`COPY_ZONE_TO_BG` (0x4204)** e
-  **`RESTORE_ZONE` (0xA064)** — usados pelo **gag do cargueiro gigante** — agora estão
-  implementados (camada de zonas salvas composta entre fundo e threads, como o
-  `grUpdateDisplay` do `jc_reborn`). Os demais opcodes que o engine trata como no-op
+We audited **all** the opcodes the real data uses (41 TTM + 10 ADS) vs what the
+engine handles:
+- **ADS:** 100% covered.
+- **TTM:** 100% covered. The "saved zone" opcodes **`COPY_ZONE_TO_BG` (0x4204)** and
+  **`RESTORE_ZONE` (0xA064)** — used by the **giant cargo ship gag** — are now
+  implemented (a saved-zone layer composed between background and threads, like
+  jc_reborn's `grUpdateDisplay`). The other opcodes the engine treats as no-op
   (`LOAD_PALETTE` 0xF05F, `SET_PALETTE_SLOT`, `SAVE_IMAGE1`, `SAVE_ZONE`, `DRAW_SCREEN`,
-  `SET_FRAME1`) **também são no-op no `jc_reborn`** ⇒ batemos com a referência.
+  `SET_FRAME1`) **are also no-op in `jc_reborn`** ⇒ we match the reference.
 
-Ou seja: **não há mais nenhum opcode dos dados reais sendo silenciosamente ignorado**.
+That is: **there is no longer any opcode from the real data being silently ignored**.
 
-> *(Histórico)* Houve um **pack recriado embutido** (arte procedural) com lógica completa
-> mas visual placeholder; foi **removido** em 2026-06-15 por não atingir a qualidade
-> desejada. A coluna **R** nas tabelas abaixo refletia esse pack.
+> *(History)* There was an **embedded recreated pack** (procedural art) with complete logic
+> but placeholder visuals; it was **removed** on 2026-06-15 because it did not reach the desired
+> quality. The **R** column in the tables below reflected that pack.
 
-> Em resumo: **nada do original se perde** — está tudo acessível via `--data`
-> (ou auto-detecção, ou o build `embed-data`). Como o foco passou a ser **100% os dados
-> originais**, **não há nada pendente de "arte recriada"**: a experiência completa é a do
+> In short: **nothing from the original is lost** — it is all accessible via `--data`
+> (or auto-detection, or the `embed-data` build). Since the focus became **100% the original
+> data**, **there is nothing pending for "recreated art"**: the complete experience is the one of the
 > original.
 
-## Lógica do diretor — paridade ✅ (com testes)
+## Director logic — parity ✅ (with tests)
 
-Tudo isto é portado fielmente de `story.c`/`story_data.h` e **coberto por testes**
+All of this is faithfully ported from `story.c`/`story_data.h` and **covered by tests**
 (`crates/wilson-engine/src/story.rs`):
 
-| Recurso | Estado | Onde |
+| Resource | State | Where |
 |---|---|---|
-| Tabela de **63 cenas** (10 `.ADS`) | ✅ | `STORY_SCENES` (teste `table_has_63_scenes`) |
-| Arco de **11 dias** + avanço por data real + reinício | ✅ | `Director::advance_day` (teste `advance_day_clamps_and_wraps`) |
-| **Beats de enredo** dos 11 dias (Mary/Suzy/Johnny) | ✅ | campo `day` (teste `day_beats_match_the_story`) |
-| **4 feriados** com faixas de data exatas | ✅ | `holiday_for_date` (teste `holidays`) |
-| **Jangada** (5 estágios por dia) | ✅ | `raft_for_day` (teste `night_and_raft`) |
-| **Maré** baixa/alta + **noite** | ✅ | `island_from_scene`, `is_night` |
-| **Dia/noite 24h** (melhoria opcional) | ✅ | `DayNight` (teste `night_24h_cycle`) |
-| **Pathfinding** 2ª ordem + **walk** entre spots | ✅ | `path`/`walk` (testes próprios) |
-| **Props de feriado** desenhados na ilha | ✅ | `island.rs` (compostos no cenário) |
+| Table of **63 scenes** (10 `.ADS`) | ✅ | `STORY_SCENES` (test `table_has_63_scenes`) |
+| **11-day** arc + advance by real date + restart | ✅ | `Director::advance_day` (test `advance_day_clamps_and_wraps`) |
+| **Plot beats** of the 11 days (Mary/Suzy/Johnny) | ✅ | `day` field (test `day_beats_match_the_story`) |
+| **4 holidays** with exact date ranges | ✅ | `holiday_for_date` (test `holidays`) |
+| **Raft** (5 stages per day) | ✅ | `raft_for_day` (test `night_and_raft`) |
+| **Tide** low/high + **night** | ✅ | `island_from_scene`, `is_night` |
+| **24h day/night** (optional improvement) | ✅ | `DayNight` (test `night_24h_cycle`) |
+| **Pathfinding** 2nd-order + **walk** between spots | ✅ | `path`/`walk` (own tests) |
+| **Holiday props** drawn on the island | ✅ | `island.rs` (composed onto the scenery) |
 
-### Feriados (faixas confirmadas iguais ao original)
+### Holidays (ranges confirmed identical to the original)
 
-| Feriado | Faixa | `Holiday` |
+| Holiday | Range | `Holiday` |
 |---|---|---|
-| Ano Novo | 29/12 → 01/01 | `NewYear` |
-| São Patrício | 15/03 → 17/03 | `StPatrick` |
-| Halloween | 29/10 → 31/10 | `Halloween` |
-| Natal | 23/12 → 25/12 | `Christmas` |
+| New Year | 12/29 → 01/01 | `NewYear` |
+| St. Patrick | 03/15 → 03/17 | `StPatrick` |
+| Halloween | 10/29 → 10/31 | `Halloween` |
+| Christmas | 12/23 → 12/25 | `Christmas` |
 
-A bíblia nota o desejo de **tabela extensível** (ex.: 4 de Julho) — possível melhoria
-futura (precisa de novos `Holiday` + props; degrada com `--data`, cujo `HOLIDAY.BMP` só
-tem 4 sprites).
+The bible notes the desire for an **extensible table** (e.g. July 4) — a possible future
+improvement (it needs new `Holiday` + props; degrades with `--data`, whose `HOLIDAY.BMP` only
+has 4 sprites).
 
-## Gags, personagens e easter eggs — status
+## Gags, characters and easter eggs — status
 
-Legenda: **D** = aparece com `--data` (script original) · **R** = arte recriada no pack
-embutido.
+Legend: **D** = appears with `--data` (original script) · **R** = recreated art in the
+embedded pack.
 
-| Recurso (bíblia §3–§10) | D | R | Observação |
+| Resource (bible §3–§10) | D | R | Note |
 |---|:--:|:--:|---|
-| Pesca (capturas comuns/raras, polvão, tubarão-esqui, ambidestria) | ✅ | ❌ | script original roda; arte recriada pendente |
-| Natação/mergulho + júri de bichos | ✅ | ❌ | |
-| Banho + gaivota ladra + susto do tubarão | ✅ | ❌ | |
-| Leitura (livro de cabeça pra baixo, cochilo→coco) | ✅ | ❌ | |
-| Dormir/roncar + amarração pelos piratas | ✅ | ❌ | |
-| Fogo/cozinhar (polvo no rosto) | ✅ | ❌ | |
-| Cocos (quiques, quebrar na árvore) | ✅ | ❌ | |
-| **Jangada** + **SOS na garrafa** (mini-Johnny, dia 2) | ✅ | ⚠️ | jangada cresce no pack recriado; o gag da garrafa não |
-| Castelo de areia → piratas King Kong | ✅ | ❌ | |
-| Cooper / telescópio | ✅ | ❌ | |
-| Dança da chuva (gota → raio) | ✅ | ❌ | |
-| **Mary, a sereia** (6 interações + beats) | ✅ | ❌ | diretor escolhe os dias; visual pendente |
-| **Suzy** (resort/beijo/puxão de orelha) | ✅ | ❌ | |
-| Gaivota (5 gags) | ✅ | ❌ | |
-| Piratas (King Kong + Gulliver, ovo no peito) | ✅ | ❌ | |
-| Visitantes (lancha, biplano, helicóptero, terminator, navio gigante, x3 pelados…) | ✅ | ❌ | `VISITOR.ADS` roda com `--data` |
-| Easter eggs raros (Johnny fantasma, bolas de prata, relógio real, derreter, "feeding the fishes", "THE END/Home Again") | ✅ | ❌ | |
-| **Feriados** (props na ilha) | ✅ | ✅ | abóbora/pote/pinheiro/fogos recriados |
-| **Som** (`sound0..24`, `sound0` nos beats) | ✅ | ➖ | toca os `.wav` originais com `--data`; o pack não traz `.wav` (copyright) |
+| Fishing (common/rare catches, big octopus, shark-ski, ambidexterity) | ✅ | ❌ | original script runs; recreated art pending |
+| Swimming/diving + animal jury | ✅ | ❌ | |
+| Bath + thief seagull + shark scare | ✅ | ❌ | |
+| Reading (book upside down, nap→coconut) | ✅ | ❌ | |
+| Sleeping/snoring + being tied up by the pirates | ✅ | ❌ | |
+| Fire/cooking (octopus on the face) | ✅ | ❌ | |
+| Coconuts (bounces, cracking on the tree) | ✅ | ❌ | |
+| **Raft** + **SOS in a bottle** (mini-Johnny, day 2) | ✅ | ⚠️ | the raft grows in the recreated pack; the bottle gag does not |
+| Sandcastle → King Kong pirates | ✅ | ❌ | |
+| Jogging / telescope | ✅ | ❌ | |
+| Rain dance (drop → lightning) | ✅ | ❌ | |
+| **Mary, the mermaid** (6 interactions + beats) | ✅ | ❌ | the director picks the days; visual pending |
+| **Suzy** (resort/kiss/ear-tug) | ✅ | ❌ | |
+| Seagull (5 gags) | ✅ | ❌ | |
+| Pirates (King Kong + Gulliver, egg on the chest) | ✅ | ❌ | |
+| Visitors (motorboat, biplane, helicopter, terminator, giant ship, x3 naked…) | ✅ | ❌ | `VISITOR.ADS` runs with `--data` |
+| Rare easter eggs (ghost Johnny, silver balls, real clock, melting, "feeding the fishes", "THE END/Home Again") | ✅ | ❌ | |
+| **Holidays** (props on the island) | ✅ | ✅ | pumpkin/pot/pine tree/fireworks recreated |
+| **Sound** (`sound0..24`, `sound0` on the beats) | ✅ | ➖ | plays the original `.wav` with `--data`; the pack does not ship `.wav` (copyright) |
 
-## Bugs "charme" como easter egg opcional (futuro)
+## "Charm" bugs as an optional easter egg (future)
 
-A bíblia §12 lista bugs do original; alguns viraram **piadas queridas** ("ilha gigante",
-"dezenas de Johnnys", "gêmeos"). Ideia de melhoria: um **modo easter-egg opcional** que
-os reproduz de propósito. Não implementado (não é regressão — são bugs, não recursos).
+Bible §12 lists original bugs; some became **beloved jokes** ("giant island",
+"dozens of Johnnys", "twins"). Improvement idea: an **optional easter-egg mode** that
+reproduces them on purpose. Not implemented (it is not a regression — they are bugs, not resources).
 
-## *(Histórico)* Roadmap visual do pack recriado — cancelado no pivô
+## *(History)* Visual roadmap of the recreated pack — canceled in the pivot
 
-> Estes eram os próximos passos **quando** o objetivo era um pack standalone de arte
-> recriada. O pivô de 2026-06-15 **removeu o pack**; ficam aqui só como registro. Hoje o
-> conteúdo vem **100% dos dados originais**, então **não há paridade visual pendente**.
+> These were the next steps **when** the goal was a standalone pack of recreated
+> art. The 2026-06-15 pivot **removed the pack**; they remain here only as a record. Today the
+> content comes **100% from the original data**, so **there is no visual parity pending**.
 
-Em ordem de impacto (cada um era um incremento de conteúdo do pack):
-1. **Animações recriadas por categoria** (pesca, banho, leitura, dormir, cocos…), para o
-   `STAND/ACTIVITY/FISHING/...` mostrarem ações distintas em vez do Johnny parado.
-2. **Personagens recriados** (Mary, Suzy) para os beats dos dias 1/3/4/5/7/8/9.
-3. **Visitantes recriados** (`VISITOR.ADS`) e **easter eggs raros**.
-4. **SOS na garrafa** (dia 2) e **dança da chuva**.
+In order of impact (each one was a content increment of the pack):
+1. **Recreated animations by category** (fishing, bathing, reading, sleeping, coconuts…), so that
+   `STAND/ACTIVITY/FISHING/...` show distinct actions instead of a standing Johnny.
+2. **Recreated characters** (Mary, Suzy) for the beats of days 1/3/4/5/7/8/9.
+3. **Recreated visitors** (`VISITOR.ADS`) and **rare easter eggs**.
+4. **SOS in a bottle** (day 2) and **rain dance**.
 
-Com os dados originais (`--data`/auto-detecção/`embed-data`), **tudo isso já aparece** —
-são os próprios bytecodes do jogo.
+With the original data (`--data`/auto-detection/`embed-data`), **all of this already appears** —
+they are the game's own bytecodes.

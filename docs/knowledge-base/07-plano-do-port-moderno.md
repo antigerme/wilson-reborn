@@ -1,183 +1,183 @@
-# 07 — Plano do Port Moderno (Wilson Reborn)
+# 07 — Modern Port Plan (Wilson Reborn)
 
-> Síntese voltada à ação: como construir um clone **moderno, extremamente portável
-> (Windows/Linux), em resoluções melhores e com melhorias**, **sem perder nenhum
-> recurso** do original. Recomendações + roadmap. Decisões marcadas com 🟦 são pontos a
-> confirmar com você.
-
----
-
-## 1. Objetivos (do projeto)
-
-1. **Portabilidade extrema** Windows/Linux (e, de brinde, web/macOS quando possível).
-2. **Linguagem moderna**.
-3. **Resoluções melhores** que os 640×480 fixos / 16 cores do original.
-4. **Melhorias** além do original (sem quebrá-lo).
-5. **Paridade total** com o original — todos os eventos, gags, history, easter eggs,
-   feriados (ver [checklist na bíblia §14](02-biblia-de-conteudo.md#14-checklist-de-paridade-resumo-não-perder-nada)).
+> An action-oriented synthesis: how to build a **modern, extremely portable
+> (Windows/Linux) clone, at better resolutions and with improvements**, **without losing any
+> resource** of the original. Recommendations + roadmap. Decisions marked 🟦 are points to
+> confirm with you.
 
 ---
 
-## 2. Stack recomendada 🟦
+## 1. Goals (of the project)
 
-**Recomendação primária: Rust** + um *pixel buffer* apresentado por GPU (`pixels`/`wgpu`),
-espelhando o modelo de **blitter em camadas** do original.
+1. **Extreme portability** Windows/Linux (and, as a bonus, web/macOS when possible).
+2. **Modern language**.
+3. **Better resolutions** than the original's fixed 640×480 / 16 colors.
+4. **Improvements** beyond the original (without breaking it).
+5. **Total parity** with the original — all events, gags, history, easter eggs,
+   holidays (see [checklist in bible §14](02-biblia-de-conteudo.md#14-parity-checklist-lose-nothing-summary)).
 
-Por quê: binário único estático, **cross-compile trivial** (Win/Linux/macOS), **roda em
-WebAssembly** (versão web "de graça"), seguro em memória, ótimo para um processo
-long-running de baixo consumo. O engine original é um compositor de surfaces 2D — um
-*framebuffer* acelerado (`pixels` sobre `wgpu`) preserva 1:1 a lógica de composição
-(fundo → zonas → threads → feriado) e ainda dá escalonamento/HiDPI.
+---
 
-**Alternativas fortes** (todas atingem os objetivos):
+## 2. Recommended stack 🟦
 
-| Stack | Prós | Contras |
+**Primary recommendation: Rust** + a *pixel buffer* presented by GPU (`pixels`/`wgpu`),
+mirroring the original's **layered blitter** model.
+
+Why: a single static binary, **trivial cross-compile** (Win/Linux/macOS), **runs on
+WebAssembly** (a "free" web version), memory-safe, great for a low-consumption long-running
+process. The original engine is a 2D surface compositor — an accelerated
+*framebuffer* (`pixels` over `wgpu`) preserves the composition logic 1:1
+(background → zones → threads → holiday) and still provides scaling/HiDPI.
+
+**Strong alternatives** (all meet the goals):
+
+| Stack | Pros | Cons |
 |---|---|---|
-| **Rust + `pixels`/`wgpu`** (rec.) | binário único, WASM, perf, seguro | curva de aprendizado |
-| **Rust + `macroquad`** | API simples, web nativa, simples de empacotar | menos controle fino |
-| **Go + Ebitengine** | builds e cross-compile simplíssimos, WASM, 2D pronto | binários maiores; GC |
-| **TypeScript + Canvas + Tauri** | reusa `castaway`/`dgds-viewer`; web-first; Tauri ≪ Electron | desktop depende de WebView |
-| **C + SDL2** (= jc_reborn) | reusa quase tudo do jc_reborn | C "menos moderno"; GPLv3; sem web fácil |
+| **Rust + `pixels`/`wgpu`** (rec.) | single binary, WASM, perf, safe | learning curve |
+| **Rust + `macroquad`** | simple API, native web, easy to package | less fine control |
+| **Go + Ebitengine** | dead-simple builds and cross-compile, WASM, 2D ready | larger binaries; GC |
+| **TypeScript + Canvas + Tauri** | reuses `castaway`/`dgds-viewer`; web-first; Tauri ≪ Electron | desktop depends on WebView |
+| **C + SDL2** (= jc_reborn) | reuses almost everything from jc_reborn | "less modern" C; GPLv3; no easy web |
 
-> Se o objetivo nº1 for **menor esforço reaproveitando código pronto**, o caminho é
-> **TypeScript** (parsers de `dgds-viewer` + metadados de `castaway`) ou **C/SDL2**
-> (fork conceitual do jc_reborn). Se for **melhor produto de longo prazo**, **Rust**.
+> If goal #1 is **least effort by reusing ready-made code**, the path is
+> **TypeScript** (`dgds-viewer` parsers + `castaway` metadata) or **C/SDL2**
+> (a conceptual fork of jc_reborn). If it is **the best long-term product**, **Rust**.
 
 ---
 
-## 3. Arquitetura proposta
+## 3. Proposed architecture
 
-Espelhar as 4 camadas limpas do jc_reborn ([05 §10](05-arquitetura-do-engine.md)):
+Mirror jc_reborn's 4 clean layers ([05 §10](05-arquitetura-do-engine.md)):
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ Plataforma: screensaver Win (.scr) │ Linux (XScreenSaver/    │
-│ standalone/Wayland) │ app standalone │ web (WASM) │ wallpaper │
+│ Platform: Win screensaver (.scr) │ Linux (XScreenSaver/      │
+│ standalone/Wayland) │ standalone app │ web (WASM) │ wallpaper │
 ├─────────────────────────────────────────────────────────────┤
-│ Backend de Render/Áudio (trait/interface): pixels|wgpu|canvas │
+│ Render/Audio backend (trait/interface): pixels|wgpu|canvas    │
 ├─────────────────────────────────────────────────────────────┤
-│ Lógica de jogo: diretor (story), walk, ilha, dia/feriado      │
+│ Game logic: director (story), walk, island, day/holiday       │
 ├─────────────────────────────────────────────────────────────┤
-│ VMs de bytecode: interpretador TTM + ADS                      │
+│ Bytecode VMs: TTM + ADS interpreter                           │
 ├─────────────────────────────────────────────────────────────┤
-│ I/O de dados: parser RESOURCE.MAP/.001 + RLE/LZW + tipos      │
+│ Data I/O: RESOURCE.MAP/.001 parser + RLE/LZW + types          │
 └─────────────────────────────────────────────────────────────┘
 ```
-**Backend abstrato** (uma interface `Renderer`/`Audio`) permite o mesmo core rodar em
-desktop, web e como screensaver — chave para "portabilidade extrema".
+An **abstract backend** (a `Renderer`/`Audio` interface) lets the same core run on
+desktop, web and as a screensaver — key to "extreme portability".
 
 ---
 
-## 4. Independência de resolução (o "rodar melhor")
+## 4. Resolution independence (the "run better")
 
-O original é **640×480, 16 cores, sprites bitmap**. Estratégias (combináveis):
+The original is **640×480, 16 colors, bitmap sprites**. Strategies (combinable):
 
-1. **Escalonamento inteiro nearest-neighbor** (pixel-perfect): renderiza no buffer 640×480
-   e escala ×2/×3/×N para a tela — fiel, nítido, trivial. *MVP.*
-2. **Escalonamento para qualquer resolução / HiDPI** com opção de filtro (nearest vs
-   suave) e *letterboxing* para manter proporção.
-3. **Reposicionamento em telas grandes:** o engine já desenha a ilha em posição aleatória
-   (`VARPOS_OK`); ampliar as faixas para telas widescreen/4K dá mais "espaço de mar".
-4. **Pacote de assets HD (futuro):** como os sprites são pequenos e estilizados, dá para
-   **re-desenhar em alta resolução** (ou vetorizar) um "HD asset pack" opcional, mantendo
-   o pixel-art original como default.
-5. **Multi-monitor** e **resolução nativa** detectada automaticamente.
-
----
-
-## 5. Assets e estratégia legal 🟦
-
-Os dados originais (`RESOURCE.*`, sprites, sons) são **copyright Sierra/Dynamix**
-([01 §nota legal](01-historia-e-creditos.md)). Opções:
-
-- **(A) BYO data (padrão dos clones):** o Wilson Reborn é o *engine* livre; o usuário
-  fornece seus `RESOURCE.MAP`/`RESOURCE.001` (que possui). Simples e legalmente seguro.
-- **(B) Asset pack recriado:** arte/sons **novos** feitos do zero, redistribuíveis →
-  versão 100% standalone e legal. Mais trabalho, mas é o caminho para distribuir
-  "completo".
-- **(C) Híbrido:** engine + loader que aceita **tanto** os dados originais **quanto** um
-  asset pack recriado (formato próprio, ex.: JSON + PNG/sprites + ogg). Recomendado:
-  abre as duas portas.
-
-> Os 3 conjuntos que **não** vêm do `RESOURCE.001` (`story_data.h`, `walk_data.h`,
-> `calcpath_data.h`) precisam ser portados/recriados de qualquer forma
-> ([03 §8](03-dados-originais-e-formatos.md#8-dados-que-não-estão-no-resource001)).
+1. **Integer nearest-neighbor scaling** (pixel-perfect): renders into the 640×480 buffer
+   and scales ×2/×3/×N to the screen — faithful, sharp, trivial. *MVP.*
+2. **Scaling to any resolution / HiDPI** with a filter option (nearest vs
+   smooth) and *letterboxing* to keep the aspect ratio.
+3. **Repositioning on large screens:** the engine already draws the island in a random position
+   (`VARPOS_OK`); widening the ranges for widescreen/4K screens gives more "sea space".
+4. **HD asset pack (future):** since the sprites are small and stylized, you can
+   **redraw them in high resolution** (or vectorize) an optional "HD asset pack", keeping
+   the original pixel art as the default.
+5. **Multi-monitor** and **native resolution** detected automatically.
 
 ---
 
-## 6. Empacotamento por plataforma
+## 5. Assets and legal strategy 🟦
 
-- **Windows:** um `.scr` é apenas um `.exe` que responde a `/s` (show), `/p` (preview),
-  `/c` (config). O core compila para `.exe` e expõe esses argumentos.
-- **Linux:** standalone fullscreen (modo screensaver clássico = "qualquer tecla sai"); e/ou
-  integração com **XScreenSaver** (modo janela via `-window-id`) e Wayland (ext-idle).
-- **App standalone / "live wallpaper":** mesmo binário, modo janela/desktop.
-- **Web (WASM):** demo em navegador (como o castaway/dgds-viewer já fazem).
-- **macOS (bônus):** `.saver` bundle se desejado.
+The original data (`RESOURCE.*`, sprites, sounds) is **copyright Sierra/Dynamix**
+([01 §legal note](01-historia-e-creditos.md)). Options:
 
----
+- **(A) BYO data (the clones' default):** Wilson Reborn is the free *engine*; the user
+  provides their `RESOURCE.MAP`/`RESOURCE.001` (which they own). Simple and legally safe.
+- **(B) Recreated asset pack:** **new** art/sounds made from scratch, redistributable →
+  a 100% standalone and legal version. More work, but it is the path to distributing
+  "complete".
+- **(C) Hybrid:** engine + a loader that accepts **both** the original data **and** a
+  recreated asset pack (its own format, e.g. JSON + PNG/sprites + ogg). Recommended:
+  it opens both doors.
 
-## 7. Roadmap de melhorias (sem quebrar o original) 🟦
-
-Combinando a roadmap do `castaway` + oportunidades desta pesquisa. Tudo **opcional/
-configurável**, com um "modo clássico" 100% fiel como default.
-
-**Visual/tempo**
-- Ciclo **dia/noite de 24h** real (em vez de 8h), opcionalmente baseado em **geolocalização**
-  (nascer/pôr do sol reais).
-- **Marés reais** por localização; nuvens em **movimento**; ondas/parallax extras.
-- **Resoluções HD**, multi-monitor, HiDPI, asset pack HD opcional.
-
-**Conteúdo**
-- **Feriados extensíveis/configuráveis** (a tabela é pequena —
-  [bíblia §9](02-biblia-de-conteudo.md#9-datas-comemorativas--feriados-annivers--lógica-de-storyc));
-  investigar o **4 de Julho** citado pela Wikipedia e adicionar datas regionais (ex.:
-  feriados brasileiros).
-- **Modo "bugs clássicos"** como easter egg (ilha gigante, dezenas de Johnnys —
-  [bíblia §12](02-biblia-de-conteudo.md#12-bugs-originais-catalogados-em-bugs)).
-- Tocar a **história completa em sequência** (não só por dia real) — modo "story".
-
-**Qualidade de vida**
-- **UI de configuração** (velocidade, som, ciclo, feriados, escala/filtro, monitores).
-- **Estatísticas** (horas tocadas, atividades vistas) — ideia do castaway.
-- **Acelerar o tempo** / pular para um dia da história (ótimo para testes e para o usuário
-  ver tudo).
+> The 3 sets that **do not** come from `RESOURCE.001` (`story_data.h`, `walk_data.h`,
+> `calcpath_data.h`) need to be ported/recreated either way
+> ([03 §8](03-dados-originais-e-formatos.md#8-data-that-is-not-in-resource001)).
 
 ---
 
-## 8. Plano faseado
+## 6. Per-platform packaging
 
-| Fase | Entregável | Foco |
+- **Windows:** a `.scr` is just an `.exe` that responds to `/s` (show), `/p` (preview),
+  `/c` (config). The core compiles to `.exe` and exposes these arguments.
+- **Linux:** fullscreen standalone (classic screensaver mode = "any key quits"); and/or
+  integration with **XScreenSaver** (windowed mode via `-window-id`) and Wayland (ext-idle).
+- **Standalone app / "live wallpaper":** the same binary, windowed/desktop mode.
+- **Web (WASM):** an in-browser demo (as castaway/dgds-viewer already do).
+- **macOS (bonus):** a `.saver` bundle if desired.
+
+---
+
+## 7. Improvements roadmap (without breaking the original) 🟦
+
+Combining the `castaway` roadmap + opportunities from this research. Everything **optional/
+configurable**, with a 100% faithful "classic mode" as the default.
+
+**Visual/time**
+- A real **24h day/night cycle** (instead of 8h), optionally based on **geolocation**
+  (real sunrise/sunset).
+- **Real tides** by location; **moving** clouds; extra waves/parallax.
+- **HD resolutions**, multi-monitor, HiDPI, optional HD asset pack.
+
+**Content**
+- **Extensible/configurable holidays** (the table is small —
+  [bible §9](02-biblia-de-conteudo.md#9-anniversary-dates--holidays-annivers--storyc-logic));
+  investigate the **July 4** mentioned by Wikipedia and add regional dates (e.g.:
+  Brazilian holidays).
+- **"Classic bugs" mode** as an easter egg (giant island, dozens of Johnnys —
+  [bible §12](02-biblia-de-conteudo.md#12-original-bugs-cataloged-in-bugs)).
+- Play the **full story in sequence** (not just by real day) — "story" mode.
+
+**Quality of life**
+- **Configuration UI** (speed, sound, cycle, holidays, scale/filter, monitors).
+- **Statistics** (hours played, activities seen) — castaway's idea.
+- **Accelerate time** / jump to a story day (great for testing and for the user
+  to see everything).
+
+---
+
+## 8. Phased plan
+
+| Phase | Deliverable | Focus |
 |---|---|---|
-| **0 — Fundação** | Parser de `RESOURCE.MAP/.001` + RLE/LZW; dump de recursos (validar contra `jc_reborn dump`) | [03](03-dados-originais-e-formatos.md) |
-| **1 — VMs** | Interpretadores TTM + ADS; tocar **uma cena** isolada | [04](04-engine-scripting-opcodes.md) |
-| **2 — Render** | Backend de pixel-buffer em camadas + paleta + sprites + som; tocar cena com áudio | [05](05-arquitetura-do-engine.md) §7–8 |
-| **3 — Ilha & walk** | Fundo/maré/noite/nuvens/jangada; spots A–F + pathfinding + animação de caminhada | [05](05-arquitetura-do-engine.md) §5–6 |
-| **4 — Diretor** | `storyPlay`: ciclo de 11 dias, seleção de cenas, feriados → **paridade** | [02](02-biblia-de-conteudo.md), [05](05-arquitetura-do-engine.md) §4 |
-| **5 — Empacotar** | `.scr` Windows + standalone Linux + (web) | §6 |
-| **6 — Melhorias** | Resoluções HD, dia/noite 24h, config UI, etc. | §7 |
+| **0 — Foundation** | `RESOURCE.MAP/.001` parser + RLE/LZW; resource dump (validate against `jc_reborn dump`) | [03](03-dados-originais-e-formatos.md) |
+| **1 — VMs** | TTM + ADS interpreters; play **one scene** in isolation | [04](04-engine-scripting-opcodes.md) |
+| **2 — Render** | Layered pixel-buffer backend + palette + sprites + sound; play a scene with audio | [05](05-arquitetura-do-engine.md) §7–8 |
+| **3 — Island & walk** | Background/tide/night/clouds/raft; spots A–F + pathfinding + walk animation | [05](05-arquitetura-do-engine.md) §5–6 |
+| **4 — Director** | `storyPlay`: 11-day cycle, scene selection, holidays → **parity** | [02](02-biblia-de-conteudo.md), [05](05-arquitetura-do-engine.md) §4 |
+| **5 — Package** | Windows `.scr` + standalone Linux + (web) | §6 |
+| **6 — Improvements** | HD resolutions, 24h day/night, config UI, etc. | §7 |
 
-**MVP fiel = fim da Fase 5.** Validar paridade pela
-[checklist da bíblia §14](02-biblia-de-conteudo.md#14-checklist-de-paridade-resumo-não-perder-nada).
+**Faithful MVP = end of Phase 5.** Validate parity with the
+[bible checklist §14](02-biblia-de-conteudo.md#14-parity-checklist-lose-nothing-summary).
 
 ---
 
-## 9. Questões em aberto / riscos
+## 9. Open questions / risks
 
-| Item | Detalhe | Encaminhamento |
+| Item | Detail | Resolution path |
 |---|---|---|
-| **11 vs ~120 dias** | Engines usam ciclo de **11 dias**; Wikipedia diz ~120 | Seguir os dados (11), deixar configurável; investigar `scrantic.ini`/`NumDays` |
-| **Independence Day** | Citado pela Wikipedia, ausente do site/jc_reborn | Procurar arte/cena nos dados; tabela de feriados extensível |
-| **RLE2 (método 3)** | Só o JCOS menciona; não usado(?) | Implementar só se aparecer nos dados |
-| **VQT:** | Imagens VQ não decodificadas pelo ScummVM | Verificar se o JC usa; senão, ignorar |
-| **Aproximações do jc_reborn** | walk/escalonador/posição da ilha são observacionais | Refinar via **disassembly do `SCRANTIC.SCR`** se quiser 100% |
-| **Divergências de opcode** | DELAY ×10/×20, `0xA100` rect vs window | Validar rodando contra os dados ([04 §4](04-engine-scripting-opcodes.md#4-divergências-entre-implementações-atenção-ao-portar)) |
-| **Dados não-recurso** | `walk/story/calcpath` vêm do exe/observação | Portar verbatim ou re-extrair do `SCRANTIC.SCR` (offset 0x188ea) |
+| **11 vs ~120 days** | Engines use an **11-day** cycle; Wikipedia says ~120 | Follow the data (11), keep it configurable; investigate `scrantic.ini`/`NumDays` |
+| **Independence Day** | Cited by Wikipedia, absent from the site/jc_reborn | Look for art/scene in the data; extensible holiday table |
+| **RLE2 (method 3)** | Only JCOS mentions it; unused(?) | Implement only if it shows up in the data |
+| **VQT:** | VQ images not decoded by ScummVM | Check whether JC uses it; otherwise, ignore |
+| **jc_reborn approximations** | walk/scheduler/island position are observational | Refine via **disassembly of `SCRANTIC.SCR`** if you want 100% |
+| **Opcode divergences** | DELAY ×10/×20, `0xA100` rect vs window | Validate by running against the data ([04 §4](04-engine-scripting-opcodes.md#4-divergences-between-implementations-watch-out-when-porting)) |
+| **Non-resource data** | `walk/story/calcpath` come from the exe/observation | Port verbatim or re-extract from `SCRANTIC.SCR` (offset 0x188ea) |
 
 ---
 
-## 10. Decisões para confirmar 🟦
-1. **Linguagem/stack** (Rust recomendado; alternativas em §2).
-2. **Estratégia de assets** (BYO data / asset pack recriado / híbrido — §5).
-3. **Escopo do MVP** (paridade fiel primeiro vs. já incluir melhorias).
-4. **Licença** do Wilson Reborn (afeta o quanto reusar dos projetos GPL — [06 §4](06-projetos-de-referencia.md#4-matriz-de-licenças-resumo)).
+## 10. Decisions to confirm 🟦
+1. **Language/stack** (Rust recommended; alternatives in §2).
+2. **Asset strategy** (BYO data / recreated asset pack / hybrid — §5).
+3. **MVP scope** (faithful parity first vs. include improvements right away).
+4. **License** of Wilson Reborn (affects how much to reuse from the GPL projects — [06 §4](06-projetos-de-referencia.md#4-license-matrix-summary)).

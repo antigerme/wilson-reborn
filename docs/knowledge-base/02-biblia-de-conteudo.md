@@ -1,403 +1,403 @@
-# 02 — Bíblia de Conteúdo (TODOS os comportamentos, gags, eventos e história)
+# 02 — Content Bible (ALL behaviors, gags, events and story)
 
-> **Objetivo deste documento:** registrar *exaustivamente* tudo o que o Johnny faz
-> no original, para que o **Wilson Reborn não perca nenhum recurso**. É o "contrato
-> de paridade" com o original: eventos, sequências narrativas, gags, easter eggs,
-> datas comemorativas, comportamentos e brincadeiras.
+> **Purpose of this document:** to record *exhaustively* everything Johnny does
+> in the original, so that **Wilson Reborn loses no resource**. It is the "parity
+> contract" with the original: events, narrative sequences, gags, easter eggs,
+> anniversary dates, behaviors and antics.
 >
-> Fontes: catálogo canônico em https://johnny-castaway.com/ + os dados de cena
-> decodificados em `repos/jc_reborn/story_data.h`, `repos/jc_reborn/story.c` e
+> Sources: the canonical catalog at https://johnny-castaway.com/ + the scene data
+> decoded in `repos/jc_reborn/story_data.h`, `repos/jc_reborn/story.c` and
 > `repos/castaway/src/scrantic/metadata/scenes.mjs`.
 >
-> **Como ler:** quando conhecido, cada comportamento aponta o **arquivo `.ADS` +
-> tag** que o implementa (ver §13). Isso liga o "o quê" (este doc) ao "como"
-> ([04-opcodes](04-engine-scripting-opcodes.md) e [05-arquitetura](05-arquitetura-do-engine.md)).
+> **How to read:** when known, each behavior points to the **`.ADS` file +
+> tag** that implements it (see §13). This links the "what" (this doc) to the "how"
+> ([04-opcodes](04-engine-scripting-opcodes.md) and [05-architecture](05-arquitetura-do-engine.md)).
 
 ---
 
-## 1. O cenário (o "mundo" do Johnny)
+## 1. The setting (Johnny's "world")
 
-- **Ilha minúscula** com **um coqueiro** (palmeira). É o palco fixo.
-- **Mar** ao redor, com ondas animadas; **nuvens** desenhadas em posições aleatórias.
-- **Maré**: existe **maré baixa** (*low tide*), que expõe mais areia e habilita
-  certas cenas (peixe à meia-luz, etc.). Aleatória quando a cena permite (`LOWTIDE_OK`).
-- **Ciclo dia/noite**: no original é um **ciclo de 8 horas** (não 24h). É "noite"
-  nas bordas de cada bloco de 8h. Há **pesca/mergulho ao luar na maré baixa**.
-- **Posição da ilha**: redesenhada em **posição aleatória** na tela a cada sequência
-  (quando a cena permite `VARPOS_OK`), com faixas de coordenadas específicas.
-- **A jangada (raft)** cresce ao longo da história (ver §2 e §3). É elemento de
-  cenário *e* de enredo.
-- **Itens de feriado** (árvore de Natal, abóbora, trevos, faixa de Ano Novo)
-  aparecem desenhados na ilha nas datas certas (ver §9).
+- **Tiny island** with **one coconut palm** (palm tree). It is the fixed stage.
+- **Sea** all around, with animated waves; **clouds** drawn in random positions.
+- **Tide**: there is **low tide**, which exposes more sand and enables
+  certain scenes (fish in moonlight, etc.). Random when the scene allows (`LOWTIDE_OK`).
+- **Day/night cycle**: in the original it is an **8-hour cycle** (not 24h). It is "night"
+  at the edges of each 8h block. There is **moonlight fishing/diving at low tide**.
+- **Island position**: redrawn in a **random position** on the screen every sequence
+  (when the scene allows `VARPOS_OK`), with specific coordinate ranges.
+- **The raft** grows over the course of the story (see §2 and §3). It is a scenery element
+  *and* a plot element.
+- **Holiday items** (Christmas tree, pumpkin, clovers, New Year banner)
+  appear drawn on the island on the right dates (see §9).
 
 ---
 
-## 2. O arco narrativo de 11 dias (a "história")
+## 2. The 11-day narrative arc (the "story")
 
-O screensaver avança **um "dia de história" cada vez que a data real do sistema
-muda** (uma vez por dia real). O ciclo tem **11 dias** e então recomeça
-(`story.c`: `currentDay` vai de 1 a 11, depois reinicia). Personagens centrais da
-narrativa: **Mary, a sereia** e **Suzy, a moça da cidade**.
+The screensaver advances **one "story day" each time the system's real date
+changes** (once per real day). The cycle has **11 days** and then restarts
+(`story.c`: `currentDay` goes from 1 to 11, then resets). Central characters of the
+narrative: **Mary, the mermaid** and **Suzy, the city girl**.
 
-| Dia | Evento narrativo | Cena (ADS#tag) |
+| Day | Narrative event | Scene (ADS#tag) |
 |---:|---|---|
-| **1** | A **sereia** observa o Johnny enquanto ele pesca (estabelece a presença dela). | `MARY.ADS#2` |
-| **2** | Johnny escreve um **SOS e joga numa garrafa**; no balão de pensamento aparece um **mini-Johnny** parado na ilha. | `JOHNNY.ADS#2` |
-| **3** | A garrafa chega a **Suzy**, na cidade, que imagina receber a visita de um Johnny idealizado. A **jangada cresce**. Um **tubarão** tenta atacá-lo durante o banho. | `SUZY.ADS#1` |
-| **4** | Johnny encontra a **sereia** e a convida para um encontro, presenteando-a com um **colar de conchas**. Jangada quase pronta. | `MARY.ADS#3` |
-| **5** | À noite, Johnny e a sereia **jantam e dançam**. Ele veste **traje de gala (fraque e cartola)** — mas continua descalço. | `MARY.ADS#1` |
-| **6** | Johnny **desenha a si mesmo abraçado com Suzy** e registra a fantasia em outra **garrafa**. | `JOHNNY.ADS#3` |
-| **7** | A sereia reaparece; Johnny a convida para voltar ao continente com ele. Ela **vai embora chorando**, recusando. | `MARY.ADS#4` |
-| **8** | Johnny se **despede do tubarão e da sereia** e **parte na jangada** completa (rema para longe). | `MARY.ADS#5` *(LEFT_ISLAND, NORAFT)* |
-| **9** | Um **relógio (sapo/"frog clock")** aparece; a jangada flutua; ele chega à praia e **se reencontra com Suzy**. | `SUZY.ADS#2` |
-| **10** | Johnny **dorme na mesa de um escritório**, sonhando com a ilha (e com a sereia). | `JOHNNY.ADS#6` |
-| **11** | Johnny **volta à ilha de avião** (paraquedas), reiniciando o ciclo. | `JOHNNY.ADS#1` |
+| **1** | The **mermaid** watches Johnny while he fishes (establishes her presence). | `MARY.ADS#2` |
+| **2** | Johnny writes an **SOS and throws it in a bottle**; in the thought bubble a **mini-Johnny** appears standing on the island. | `JOHNNY.ADS#2` |
+| **3** | The bottle reaches **Suzy**, in the city, who imagines being visited by an idealized Johnny. The **raft grows**. A **shark** tries to attack him during his bath. | `SUZY.ADS#1` |
+| **4** | Johnny meets the **mermaid** and invites her on a date, giving her a **seashell necklace**. The raft is almost ready. | `MARY.ADS#3` |
+| **5** | At night, Johnny and the mermaid **dine and dance**. He wears a **gala outfit (tails and top hat)** — but remains barefoot. | `MARY.ADS#1` |
+| **6** | Johnny **draws himself embracing Suzy** and records the fantasy in another **bottle**. | `JOHNNY.ADS#3` |
+| **7** | The mermaid reappears; Johnny invites her to return to the mainland with him. She **leaves crying**, refusing. | `MARY.ADS#4` |
+| **8** | Johnny **bids farewell to the shark and the mermaid** and **departs on the complete raft** (rows away). | `MARY.ADS#5` *(LEFT_ISLAND, NORAFT)* |
+| **9** | A **clock (frog/"frog clock")** appears; the raft floats; he reaches the beach and **reunites with Suzy**. | `SUZY.ADS#2` |
+| **10** | Johnny **sleeps at an office desk**, dreaming of the island (and of the mermaid). | `JOHNNY.ADS#6` |
+| **11** | Johnny **returns to the island by plane** (parachute), restarting the cycle. | `JOHNNY.ADS#1` |
 
-> **Observação de pesquisa:** a Wikipedia menciona um arco de "~120 dias"; os engines
-> open-source implementam **11 dias** (dado de `story_data.h`). Provável diferença
-> entre a percepção do público e a estrutura real dos dados. **Wilson Reborn deve
-> seguir os 11 dias dos dados**, mas isso é configurável.
+> **Research note:** Wikipedia mentions an arc of "~120 days"; the open-source
+> engines implement **11 days** (data from `story_data.h`). Probably a difference
+> between the public's perception and the actual structure of the data. **Wilson Reborn should
+> follow the 11 days of the data**, but this is configurable.
 
-### Crescimento da jangada (lógica de `story.c`)
-| Dia da história | Estágio da jangada |
+### Raft growth (logic from `story.c`)
+| Story day | Raft stage |
 |---:|---:|
-| 0–2 | 1 (início) |
+| 0–2 | 1 (start) |
 | 3 | 2 |
 | 4 | 3 |
 | 5 | 4 |
-| 6+ | 5 (completa) |
+| 6+ | 5 (complete) |
 
-Cenas com flag `NORAFT` forçam a jangada a **não** aparecer (ex.: dia 8, quando ele
-já partiu nela).
+Scenes with the `NORAFT` flag force the raft to **not** appear (e.g. day 8, when he
+has already departed on it).
 
 ---
 
-## 3. Atividades do dia a dia e gags (comportamentos "comuns")
+## 3. Day-to-day activities and gags ("common" behaviors)
 
-Estas são as cenas "mundanas" e os gags que rodam aleatoriamente entre os eventos de
-enredo. O escalonador toca de **6 a 20 cenas intermediárias** caminhando entre
-"spots" da ilha, e então uma cena "final" (`story.c`).
+These are the "mundane" scenes and the gags that run randomly between the plot
+events. The scheduler plays **6 to 20 intermediate scenes** walking between
+island "spots", and then a "final" scene (`story.c`).
 
-### 3.1 Pesca (`FISHING.ADS`, e gags em `ACTIVITY/MISCGAG`)
-Principal fonte de comida; há **pesca ao luar na maré baixa**.
-- **Capturas comuns:** bota velha (às vezes guardada atrás da árvore); caranguejo
-  (morde o nariz do Johnny, que o joga de volta); estrela-do-mar (descartada).
-- **Capturas menos comuns** (guardadas atrás da árvore): boia marcada **"SS Titanic"**
-  (causa um *glitch* gráfico acima da cabeça quando ele pesca pela esquerda); peixe
-  verde; tábua de madeira; pequeno polvo.
-- **Eventos raros:**
-  - **Tubarão:** Johnny fisga um tubarão e acaba fazendo **esqui aquático** atrás dele.
-  - **Polvo grande:** pesca vários peixes e então um **polvão** que o persegue até a
-    árvore, **rouba todos os peixes** e mergulha de volta, deixando-o furioso.
-  - **Peixe verde:** ocasionalmente **esguicha água** nele, que o joga de volta com
-    nojo.
-- **Detalhe de animação:** ambidestria — pescando à **direita** da ilha usa molinete
-  para destros; à **esquerda**, molinete para canhotos.
+### 3.1 Fishing (`FISHING.ADS`, and gags in `ACTIVITY/MISCGAG`)
+The main food source; there is **moonlight fishing at low tide**.
+- **Common catches:** an old boot (sometimes stashed behind the tree); a crab
+  (bites Johnny's nose, who throws it back); a starfish (discarded).
+- **Less common catches** (stashed behind the tree): a buoy marked **"SS Titanic"**
+  (causes a graphical *glitch* above the head when he fishes from the left); a green
+  fish; a wooden plank; a small octopus.
+- **Rare events:**
+  - **Shark:** Johnny hooks a shark and ends up **water-skiing** behind it.
+  - **Big octopus:** he catches several fish and then a **huge octopus** that chases him to the
+    tree, **steals all the fish** and dives back, leaving him furious.
+  - **Green fish:** occasionally it **squirts water** at him, who throws it back in
+    disgust.
+- **Animation detail:** ambidexterity — fishing from the **right** of the island he uses a
+  right-handed reel; from the **left**, a left-handed reel.
 
-### 3.2 Natação, mergulho e banho (`swimming` / `ACTIVITY.ADS`)
-- **Mergulho do coqueiro:** sobe na palmeira e mergulha no mar (às vezes ao luar, na
-  maré baixa). **Mergulhos com nota:** uma **estrela-do-mar, um caranguejo, um peixe
-  e uma gaivota** seguram cartões dando notas. O **caranguejo é maluco**: dá **−0.5**
-  para um bom mergulho e **10!** para uma barrigada ruim. *(cenas "MUNDANE DIVE",
+### 3.2 Swimming, diving and bathing (`swimming` / `ACTIVITY.ADS`)
+- **Palm-tree dive:** he climbs the palm and dives into the sea (sometimes in moonlight, at
+  low tide). **Scored dives:** a **starfish, a crab, a fish
+  and a seagull** hold cards giving scores. The **crab is crazy**: it gives **−0.5**
+  for a good dive and **10!** for a bad belly flop. *(scenes "MUNDANE DIVE",
   "GAG DIVES")*
-- **Banho no mar:** Johnny se lava sentado no mar; ao perceber que está sendo
-  observado, **se cobre como pode**, vai se vestir atrás da árvore e depois **sacode
-  o punho** (bravo). A **gaivota às vezes rouba a sunga** (ver §6.3). *(cena "JOHN BATH")*
-- **Ataque do tubarão (gag):** Johnny chega à beirada com **toalha e escova de
-  banho**, testa a água com o dedão — o **tubarão pula e o morde**; ele cai
-  ensanguentado contra a palmeira, larga toalha/escova. Ao se inspecionar, descobre
-  que a perna está **intacta** (estava só sentado sobre ela) e fica aliviado.
+- **Sea bath:** Johnny washes himself sitting in the sea; when he realizes he is being
+  watched, he **covers himself as best he can**, goes to get dressed behind the tree and then **shakes
+  his fist** (angry). The **seagull sometimes steals the swim trunks** (see §6.3). *(scene "JOHN BATH")*
+- **Shark attack (gag):** Johnny comes to the edge with a **towel and a scrubbing
+  brush**, tests the water with his big toe — the **shark jumps and bites him**; he falls
+  bloodied against the palm, drops the towel/brush. When he inspects himself, he discovers
+  his leg is **intact** (he was just sitting on it) and is relieved.
 
-### 3.3 Leitura (`reading` / `ACTIVITY.ADS`: "GULL READING", "JOHN READ")
-- **Leitura confusa:** o gag mais frequente — ele segura o livro **de cabeça para
-  baixo**, e mesmo "do jeito certo" não entende; **vira as páginas da esquerda para a
-  direita** (fãs brincaram que o livro estaria "em hebraico ou árabe").
-- **Cochilo + coco:** ele lê, vai **cochilando e acordando** com solavancos da cabeça;
-  os solavancos **sacodem o coqueiro** até um **coco cair na sua cabeça**.
-- **Gaivota ladra de livro:** a gaivota mergulha e **rouba o livro** (ver §6).
+### 3.3 Reading (`reading` / `ACTIVITY.ADS`: "GULL READING", "JOHN READ")
+- **Confused reading:** the most frequent gag — he holds the book **upside
+  down**, and even "the right way up" he does not understand it; he **turns the pages from left to
+  right** (fans joked the book must be "in Hebrew or Arabic").
+- **Nap + coconut:** he reads, gradually **dozing off and waking up** with head jolts;
+  the jolts **shake the coconut palm** until a **coconut falls on his head**.
+- **Book-thief seagull:** the seagull dives and **steals the book** (see §6).
 
-### 3.4 Dormir (`common#sleeping`)
-- Johnny **tira sonecas** com frequência (começa a **roncar** quase imediatamente).
-- **Piratas o amarram enquanto dorme** (ver §7) — e, nesse caso específico, ele **não
-  ronca**.
+### 3.4 Sleeping (`common#sleeping`)
+- Johnny **takes naps** frequently (starts **snoring** almost immediately).
+- **Pirates tie him up while he sleeps** (see §7) — and, in that specific case, he does **not
+  snore**.
 
-### 3.5 Fazer fogo e cozinhar (`common`)
-- Tenta acender fogo **esfregando gravetos**: consegue após **2–4 tentativas** ou
-  desiste — e aí o fogo acende "**espontaneamente**".
-- Com o fogo, **cozinha a pesca** (muitas vezes o peixe verde, ou a **bota velha**
-  quando está com muita fome). Ao comer um **pequeno polvo**, este **gruda no rosto**
-  dele antes de ser comido.
+### 3.5 Making fire and cooking (`common`)
+- He tries to start a fire **rubbing sticks together**: he succeeds after **2–4 attempts** or
+  gives up — and then the fire lights "**spontaneously**".
+- With the fire, he **cooks his catch** (often the green fish, or the **old boot**
+  when he is very hungry). When eating a **small octopus**, it **sticks to his face**
+  before being eaten.
 
-### 3.6 Comer cocos (`common#coco`)
-- Cocos caem da árvore com **padrões de quique variados** (forte para a direita; ou
-  dois quiques fracos para a esquerda).
-- Em uma variação, a **cabeça do Johnny gira completamente** (fã brincou que ele
-  estaria na "Ilha do Diabo").
-- Ao conseguir o coco, ele o **bate na árvore** para quebrar a casca, senta e come.
+### 3.6 Eating coconuts (`common#coco`)
+- Coconuts fall from the tree with **varied bounce patterns** (hard to the right; or
+  two soft bounces to the left).
+- In one variation, Johnny's **head spins completely around** (a fan joked he must be on
+  "Devil's Island").
+- When he gets the coconut, he **bangs it against the tree** to crack the shell, sits down and eats.
 
-### 3.7 Construir a jangada (`common#raft` / `BUILDING.ADS`)
-- Constrói a **jangada** (peça de cenário e de enredo). Em sessões longas, a jangada
-  às vezes **volta ao tamanho original** (também há bug de "jangada superconstruída"
-  — ver §12).
+### 3.7 Building the raft (`common#raft` / `BUILDING.ADS`)
+- He builds the **raft** (a scenery and plot piece). In long sessions, the raft
+  sometimes **shrinks back to its original size** (there is also an "over-built raft" bug
+  — see §12).
 
-### 3.8 SOS na garrafa (`common#bottle`)
-- Escreve mensagens, põe em **garrafas** e atira ao mar. Em geral **voltam à praia**,
-  às vezes **chegam a outro lugar** (a Suzy — ver §2).
-- Pensa **"SOS"**; às vezes pensa numa **moça bonita**. No **dia 2**, o balão mostra
-  um **mini-Johnny** parado na ilha.
+### 3.8 SOS in a bottle (`common#bottle`)
+- He writes messages, puts them in **bottles** and throws them into the sea. They usually **wash back
+  ashore**, sometimes **reach somewhere else** (Suzy — see §2).
+- He thinks **"SOS"**; sometimes he thinks of a **pretty girl**. On **day 2**, the bubble shows
+  a **mini-Johnny** standing on the island.
 
-### 3.9 Castelo de areia (`common#castle` / `BUILDING.ADS`)
-- Johnny **constrói um castelo de areia** — isso **dispara a cena dos piratas
-  "King Kong"** (ver §7.1).
+### 3.9 Sandcastle (`common#castle` / `BUILDING.ADS`)
+- Johnny **builds a sandcastle** — this **triggers the "King Kong" pirates
+  scene** (see §7.1).
 
-### 3.10 Cooper / corrida (`common#jogging`)
-- Johnny **faz cooper** (corre) pela ilha — uma das atividades de rotina.
+### 3.10 Jogging / running (`common#jogging`)
+- Johnny **jogs** (runs) around the island — one of the routine activities.
 
-### 3.11 Telescópio / luneta (`visitors#notseen`)
-- Usa um **telescópio/luneta** para vasculhar o horizonte. O gag recorrente: enquanto
-  ele olha numa direção, **algo passa às suas costas** sem que ele veja (ver §8.1).
+### 3.11 Telescope / spyglass (`visitors#notseen`)
+- He uses a **telescope/spyglass** to scan the horizon. The recurring gag: while
+  he looks one way, **something passes behind his back** without him seeing it (see §8.1).
 
-### 3.12 Dança da chuva / "nativo" (`ACTIVITY.ADS`: "NATIVE 1/3")
-- Com calor, Johnny se **veste de pajé/feiticeiro** e faz uma **dança da chuva**. Uma
-  nuvem solta **uma única gota** e então ele **leva um raio**. (Também aparece em
-  cenas com turistas — ver §8.2.)
-
----
-
-## 4. Mary, a sereia (`MARY.ADS`)
-A sereia se chama **Mary**. Interações (algumas são os beats de enredo dos dias
-1/4/5/7/8 — ver §2):
-- **Ouve mas não vê:** Johnny pesca, a sereia se aproxima por trás; ele ouve o
-  barulho d'água, se reposiciona e fisga algo pesado — **dentadura postiça** ou **bota
-  velha**.
-- **O convite:** lendo, ele a vê nadando perto; ela lhe dá um **colar de conchas**, ele
-  oferece a **boia do Titanic**; pensam em jantar (ela imagina um **sinal de trânsito
-  verde**), depois se despedem.
-- **O jantar:** ele troca de roupa atrás da árvore (**cartola e fraque**), monta toda
-  uma **mesa de jantar**, eles comem; depois ele traz um **gramofone** e **dançam**
-  até ela voltar ao mar.
-- **A súplica:** Johnny fica em pé na jangada **implorando** que ela embarque; ela vai
-  embora e ele fica **arrasado**. (Variação: ela pergunta para que serve a jangada,
-  ele mostra visões da cidade, e ao descobrir que ele quer ir embora, **ela chora**.)
-- **A partida:** ele tenta convencê-la a ir na jangada; ela fica com o **tubarão**
-  (estão **rindo**) e Johnny parte sozinho.
-- **Devaneio:** Johnny dorme na mesa do escritório e **sonha** que janta com a sereia
-  na ilha (dia 10).
+### 3.12 Rain dance / "native" (`ACTIVITY.ADS`: "NATIVE 1/3")
+- When it is hot, Johnny **dresses as a shaman/witch doctor** and does a **rain
+  dance**. A cloud releases **a single drop** and then he **gets struck by lightning**. (It also appears in
+  scenes with tourists — see §8.2.)
 
 ---
 
-## 5. Suzy, a moça da cidade (`SUZY.ADS`) e as fugas (`leaving`)
-- **A garrafa e Suzy:** **Suzy** (moça da cidade), tomando sol de **biquíni rosa** num
-  resort, acha a garrafa do Johnny e o **imagina como um homem atraente** varrendo-a
-  dos pés (no devaneio dela, ela aparece mais jovem e magra). Há o **inverso**: Johnny
-  acha a mensagem de Suzy e devaneia com ela olhando seu relógio.
-- **Partida na jangada:** "Johnny acabou de subir na jangada e remou para longe",
-  levando **remo e saco**. Um **golfinho** (depois identificado como **tubarão**) e a
-  **sereia** acompanham antes de ele voltar às atividades normais.
-- **Encontro no resort:** Johnny passa de jangada por Suzy perto de um resort com
-  arranha-céus; ela o **agarra e beija** apaixonadamente.
-- **Puxão de orelha:** o clima azeda quando Suzy descobre **chiclete no decote** depois
-  do beijo; furiosa, ela briga com ele e **puxa sua orelha**.
-- **Cena íntima (não confirmada):** vários relatos de "**naughty things**" entre Johnny
-  e uma mulher, com confusão se era num ambiente interno ou só uma tela menor.
+## 4. Mary, the mermaid (`MARY.ADS`)
+The mermaid is named **Mary**. Interactions (some are the plot beats of days
+1/4/5/7/8 — see §2):
+- **Hears but does not see:** Johnny fishes, the mermaid approaches from behind; he hears the
+  splash, repositions himself and hooks something heavy — **false teeth** or **an old
+  boot**.
+- **The invitation:** while reading, he sees her swimming nearby; she gives him a **seashell necklace**, he
+  offers her the **Titanic buoy**; they think of dinner (she imagines a **green traffic
+  light**), then they part.
+- **The dinner:** he changes clothes behind the tree (**top hat and tails**), sets up a whole
+  **dinner table**, they eat; then he brings a **gramophone** and they **dance**
+  until she returns to the sea.
+- **The plea:** Johnny stands on the raft **begging** her to come aboard; she leaves
+  and he is **devastated**. (Variation: she asks what the raft is for,
+  he shows her visions of the city, and upon discovering he wants to leave, **she cries**.)
+- **The departure:** he tries to convince her to come on the raft; she stays with the **shark**
+  (they are **laughing**) and Johnny departs alone.
+- **Reverie:** Johnny sleeps at the office desk and **dreams** that he dines with the mermaid
+  on the island (day 10).
 
 ---
 
-## 6. A gaivota (`seagull`)
-A gaivota quase sempre leva a melhor; "Johnny usually comes off worse".
-- **Ladra de livro:** leva o livro ao topo da palmeira e "**lê**", virando páginas com
-  o bico.
-- **Senta na cabeça:** rouba o livro e pousa na cabeça do Johnny; ele tenta tirá-la com
-  um **porrete**, mas **acerta a si mesmo** (cria um galo) — a gaivota fica pairando.
-- **Ladra de roupa:** enquanto ele toma banho no mar, ela mergulha e **rouba a sunga**
-  (duas variações de imagem).
-- **Ninho no chapéu:** pousa na cabeça, **rouba o chapéu**, leva ao topo da árvore e
-  **faz um ninho** nele.
-- **Ninho no peito:** depois que os piratas amarram o Johnny, a gaivota faz um **ninho
-  no peito dele, põe um ovo** e vai embora (ver §7.2).
+## 5. Suzy, the city girl (`SUZY.ADS`) and the escapes (`leaving`)
+- **The bottle and Suzy:** **Suzy** (city girl), sunbathing in a **pink bikini** at a
+  resort, finds Johnny's bottle and **imagines him as an attractive man** sweeping her
+  off her feet (in her reverie, she appears younger and slimmer). There is the **reverse**: Johnny
+  finds Suzy's message and daydreams of her looking at her watch.
+- **Departure on the raft:** "Johnny has just climbed onto the raft and rowed away",
+  taking an **oar and a sack**. A **dolphin** (later identified as a **shark**) and the
+  **mermaid** accompany him before he returns to normal activities.
+- **Encounter at the resort:** Johnny rows past Suzy near a resort with
+  skyscrapers; she **grabs and kisses** him passionately.
+- **Ear-tug:** the mood sours when Suzy discovers **gum on her cleavage** after
+  the kiss; furious, she fights with him and **tugs his ear**.
+- **Intimate scene (unconfirmed):** several reports of "**naughty things**" between Johnny
+  and a woman, with confusion over whether it was indoors or just a smaller screen.
 
 ---
 
-## 7. Piratas (`pirates`)
-### 7.1 Cena "King Kong" (disparada ao construir o castelo de areia)
-Quando Johnny constrói um **castelo de areia**, chega um **galeão pirata em
-miniatura**. Piratinhas remam até a praia, **ocupam o castelo**, hasteam **bandeira** e
-**disparam canhões** contra o Johnny. Ele se refugia na palmeira enquanto **vários
-biplanos minúsculos** decolam do castelo para atacá-lo. A sequência termina com Johnny
-**caindo na água** — paródia de **King Kong (1933)** no topo do Empire State.
-
-### 7.2 Cena "Viagens de Gulliver" (enquanto dorme)
-Piratas se aproximam do Johnny **dormindo** e o **amarram com cordas** — referência a
-*Gulliver* de Jonathan Swift (o site sugere que seriam uma "Marinha de Liliput"). É
-**noturna**; nela o Johnny **não ronca** e a gaivota pode **não aparecer**; quando
-aparece, faz **ninho no peito** dele e **põe um ovo**. Há um **bug** no fim da cena
-(retângulo estranho no mar — ver §12).
+## 6. The seagull (`seagull`)
+The seagull almost always comes out on top; "Johnny usually comes off worse".
+- **Book thief:** it takes the book to the top of the palm and "**reads**" it, turning pages with
+  its beak.
+- **Sits on his head:** it steals the book and lands on Johnny's head; he tries to remove it with
+  a **club**, but **hits himself** (raises a bump) — the seagull keeps hovering.
+- **Clothes thief:** while he bathes in the sea, it dives and **steals the swim trunks**
+  (two image variations).
+- **Nest in the hat:** it lands on his head, **steals the hat**, takes it to the top of the tree and
+  **makes a nest** in it.
+- **Nest on the chest:** after the pirates tie Johnny up, the seagull makes a **nest
+  on his chest, lays an egg** and leaves (see §7.2).
 
 ---
 
-## 8. Visitantes e tentativas de resgate (`visitors`)
-### 8.1 Passam por trás dele (ele quase nunca vê — `notseen`)
-- **Lancha** com uma **mulher e um cachorro**.
-- **Biplano** passa enquanto ele usa o telescópio.
-- **Helicóptero** (em 28/12/1998 um fã sugeriu ser um **autogiro**, não helicóptero).
-- **Avião** voando baixo sobre a ilha.
+## 7. Pirates (`pirates`)
+### 7.1 "King Kong" scene (triggered by building the sandcastle)
+When Johnny builds a **sandcastle**, a **miniature pirate galleon**
+arrives. Little pirates row to the beach, **occupy the castle**, hoist a **flag** and
+**fire cannons** at Johnny. He takes refuge in the palm while **several tiny biplanes**
+take off from the castle to attack him. The sequence ends with Johnny
+**falling into the water** — a parody of **King Kong (1933)** atop the Empire State.
 
-### 8.2 Visitantes que ele vê
-- **Barco de festa:** chega um barco com **foliões** que o levam a bordo; ele **nada de
-  volta** à ilha e o barco vai embora — bem quando Johnny percebe o que fez. Uma mulher
-  faz **esqui aquático** atrás de uma lancha e **derruba o Johnny**.
-- **Johnny pelado (3 variações):** (1) um casal chega e ele implora para ser levado,
-  tirando **toda a roupa** para convencer a moça; (2) ele dança de **traje tribal**,
-  turistas o fotografam, e ele **rasga a roupa** e a balança no ar; (3) durante a
-  **dança da chuva**, turistas o confundem com nativo e, para provar que não é, ele
-  **tira a roupa** — o que irrita o homem.
-- **Johnny "Terminator":** desta vez ele **realmente avista** o avião; joga um **coco**
-  para chamar atenção do piloto, mas **acerta o avião**, que **cai no mar**. O piloto
-  salta de **paraquedas** antes do impacto.
-- **Johnny vândalo (não confirmado):** atira um coco num navio tentando afundá-lo.
-- **Navio gigante (cargo):** Johnny avista um navio ao longe e **pula para chamar
-  atenção**; o navio se revela **enorme** e quase **corta a ilha ao meio** — Johnny
-  corre para se salvar. *(cena `VISITOR.ADS#3`, marcada `HOLIDAY_NOK`: nunca mostra
-  itens de feriado, senão seriam desenhados sobre o casco que toma a tela.)*
-- **Sereia:** ver §4.
+### 7.2 "Gulliver's Travels" scene (while sleeping)
+Pirates approach the **sleeping** Johnny and **tie him up with ropes** — a reference to
+Jonathan Swift's *Gulliver* (the site suggests they would be a "Lilliputian Navy"). It is
+**nocturnal**; in it Johnny does **not snore** and the seagull may **not appear**; when it
+appears, it makes a **nest on his chest** and **lays an egg**. There is a **bug** at the end of the scene
+(a strange rectangle in the sea — see §12).
 
 ---
 
-## 9. Datas comemorativas / feriados (`annivers` + lógica de `story.c`)
-Itens especiais são desenhados na ilha em faixas de datas (comparação de string
-`"MMDD"` em `story.c`). **Pode-se forçar ajustando o relógio do sistema.**
+## 8. Visitors and rescue attempts (`visitors`)
+### 8.1 They pass behind him (he almost never sees — `notseen`)
+- A **motorboat** with a **woman and a dog**.
+- A **biplane** passes while he uses the telescope.
+- A **helicopter** (on 1998-12-28 a fan suggested it was an **autogyro**, not a helicopter).
+- A **plane** flying low over the island.
 
-| Feriado | Faixa de datas (engine) | O que aparece / acontece | `holiday=` |
+### 8.2 Visitors he does see
+- **Party boat:** a boat arrives with **revelers** who take him aboard; he **swims
+  back** to the island and the boat leaves — just as Johnny realizes what he did. A woman
+  **water-skis** behind a motorboat and **knocks Johnny over**.
+- **Naked Johnny (3 variations):** (1) a couple arrives and he begs to be taken,
+  taking off **all his clothes** to convince the woman; (2) he dances in **tribal
+  garb**, tourists photograph him, and he **rips off his clothes** and waves them in the air; (3) during the
+  **rain dance**, tourists mistake him for a native and, to prove he is not, he
+  **takes off his clothes** — which annoys the man.
+- **Johnny "Terminator":** this time he **actually spots** the plane; he throws a **coconut**
+  to get the pilot's attention, but **hits the plane**, which **crashes into the sea**. The pilot
+  bails out by **parachute** before impact.
+- **Johnny vandal (unconfirmed):** he throws a coconut at a ship trying to sink it.
+- **Giant ship (cargo):** Johnny spots a ship far away and **jumps to get
+  attention**; the ship turns out to be **enormous** and almost **cuts the island in half** — Johnny
+  runs to save himself. *(scene `VISITOR.ADS#3`, marked `HOLIDAY_NOK`: it never shows
+  holiday items, otherwise they would be drawn over the hull that fills the screen.)*
+- **Mermaid:** see §4.
+
+---
+
+## 9. Anniversary dates / holidays (`annivers` + `story.c` logic)
+Special items are drawn on the island within date ranges (string comparison
+`"MMDD"` in `story.c`). **They can be forced by adjusting the system clock.**
+
+| Holiday | Date range (engine) | What appears / happens | `holiday=` |
 |---|---|---|---:|
-| **Ano Novo** | **29/12 → 01/01** | Faixa **"Happy New-Year"** na palmeira. | 4 |
-| **Dia de São Patrício** | **15/03 → 17/03** | Ilha coberta de **trevos de 4 folhas** (a intenção eram trevos/shamrocks). | 2 |
-| **Halloween** | **29/10 → 31/10** | Grande **abóbora (jack-o'-lantern)** na frente da ilha. | 1 |
-| **Natal** | **23/12 → 25/12** | **Árvore de Natal** na ilha. Variação: ao pescar o **polvão**, este **rouba bolas de Natal** da árvore antes de mergulhar. | 3 |
+| **New Year** | **12/29 → 01/01** | **"Happy New-Year"** banner on the palm. | 4 |
+| **St. Patrick's Day** | **03/15 → 03/17** | Island covered in **four-leaf clovers** (the intent was clovers/shamrocks). | 2 |
+| **Halloween** | **10/29 → 10/31** | A large **pumpkin (jack-o'-lantern)** in front of the island. | 1 |
+| **Christmas** | **12/23 → 12/25** | **Christmas tree** on the island. Variation: when fishing the **big octopus**, it **steals Christmas baubles** from the tree before diving. | 3 |
 
-> **Independence Day (4 de julho):** a Wikipedia cita o 4 de Julho entre os feriados,
-> mas **não está** no `annivers` do site nem implementado no `jc_reborn`. **Item em
-> aberto** — investigar nos dados originais; pode existir arte/cena não escalonada.
-> Wilson Reborn deve deixar a tabela de feriados **extensível** (a roadmap do castaway
-> sugere "extend festive days").
-
----
-
-## 10. Eventos raros e easter eggs (`unusual`)
-- **Briga (Johnny fantasma):** um Johnny **transparente** sai da água enquanto o Johnny
-  normal persegue um coco; eles **brigam** e o Johnny #1 derruba o fantasma de volta no
-  mar. Em seguida entra um avião, ele joga o coco, derruba o avião e o piloto salta.
-- **Bolas de prata:** **duas bolas/tigelas prateadas**, uma de cada lado da palmeira,
-  antes da cena terminar abruptamente.
-- **Relógio em tempo real:** um **relógio no balão de pensamento** mostra a **hora real
-  do computador** (relatos de 1997 e 2008).
-- **Dança da chuva:** ver §3.12 (nuvem → uma gota → raio).
-- **"Feeding the Fishes":** um **tubarão pula na ilha**, **engole o Johnny**, nada por
-  aí, faz careta e o **cospe de volta**.
-- **Johnny derretendo:** ele usa um **leque amarelo**, os joelhos amolecem e ele
-  **derrete num blob** (também acontece ao luar).
-- **Devaneio no escritório:** depois de um relógio aparecer, Johnny aparece num
-  **escritório sonhando** com a ilha e a sereia (dia 10 — ver §2).
-- **"Home Again?" / THE END:** uma **telinha silhuetada** mostra um avião sobre a ilha,
-  um homem de **paraquedas** pousando, pulando de alegria, e o texto **"THE END"**.
-- **Padrão de perambulação:** Johnny perambula ~5–6 min e então "faz a coisa especial"
-  antes de a cena trocar.
+> **Independence Day (July 4):** Wikipedia cites July 4 among the holidays,
+> but it is **not** in the site's `annivers` nor implemented in `jc_reborn`. **Open
+> item** — investigate in the original data; there may be unscheduled art/scene.
+> Wilson Reborn should keep the holiday table **extensible** (castaway's roadmap
+> suggests "extend festive days").
 
 ---
 
-## 11. Sons
-O original tem **24 efeitos sonoros** (`sound0.wav`…`sound24.wav`, com lacunas em 11 e
-13). O `sound0` é tocado em transições de cena de enredo (`story.c`: `soundPlay(0)`
-quando a cena tem `dayNo`). MD5/tamanhos exatos em
-[01-história](01-historia-e-creditos.md) / `repos/jc_reborn/README.md`.
+## 10. Rare events and easter eggs (`unusual`)
+- **Fight (ghost Johnny):** a **transparent** Johnny comes out of the water while the normal
+  Johnny chases a coconut; they **fight** and Johnny #1 knocks the ghost back into the
+  sea. Then a plane comes in, he throws the coconut, downs the plane and the pilot bails out.
+- **Silver balls:** **two silver balls/bowls**, one on each side of the palm,
+  before the scene ends abruptly.
+- **Real-time clock:** a **clock in the thought bubble** shows the **real time
+  of the computer** (reports from 1997 and 2008).
+- **Rain dance:** see §3.12 (cloud → one drop → lightning).
+- **"Feeding the Fishes":** a **shark jumps onto the island**, **swallows Johnny**, swims
+  around, makes a face and **spits him back out**.
+- **Melting Johnny:** he uses a **yellow fan**, his knees soften and he
+  **melts into a blob** (also happens in moonlight).
+- **Office reverie:** after a clock appears, Johnny shows up in an
+  **office dreaming** of the island and the mermaid (day 10 — see §2).
+- **"Home Again?" / THE END:** a small **silhouetted screen** shows a plane over the island,
+  a man **parachuting** down, jumping for joy, and the text **"THE END"**.
+- **Wandering pattern:** Johnny wanders ~5–6 min and then "does the special thing"
+  before the scene changes.
 
 ---
 
-## 12. Bugs originais (catalogados em `bugs`)
-Importante decidir, no Wilson Reborn, **quais são "charme" a preservar** e **quais
-corrigir**. Lista do site:
+## 11. Sounds
+The original has **24 sound effects** (`sound0.wav`…`sound24.wav`, with gaps at 11 and
+13). `sound0` is played on plot scene transitions (`story.c`: `soundPlay(0)`
+when the scene has a `dayNo`). Exact MD5/sizes in
+[01-history](01-historia-e-creditos.md) / `repos/jc_reborn/README.md`.
 
-**Instalação:** "Can't find data files" no Win2000/NT (procura em `windows`, instala em
+---
+
+## 12. Original bugs (cataloged in `bugs`)
+It is important to decide, in Wilson Reborn, **which are "charm" to preserve** and **which to
+fix**. The site's list:
+
+**Installation:** "Can't find data files" on Win2000/NT (looks in `windows`, installs in
 `winnt`).
 
-**Glitches visuais:** congelar na tela-título (Win95); **Johnny sumido** (pouca
-memória — só a vara e o som); **mancha preta** semicircular ao puxar pesca pela
-esquerda; **retângulo** no mar após os piratas; **vara some** ao virar para a palmeira
-com a bota; **jangada superconstruída**; **palmeira transparente**; **nuvem com
-linhas**; **Johnny voador** (duplicata suspensa após o mergulho); **dançarinos
-fantasmas** nas nuvens após o raio; **Johnny na caixa** (aparece no quadrado que
-deveria embaralhar após o navio pirata); **ilha gigante** / **múltiplas ilhas** /
-**dezenas de Johnnys** (após execução longa); **caixas pretas** (às vezes travam);
-**nuvem escura**; **mar vermelho**; **cena dia+noite simultânea**; **gêmeos** (Johnny
-duplicado, ex.: na cena "terminator"); **"tidy your room"** (mesa/gramofone ficam no
-fundo após o jantar com a sereia); **divisão de cor da tela**; **congelar subindo a
-árvore**; **sem Johnny**; **Johnny teleportando**; **coco escondido**.
+**Visual glitches:** freezing on the title screen (Win95); **vanished Johnny** (low
+memory — only the rod and the sound); **black smudge** semicircle when reeling in fishing from the
+left; **rectangle** in the sea after the pirates; **rod disappears** when turning toward the palm
+with the boot; **over-built raft**; **transparent palm**; **cloud with
+lines**; **flying Johnny** (a duplicate suspended after the dive); **ghost
+dancers** in the clouds after the lightning; **Johnny in a box** (appears in the square that
+should scramble after the pirate ship); **giant island** / **multiple islands** /
+**dozens of Johnnys** (after a long run); **black boxes** (sometimes freeze); **dark
+cloud**; **red sea**; **simultaneous day+night scene**; **twins** (duplicated Johnny,
+e.g. in the "terminator" scene); **"tidy your room"** (the table/gramophone stay in the
+background after the dinner with the mermaid); **screen color split**; **freeze climbing
+the tree**; **no Johnny**; **teleporting Johnny**; **hidden coconut**.
 
-**Áudio:** **só som** sem vídeo (pode persistir no desktop); **"muttering mode"**
-(placa de som trava resmungando após crash).
+**Audio:** **sound only** without video (may persist on the desktop); **"muttering mode"**
+(the sound card freezes muttering after a crash).
 
-> Muitos desses bugs são artefatos do Windows 3.1/16-bit e **desaparecem
-> naturalmente** num engine moderno. Alguns são **gags acidentais queridos** pela
-> comunidade (ex.: "ilha gigante", "dezenas de Johnnys") — poderiam virar um
-> **modo/easter egg opcional** no Wilson Reborn.
+> Many of these bugs are artifacts of Windows 3.1/16-bit and **disappear
+> naturally** in a modern engine. Some are **accidental gags beloved** by the
+> community (e.g. "giant island", "dozens of Johnnys") — they could become an
+> **optional mode/easter egg** in Wilson Reborn.
 
 ---
 
-## 13. Mapa Cena→Comportamento (os 10 arquivos `.ADS`)
+## 13. Scene→Behavior map (the 10 `.ADS` files)
 
-O `story_data.h` do `jc_reborn` define **63 cenas** distribuídas em **10 arquivos
-`.ADS`** (cada arquivo agrupa "tags" numeradas; cada tag é uma cena). Mapeamento
-geral, com os nomes descritivos confirmados em `castaway/.../scenes.mjs` quando
-disponíveis:
+The `story_data.h` of `jc_reborn` defines **63 scenes** distributed across **10 `.ADS`
+files** (each file groups numbered "tags"; each tag is a scene). General mapping,
+with the descriptive names confirmed in `castaway/.../scenes.mjs` when
+available:
 
-| Arquivo `.ADS` | Conteúdo (categoria) | Cenas/Tags notáveis |
+| `.ADS` file | Content (category) | Notable scenes/tags |
 |---|---|---|
-| **ACTIVITY.ADS** | Atividades/gags variados | #1 *GAG DIVES*, #4 *MUNDANE DIVE*, #6 *GAG JOHN READ*, #7 *MUNDANE JOHN READ*, #8 *JOHN BATH*, #10 *GULL 1 READING*, #11 *GULL 2 BATHING*, #12 *GULL 3 STILL READING*, #5 *NATIVE 1*, #9 *NATIVE 3* |
-| **BUILDING.ADS** | Construção (jangada / castelo de areia) | tags 1–7 |
-| **FISHING.ADS** | Pesca (capturas, lados esquerdo/direito) | tags 1–8 (#4,#7,#8 marcadas `LEFT_ISLAND`) |
-| **JOHNNY.ADS** | Beats de enredo do Johnny | #1 → dia 11 (volta de avião), #2 → dia 2 (SOS), #3 → dia 6 (desenho Suzy), #6 → dia 10 (escritório), #4/#5 livres |
-| **MARY.ADS** | A sereia Mary | #2 → dia 1, #3 → dia 4, #1 → dia 5, #4 → dia 7, #5 → dia 8 (parte na jangada) |
-| **MISCGAG.ADS** | Gags diversos | tags 1–2 |
-| **STAND.ADS** | Poses/ocioso em cada spot da ilha | tags 1–16 (transições/idle) |
-| **SUZY.ADS** | A moça da cidade Suzy | #1 → dia 3, #2 → dia 9 |
-| **VISITOR.ADS** | Visitantes/resgates | #1, #3 (cargo gigante, `HOLIDAY_NOK`), #4, #5 (`LEFT_ISLAND`), #6, #7 |
-| **WALKSTUF.ADS** | "Coisas" ligadas a caminhar | tags 1–3 |
+| **ACTIVITY.ADS** | Various activities/gags | #1 *GAG DIVES*, #4 *MUNDANE DIVE*, #6 *GAG JOHN READ*, #7 *MUNDANE JOHN READ*, #8 *JOHN BATH*, #10 *GULL 1 READING*, #11 *GULL 2 BATHING*, #12 *GULL 3 STILL READING*, #5 *NATIVE 1*, #9 *NATIVE 3* |
+| **BUILDING.ADS** | Building (raft / sandcastle) | tags 1–7 |
+| **FISHING.ADS** | Fishing (catches, left/right sides) | tags 1–8 (#4,#7,#8 marked `LEFT_ISLAND`) |
+| **JOHNNY.ADS** | Johnny's plot beats | #1 → day 11 (returns by plane), #2 → day 2 (SOS), #3 → day 6 (drawing of Suzy), #6 → day 10 (office), #4/#5 free |
+| **MARY.ADS** | The mermaid Mary | #2 → day 1, #3 → day 4, #1 → day 5, #4 → day 7, #5 → day 8 (departs on the raft) |
+| **MISCGAG.ADS** | Miscellaneous gags | tags 1–2 |
+| **STAND.ADS** | Poses/idle at each island spot | tags 1–16 (transitions/idle) |
+| **SUZY.ADS** | The city girl Suzy | #1 → day 3, #2 → day 9 |
+| **VISITOR.ADS** | Visitors/rescues | #1, #3 (giant cargo, `HOLIDAY_NOK`), #4, #5 (`LEFT_ISLAND`), #6, #7 |
+| **WALKSTUF.ADS** | "Stuff" related to walking | tags 1–3 |
 
-> Os "spots" (A–F) e "headings" (S, SW, W, NW, N, NE, E, SE) definem **onde** na ilha a
-> cena começa/termina e para **onde** o Johnny olha, permitindo que o engine **caminhe**
-> transicionalmente entre cenas. Detalhes do modelo em
-> [05-arquitetura-do-engine](05-arquitetura-do-engine.md).
+> The "spots" (A–F) and "headings" (S, SW, W, NW, N, NE, E, SE) define **where** on the island a
+> scene starts/ends and **where** Johnny looks, allowing the engine to **walk**
+> transitionally between scenes. Details of the model in
+> [05-engine-architecture](05-arquitetura-do-engine.md).
 
 ---
 
-## 14. Checklist de paridade (resumo "não perder nada")
+## 14. Parity checklist ("lose nothing" summary)
 
-- [ ] Arco de **11 dias** (Mary + Suzy), com avanço por data real e reinício.
-- [ ] **Pesca** (todas as capturas comuns/raras + ambidestria + polvão + tubarão-esqui).
-- [ ] **Natação/mergulho** com **júri de bichos** e o caranguejo de notas invertidas.
-- [ ] **Banho** + gaivota ladra de sunga + susto do tubarão (perna "intacta").
-- [ ] **Leitura** (livro de cabeça pra baixo, cochilo→coco, gaivota leitora).
-- [ ] **Dormir/roncar** + amarração pelos piratas.
-- [ ] **Fogo/cozinhar** (2–4 tentativas, polvo no rosto).
-- [ ] **Cocos** (quiques, cabeça girando, quebrar na árvore).
-- [ ] **Jangada** (5 estágios) e **SOS na garrafa** (mini-Johnny no dia 2).
-- [ ] **Castelo de areia** → **piratas King Kong**.
-- [ ] **Cooper** e **telescópio** (algo passando por trás).
-- [ ] **Dança da chuva** (gota → raio).
-- [ ] **Mary, a sereia** (todas as 6 interações).
-- [ ] **Suzy** + cenas de **fuga/resort/beijo/puxão de orelha**.
-- [ ] **Gaivota** (5 gags).
-- [ ] **Piratas** (King Kong + Gulliver, com ninho/ovo no peito).
-- [ ] **Visitantes** (lancha+mulher+cão, biplano, helicóptero/autogiro, avião baixo,
-      barco de festa, esquiadora, turistas, terminator, navio gigante, pelado x3).
-- [ ] **4 feriados** (Ano Novo, S. Patrício, Halloween, Natal) + tabela extensível.
-- [ ] **Easter eggs raros** (Johnny fantasma, bolas de prata, relógio real, derreter,
+- [ ] **11-day** arc (Mary + Suzy), advancing by real date and restarting.
+- [ ] **Fishing** (all common/rare catches + ambidexterity + big octopus + shark-ski).
+- [ ] **Swimming/diving** with the **animal jury** and the crab with inverted scores.
+- [ ] **Bath** + swim-trunks-thief seagull + shark scare ("intact" leg).
+- [ ] **Reading** (book upside down, nap→coconut, reading seagull).
+- [ ] **Sleeping/snoring** + being tied up by the pirates.
+- [ ] **Fire/cooking** (2–4 attempts, octopus on the face).
+- [ ] **Coconuts** (bounces, spinning head, cracking on the tree).
+- [ ] **Raft** (5 stages) and **SOS in a bottle** (mini-Johnny on day 2).
+- [ ] **Sandcastle** → **King Kong pirates**.
+- [ ] **Jogging** and **telescope** (something passing behind).
+- [ ] **Rain dance** (drop → lightning).
+- [ ] **Mary, the mermaid** (all 6 interactions).
+- [ ] **Suzy** + **escape/resort/kiss/ear-tug** scenes.
+- [ ] **Seagull** (5 gags).
+- [ ] **Pirates** (King Kong + Gulliver, with nest/egg on the chest).
+- [ ] **Visitors** (motorboat+woman+dog, biplane, helicopter/autogyro, low plane,
+      party boat, water-skier, tourists, terminator, giant ship, naked x3).
+- [ ] **4 holidays** (New Year, St. Patrick, Halloween, Christmas) + extensible table.
+- [ ] **Rare easter eggs** (ghost Johnny, silver balls, real clock, melting,
       "feeding the fishes", "THE END/Home Again").
-- [ ] **24 sons**.
-- [ ] **Maré baixa**, **ciclo dia/noite**, **posição aleatória da ilha**, **nuvens**.
+- [ ] **24 sounds**.
+- [ ] **Low tide**, **day/night cycle**, **random island position**, **clouds**.
 
 ---
 
-### Fontes
+### Sources
 johnny-castaway.com (common, fishing, swimming, reading, mermaid, pirates, seagull,
-visitors, leaving, annivers, story, unusual, bugs); `repos/jc_reborn/story_data.h` e
-`story.c`; `repos/castaway/src/scrantic/metadata/scenes.mjs` e `types.mjs`.
+visitors, leaving, annivers, story, unusual, bugs); `repos/jc_reborn/story_data.h` and
+`story.c`; `repos/castaway/src/scrantic/metadata/scenes.mjs` and `types.mjs`.
