@@ -203,4 +203,10 @@ escritas) ⇒ o original **nunca** dissolve, nem no intro — padrão segue hard
 preto), mas a janela filha estava fixa em 152×112 ⇒ faixas pretas à direita/embaixo no painel maior
 do Win11. Agora `apply_preview` consulta `GetClientRect(hwnd)` (FFI `user32`, sem dep nova) e
 **preenche o painel**. Cross-compile `windows-gnu` OK; runtime confirmado pelo usuário no Windows.
-**Próximo:** cortar a **v0.3.0** (empacotar tudo isso) ou outra frente (a combinar com o usuário).
+**v0.3.1 (2026-06-19):** segunda leva pós-0.3.0 — **preview do Windows preenche o painel**
+(`GetClientRect`); **UX web zero-fricção** (auto-save+auto-start; **📁 removido ⇒ só 🗑 Forget**;
+picker sempre visível); **F11 do navegador = botão ⛶** (detecção via `(display-mode: fullscreen)`,
+teste de regressão no `e2e/run.mjs`); **GitHub Pages ao vivo**
+(<https://antigerme.github.io/wilson-reborn/>) + link nos docs; **CI 1×/PR**; e **doc de "abrir
+direto em tela cheia"** (`--kiosk`/`--start-fullscreen`, validado em Chrome *headed* sob Xvfb).
+**Próximo:** taguear `v0.3.1` (passo do usuário) e acompanhar o `release.yml` até os artefatos.

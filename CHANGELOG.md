@@ -6,6 +6,8 @@ All notable changes to **Wilson Reborn** are recorded here. The project follows 
 
 ## [Unreleased]
 
+## [0.3.1] — 2026-06-19
+
 ### Added
 - **Web/WASM bundle in releases**: the release now ships **`wilson-web.zip`** — the bring-your-own
   web build (`index.html` + the wasm/JS + a `HOW-TO-RUN.txt`). No game data is bundled (copyright);
@@ -27,7 +29,9 @@ All notable changes to **Wilson Reborn** are recorded here. The project follows 
 - **Web fullscreen via the browser's F11**: pressing **F11** now presents like the page's **⛶**
   button — the canvas fills the screen and the title bar/hints hide (restoring on exit), instead of
   leaving the page's title bar across the top. F11 doesn't engage the Fullscreen API, so it's
-  detected via the `(display-mode: fullscreen)` media query.
+  detected via the `(display-mode: fullscreen)` media query. The docs also show how to launch the
+  browser already fullscreen (`--kiosk` / `--start-fullscreen`) to open the page fullscreen with no
+  click — a true unattended screensaver.
 - **Windows preview pane**: the screensaver now fills the little monitor in the Screen Saver
   settings (queries the pane's client size via `GetClientRect`) instead of sitting in the corner
   with black bands.
@@ -83,5 +87,6 @@ First public packaged release: the complete engine on the original data, a live 
 config/options, time controls, the opt-in dissolve transition, the startup intro, and the initial
 Web/WASM build. Packaged by `release.yml` on a `v*` tag.
 
+[0.3.1]: https://github.com/antigerme/wilson-reborn/releases/tag/v0.3.1
 [0.3.0]: https://github.com/antigerme/wilson-reborn/releases/tag/v0.3.0
 [0.2.0]: https://github.com/antigerme/wilson-reborn/releases/tag/v0.2.0
