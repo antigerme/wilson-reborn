@@ -13,8 +13,10 @@ as the desktop app, no server. Two modes:
 - **Self-contained** (`embed-data` feature, personal use): the `RESOURCE.*` (+ sounds) are baked
   into the `.wasm` at build time, so the page just runs — no file picker.
 
-Sound is **on by default** (🔊/🔇 + volume). A **⛶ fullscreen** button keeps the canvas
-black-letterboxed and holds a **Screen Wake Lock**; the UI/cursor fade when idle. The display
+Sound is **on by default** (🔊/🔇 + volume). A **⛶ fullscreen** button — or the browser's own
+**F11** — makes the canvas fill the screen (black-letterboxed), hides the page chrome (title/hints),
+and holds a **Screen Wake Lock**; the UI/cursor fade when idle. (F11 doesn't engage the Fullscreen
+API, so it's detected via the `(display-mode: fullscreen)` media query — it looks the same as ⛶.) The display
 matches the desktop defaults (**`scale=fit` + `filter=linear`**). URL options mirror the desktop
 CLI: `?fullscreen&scale=fit|stretch|integer&filter=linear|nearest&speed=200&day=5&dissolve&story`
 `&story_secs=60&daynight=real&intro=0&intro_secs=3&mute&volume=50&seed=…`. (`?dissolve` also

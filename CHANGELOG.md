@@ -24,6 +24,10 @@ All notable changes to **Wilson Reborn** are recorded here. The project follows 
   off-screen panel). Also: CI now runs **once per PR** (no duplicate push+pull_request runs).
 
 ### Fixed
+- **Web fullscreen via the browser's F11**: pressing **F11** now presents like the page's **⛶**
+  button — the canvas fills the screen and the title bar/hints hide (restoring on exit), instead of
+  leaving the page's title bar across the top. F11 doesn't engage the Fullscreen API, so it's
+  detected via the `(display-mode: fullscreen)` media query.
 - **Windows preview pane**: the screensaver now fills the little monitor in the Screen Saver
   settings (queries the pane's client size via `GetClientRect`) instead of sitting in the corner
   with black bands.

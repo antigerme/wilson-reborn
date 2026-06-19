@@ -57,6 +57,29 @@ await page.addInitScript(() => {
   AudioBufferSourceNode.prototype.start = function (...a) { window.__pw.starts++; return realStart.apply(this, a); };
 });
 
+// Simulate the browser's own F11 fullscreen. Unlike our ⛶ button, F11 does NOT engage the
+// Fullscreen API (no `fullscreenchange`, `fullscreenElement` stays null) — it only flips the
+// `(display-mode: fullscreen)` media query. We can't press a real F11 in headless Chrome, so we
+// stub THAT one query (everything else passes through to the real matchMedia) and let the test
+// toggle it via `window.__setF11`. This drives exactly the signal the page reacts to. (That Chrome
+// flips the query on F11 is browser behaviour, confirmed by the user in a real browser.)
+await page.addInitScript(() => {
+  const real = window.matchMedia.bind(window);
+  const listeners = new Set();
+  let on = false;
+  window.__setF11 = (v) => {
+    on = !!v;
+    const ev = { matches: on, media: "(display-mode: fullscreen)" };
+    listeners.forEach((cb) => { try { (cb.handleEvent || cb).call(cb, ev); } catch {} });
+  };
+  window.matchMedia = (q) =>
+    /display-mode/.test(q)
+      ? { get matches() { return on; }, media: q, onchange: null,
+          addEventListener: (_t, cb) => listeners.add(cb), removeEventListener: (_t, cb) => listeners.delete(cb),
+          addListener: (cb) => listeners.add(cb), removeListener: (cb) => listeners.delete(cb) }
+      : real(q);
+});
+
 const poll = async (fn, ms, step = 200) => {
   const end = Date.now() + ms;
   while (Date.now() < end) { if (await fn()) return true; await page.waitForTimeout(step); }
@@ -103,6 +126,30 @@ if (embedded) {
   if (!(await poll(() => page.evaluate(() => window.__pw.starts > 0), 25000)))
     await fail("no sound buffer ever played after resume (no cues fired)");
   console.log("OK ✅  sound effects actually play (buffer sources started:", await page.evaluate(() => window.__pw.starts), ")");
+
+  // 4) The browser's own F11 fullscreen presents like our ⛶ button: the stage grows to fill the
+  //    screen and the page chrome (the title bar) hides — then reverts when F11 is released.
+  const before = await page.evaluate(() => {
+    const s = document.getElementById("stage").getBoundingClientRect();
+    return { fs: document.body.classList.contains("fs"), w: s.width, vw: innerWidth };
+  });
+  if (before.fs) await fail("body.fs was set before F11");
+  if (before.w >= before.vw) await fail("the stage already filled the width before F11 (unexpected)");
+  await page.evaluate(() => window.__setF11(true));
+  if (!(await poll(() => page.evaluate(() => {
+    const s = document.getElementById("stage").getBoundingClientRect();
+    return document.body.classList.contains("fs") &&
+      Math.abs(s.width - innerWidth) < 2 && Math.abs(s.height - innerHeight) < 2 &&
+      getComputedStyle(document.querySelector("h1")).display === "none";
+  }), 3000)))
+    await fail("F11 did not fill the stage / hide the title bar (like the ⛶ button)");
+  console.log("OK ✅  F11 fills the screen and hides the page chrome (like the ⛶ button)");
+  await page.evaluate(() => window.__setF11(false));
+  if (!(await poll(() => page.evaluate(() =>
+    !document.body.classList.contains("fs") &&
+    getComputedStyle(document.querySelector("h1")).display !== "none"), 3000)))
+    await fail("leaving F11 did not restore the windowed layout");
+  console.log("OK ✅  leaving F11 restores the windowed layout");
 } else {
   console.log("mode: BRING-YOUR-OWN build — smoke test (no game data)");
 
