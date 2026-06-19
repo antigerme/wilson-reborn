@@ -168,6 +168,18 @@ desktop**), `?speed=25–400`, `?day=1–11`, `?dissolve`, `?story[&story_secs=N
 Há botões **🔊/🔇 + volume** e **⛶ tela cheia** (que mantém a tela acordada via **Wake Lock**); a
 UI/cursor somem após alguns segundos parados. (Com `?dissolve`, o dissolve também cobre o intro→1ª cena.)
 
+**Abrir direto em tela cheia (modo screensaver):** o navegador **bloqueia a Fullscreen API sem um
+gesto** do usuário (mesma regra do autoplay de áudio), então o `?fullscreen` só entra no 1º clique.
+Para abrir cheio **sem clique**, lance o navegador **já em tela cheia** — a página detecta isso (via
+a media query `(display-mode: fullscreen)`) e se apresenta cheia na hora:
+
+```bash
+google-chrome --kiosk            "http://localhost:8000/?fullscreen"  # sem barra do navegador (sai: Ctrl+W / Alt+F4)
+google-chrome --start-fullscreen "http://localhost:8000/"             # igual a apertar F11 no startup (sai: F11 / Esc)
+```
+
+(Use `chromium`/`chromium-browser` conforme a distro; `--kiosk` é o ideal para um screensaver.)
+
 **2. Autossuficiente** (uso pessoal) — embute os `RESOURCE.*` **+ os sons** (do `SCRANTIC.EXE`)
 no `.wasm` (feature `embed-data`), então a página **abre e roda** sem seletor. Aponte
 `WILSON_EMBED_DATA` (ou use o empacotador):
