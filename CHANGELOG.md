@@ -19,8 +19,9 @@ All notable changes to **Wilson Reborn** are recorded here. The project follows 
 - **Web page UX (bring-your-own): zero-friction.** Picked data is now **saved on this device by
   default** and the screensaver **auto-starts** — a return visit just opens and runs. Removed the
   **Start**, **Save**, and **dissolve** controls from the page (advanced options stay as URL params,
-  e.g. `?dissolve`); added a **📁** button to load different data and kept **Forget**. Also: CI now
-  runs **once per PR** (no duplicate push+pull_request runs).
+  e.g. `?dissolve`); a single **🗑 Forget** (in the controls) clears the saved data and returns to
+  the picker to load different data. The picker shows in place of the stage (always visible — no
+  off-screen panel). Also: CI now runs **once per PR** (no duplicate push+pull_request runs).
 
 ### Fixed
 - **Windows preview pane**: the screensaver now fills the little monitor in the Screen Saver
