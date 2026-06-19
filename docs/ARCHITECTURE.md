@@ -35,7 +35,8 @@ RESOURCE.MAP + RESOURCE.001  (original 1992 game data — copyright, not version
 `wilson-web` is the same engine compiled to **wasm32**: the browser supplies the bytes (the
 user's `RESOURCE.*` — loose files or a `.zip` — or compile-time-embedded data), JS calls
 `Wilson::frame` on a timer and draws the returned RGBA into a `<canvas>`. Same pipeline, no
-server, with sound (Web Audio), fullscreen, and desktop-mirrored options — see
+server, with sound (Web Audio), fullscreen, and desktop-mirrored options. Hosted live (bring your
+own data) at <https://antigerme.github.io/wilson-reborn/> via `pages.yml` — see
 [`crates/wilson-web`](../crates/wilson-web/README.md).
 
 ## The frame-production loop (the heart)
