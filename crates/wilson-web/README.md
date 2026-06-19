@@ -72,6 +72,20 @@ WILSON_EMBED_DATA=<dir-with-RESOURCE.*> ./build-web.sh   # then serve web/ as ab
 bring-your-own without one.) The generated `web/wilson_web.js` + `wilson_web_bg.wasm` are build
 outputs (git-ignored); only `index.html` is committed.
 
+### Open directly in fullscreen (screensaver mode)
+
+The Fullscreen API can't auto-engage on page load — browsers require a user gesture (same policy as
+the audio autoplay gate) — so `?fullscreen` only takes effect on the first click. To skip the click,
+launch the browser *already* fullscreen; the page detects that (via the `(display-mode: fullscreen)`
+media query) and presents fullscreen immediately, with no click:
+
+```sh
+google-chrome --kiosk            "http://localhost:8000/?fullscreen"  # no browser chrome; exit: Ctrl+W / Alt+F4
+google-chrome --start-fullscreen "http://localhost:8000/"             # like F11 at startup; exit: F11 / Esc
+```
+
+(Use `chromium` / `chromium-browser` as appropriate; `--kiosk` is best for an unattended screensaver.)
+
 ## Testing
 
 [`e2e/`](e2e/README.md) drives the built page in a **real headless Chrome** (Playwright), like a
