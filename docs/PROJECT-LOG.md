@@ -6,6 +6,25 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-06-18 — Fix: F11 do navegador (tela cheia) se comporta igual ao botão ⛶ da página
+
+Pedido do usuário: ao apertar **F11** (tela cheia do próprio navegador), sobrava a **barra de
+título** no topo e o palco não preenchia a tela — diferente do botão **⛶** da página. Causa: o ⛶
+usa a **Fullscreen API** (`#stage:fullscreen` preenche a tela); o **F11 não engaja a Fullscreen
+API** (`fullscreenElement` fica `null`, `:fullscreen` não casa), então a página só renderiza o
+layout normal sem o chrome do navegador. Fix (`web/index.html`): detectar o F11 pela media query
+**`(display-mode: fullscreen)`** (que o Chromium liga no F11) e aplicar a **mesma** apresentação via
+uma classe `body.fs` — palco em `100vw×100vh`, `h1`/dicas escondidos, Wake Lock — unificada num
+`syncFullscreen()` ouvido por `fullscreenchange` **e** pela media query.
+- **Teste de regressão** no `e2e/run.mjs` (Chrome headless real, build embutido): stub só da query
+  `(display-mode: fullscreen)` (o resto passa pro `matchMedia` real) + `window.__setF11()` ⇒ afirma
+  que o palco preenche e o título some, e reverte ao sair. **Fail-first confirmado** (falha contra o
+  `index.html` pré-fix). Smoke bring-your-own (CI) e o teste full embutido (render+som) seguem verdes.
+- Honestidade: que o Chrome ligue a query no F11 é comportamento do navegador — o usuário confirma no
+  Chrome real; aqui validei a reação da página ao sinal.
+
+---
+
 ## 2026-06-18 — GitHub Pages: hospedar a página Web/WASM (traga-seus-dados) "ao vivo"
 
 Pedido do usuário. Novo workflow `pages.yml`: builda o bundle **bring-your-own** (sem
