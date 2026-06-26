@@ -192,3 +192,37 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: wilson-web.zip
+
+  checksums:
+    name: Checksums (SHA-256)
+    # Runs after every artifact-producing job so it can hash them all into one file. Lets users
+    # verify their downloads (the Windows binaries are unsigned for now — see docs/INSTALL.md).
+    needs: [windows, linux, macos, web]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Generate SHA256SUMS.txt
+        # One line per distributable file, using basenames so `sha256sum -c SHA256SUMS.txt`
+        # works when run next to the downloaded files (the filenames are unique across jobs).
+        run: |
+          find artifacts -type f \( -name 'wilson.scr' -o -name 'wilson.exe' -o -name '*.tar.gz' -o -name '*.zip' \) \
+            | sort | while read -r f; do ( cd "$(dirname "$f")" && sha256sum "$(basename "$f")" ); done > SHA256SUMS.txt
+          echo "----- SHA256SUMS.txt -----"
+          cat SHA256SUMS.txt
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SHA256SUMS
+          path: SHA256SUMS.txt
+
+      - name: Attach to release
+        # No `generate_release_notes` here — the linux job is the sole notes generator.
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: SHA256SUMS.txt

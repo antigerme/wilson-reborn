@@ -54,9 +54,15 @@ Um screensaver do Windows é apenas o executável com a extensão `.scr`.
 > **esperado** para um app não assinado (até os artefatos do `release.yml` seriam assim) —
 > não é vírus nem defeito. Para rodar: **Mais informações → Executar assim mesmo**. Para
 > não ver o aviso, **desbloqueie** o arquivo antes: botão direito no `.scr`/`.exe` →
-> **Propriedades** → marque **"Desbloquear"** (Unblock) → **OK**. Eliminar de vez exigiria
-> **assinatura de código** (certificado pago de uma autoridade) — desnecessário para uso
-> pessoal.
+> **Propriedades** → marque **"Desbloquear"** (Unblock) → **OK**. Eliminar de vez exige
+> **assinatura de código** (Authenticode) — estamos solicitando isso **gratuitamente** via
+> **SignPath Foundation** (programa para projetos open source); até a aprovação, os binários
+> saem sem assinatura.
+>
+> **Confira a integridade do download:** toda release traz um **`SHA256SUMS.txt`**. No Windows
+> (PowerShell): `Get-FileHash .\wilson.scr -Algorithm SHA256` e compare com a linha
+> correspondente do arquivo. No Linux/macOS: `sha256sum -c SHA256SUMS.txt` (na pasta com os
+> arquivos baixados).
 
 1. Baixe `wilson.scr`.
 2. **Coloque os dados originais** (`RESOURCE.MAP` + `RESOURCE.001`) **na mesma pasta** do
