@@ -15,9 +15,9 @@ original.
 
 ▶ **Try it live in your browser (bring your own data):** <https://antigerme.github.io/wilson-reborn/>
 
-![Johnny fishing off his island — Wilson Reborn](docs/screenshot.png)
-
-![Wilson Reborn in motion — fishing as the clouds drift](docs/demo.gif)
+<p align="center">
+  <img src="docs/demo.gif" alt="Wilson Reborn in motion — fishing as the clouds drift">
+</p>
 
 *Live renders from the Wilson Reborn engine, driven by the original 1992 data.* The original
 screensaver is also preserved at the

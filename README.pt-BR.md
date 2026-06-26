@@ -15,9 +15,9 @@ perder nada do original.
 
 ▶ **Experimente ao vivo no navegador (traga seus dados):** <https://antigerme.github.io/wilson-reborn/>
 
-![Johnny pescando na sua ilha — Wilson Reborn](docs/screenshot.png)
-
-![Wilson Reborn em movimento — pescando enquanto a nuvem passa](docs/demo.gif)
+<p align="center">
+  <img src="docs/demo.gif" alt="Wilson Reborn em movimento — pescando enquanto a nuvem passa">
+</p>
 
 *Renders ao vivo da engine do Wilson Reborn, a partir dos dados originais de 1992.* O
 screensaver original também está preservado no
