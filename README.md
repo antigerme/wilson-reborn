@@ -95,6 +95,11 @@ Prebuilt binaries (Windows `wilson.scr` and Linux) are published on each version
 release workflow. See **[docs/INSTALL.md](docs/INSTALL.md)** to install the Windows
 screensaver, run on Linux/macOS, and cut releases.
 
+> Each release ships a **`SHA256SUMS.txt`** so you can verify your downloads. The Windows
+> binaries are **not code-signed yet**, so SmartScreen will warn ("unknown publisher") — choose
+> *More info → Run anyway*. Free Authenticode signing via the **SignPath Foundation** OSS program
+> is being set up.
+
 > **Self-contained build (personal use):** if you already own the game, you can embed the
 > data in the binary with `WILSON_EMBED_DATA=<dir> cargo build --release -p wilson --features
 > embed-data` — a single file that runs without `--data`. The data is copyrighted and is
