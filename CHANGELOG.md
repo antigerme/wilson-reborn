@@ -6,6 +6,19 @@ All notable changes to **Wilson Reborn** are recorded here. The project follows 
 
 ## [Unreleased]
 
+## [0.3.2] — 2026-06-26
+
+### Added
+- **`SHA256SUMS.txt` in releases**: every release now ships a checksum file covering all artifacts
+  (`wilson.scr`/`.exe`, the Linux/macOS tarballs, the `.saver`, and `wilson-web.zip`) so you can
+  verify your downloads (`Get-FileHash` on Windows; `sha256sum -c` elsewhere).
+
+### Changed
+- **Docs**: the Windows install notes now explain the SmartScreen "unknown publisher" warning (the
+  binaries are unsigned for now — *More info → Run anyway*) and that free Authenticode signing via
+  the **SignPath Foundation** OSS program is being set up. The README Demo centers the animated GIF
+  and drops the redundant static screenshot.
+
 ## [0.3.1] — 2026-06-19
 
 ### Added
@@ -87,6 +100,7 @@ First public packaged release: the complete engine on the original data, a live 
 config/options, time controls, the opt-in dissolve transition, the startup intro, and the initial
 Web/WASM build. Packaged by `release.yml` on a `v*` tag.
 
+[0.3.2]: https://github.com/antigerme/wilson-reborn/releases/tag/v0.3.2
 [0.3.1]: https://github.com/antigerme/wilson-reborn/releases/tag/v0.3.1
 [0.3.0]: https://github.com/antigerme/wilson-reborn/releases/tag/v0.3.0
 [0.2.0]: https://github.com/antigerme/wilson-reborn/releases/tag/v0.2.0
