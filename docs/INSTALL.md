@@ -55,9 +55,9 @@ Um screensaver do Windows é apenas o executável com a extensão `.scr`.
 > não é vírus nem defeito. Para rodar: **Mais informações → Executar assim mesmo**. Para
 > não ver o aviso, **desbloqueie** o arquivo antes: botão direito no `.scr`/`.exe` →
 > **Propriedades** → marque **"Desbloquear"** (Unblock) → **OK**. Eliminar de vez exige
-> **assinatura de código** (Authenticode) — estamos solicitando isso **gratuitamente** via
-> **SignPath Foundation** (programa para projetos open source); até a aprovação, os binários
-> saem sem assinatura.
+> **assinatura de código** (Authenticode); por ora os binários **saem sem assinatura**. (Uma
+> assinatura gratuita via programa OSS como o SignPath Foundation depende de o projeto ter mais
+> tração/visibilidade — fica para o futuro.)
 >
 > **Confira a integridade do download:** toda release traz um **`SHA256SUMS.txt`**. No Windows
 > (PowerShell): `Get-FileHash .\wilson.scr -Algorithm SHA256` e compare com a linha

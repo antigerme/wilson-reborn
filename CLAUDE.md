@@ -210,7 +210,12 @@ teste de regressão no `e2e/run.mjs`); **GitHub Pages ao vivo**
 (<https://antigerme.github.io/wilson-reborn/>) + link nos docs; **CI 1×/PR**; e **doc de "abrir
 direto em tela cheia"** (`--kiosk`/`--start-fullscreen`, validado em Chrome *headed* sob Xvfb).
 **v0.3.2 (2026-06-26):** releases agora trazem **`SHA256SUMS.txt`** (job `checksums` no `release.yml`,
-cobre os 6 artefatos) + docs do **SmartScreen**/verificação e nota de que a assinatura grátis via
-**SignPath Foundation** está em andamento; README com o `demo.gif` centralizado (screenshot removido).
-**Próximo:** taguear `v0.3.2` (passo do usuário) e acompanhar o `release.yml` — 1º release a exercitar
-o `SHA256SUMS.txt`. Assinatura SignPath entra quando a aplicação for aprovada.
+cobre os 6 artefatos; validado na v0.3.2 — os hashes batem com os digests dos assets) + docs do
+**SmartScreen**/verificação; README com o `demo.gif` centralizado (screenshot removido).
+**Assinatura Windows (2026-07-01):** a aplicação ao **SignPath Foundation foi recusada por ora**
+(falta tração/reputação pública — estrelas/menções/artigos —, **não** qualidade; convite a reaplicar
+quando crescer). Decisão com o usuário: **caminho 1 — ficar sem assinatura** (o `SHA256SUMS.txt` + a
+nota do SmartScreen cobrem) e **reaplicar no futuro**; docs ajustadas pra não prometer assinatura "em
+andamento". O passo de assinatura no `release.yml` (#3) fica **dormente** até lá.
+**Próximo:** crescer a tração (estrelas/menções/Show HN) e reaplicar — ou avaliar **Azure Trusted
+Signing** se quiser assinar antes.

@@ -6,6 +6,23 @@ Log cronológico das decisões e entregas. Entradas mais recentes no topo.
 
 ---
 
+## 2026-07-01 — SignPath Foundation recusou a aplicação (por ora); decisão: seguir sem assinatura
+
+Aplicamos ao **SignPath Foundation** (assinatura de código gratuita pro Windows) em 2026-06-26.
+Resposta em 2026-07-01 (Phillip Deng / SignPath): **não aprovada por ora** — falta de **sinais
+externos de reputação** (estrelas/forks/contribuidores, menções em Reddit/SO/YouTube, artigos/
+respaldo, engajamento sustentado). Enfatizaram que **não é julgamento de qualidade** e **convidaram a
+reaplicar** quando o projeto tiver mais visibilidade.
+
+**Decisão (com o usuário — caminho "1"):** **ficar sem assinatura** por ora. O interim já shippado
+cobre o essencial: binários não assinados + **`SHA256SUMS.txt`** (integridade, validado na v0.3.2) +
+nota do **SmartScreen** ("Executar assim mesmo"). Reaplicar no futuro com mais tração; o passo de
+assinatura no `release.yml` (#3) fica **dormente**. Docs (README/INSTALL) ajustadas pra não prometer
+assinatura "em andamento". Alternativa anotada para o futuro: **Azure Trusted Signing** (~US$10/mês,
+CI-friendly) se quiser assinar antes de reaplicar.
+
+---
+
 ## 2026-06-18 — Fix: F11 do navegador (tela cheia) se comporta igual ao botão ⛶ da página
 
 Pedido do usuário: ao apertar **F11** (tela cheia do próprio navegador), sobrava a **barra de
